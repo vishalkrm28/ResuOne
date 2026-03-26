@@ -8,6 +8,8 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import NewApplication from "@/pages/new-application";
 import ApplicationDetail from "@/pages/application-detail";
+import BillingSuccess from "@/pages/billing-success";
+import BillingCancel from "@/pages/billing-cancel";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -44,6 +46,8 @@ function AppRouter() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/new" component={NewApplication} />
       <Route path="/applications/:id" component={ApplicationDetail} />
+      <Route path="/billing/success" component={BillingSuccess} />
+      <Route path="/billing/cancel" component={BillingCancel} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -4,6 +4,7 @@ import authRouter from "./auth.js";
 import applicationsRouter from "./applications.js";
 import uploadRouter from "./upload.js";
 import exportRouter from "./export.js";
+import billingRouter from "./billing.js";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(authRouter);
 router.use(applicationsRouter);
 router.use(uploadRouter);
 router.use(exportRouter);
+router.use(billingRouter);
 
 export default router;
