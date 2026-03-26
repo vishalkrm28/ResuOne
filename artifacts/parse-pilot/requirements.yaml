@@ -1,0 +1,17 @@
+packages:
+  "framer-motion": "For page transitions, tab underlines, and smooth list reveals"
+  "react-dropzone": "For handling drag and drop CV file uploads"
+  "date-fns": "For formatting application creation dates"
+  "lucide-react": "For beautiful consistent iconography across the SaaS UI"
+  "clsx": "For conditional class name joining in reusable components"
+  "tailwind-merge": "For merging Tailwind classes without conflicts in reusable components"
+
+images:
+  - path: "artifacts/parse-pilot/public/images/logo.png"
+    description: "Minimal geometric logo mark for ParsePilot AI, using deep indigo and violet colors, clean premium SaaS aesthetic, transparent background"
+    aspect_ratio: "1:1"
+
+notes:
+  - Backend API hooks are already generated in @workspace/api-client-react
+  - User authentication is handled locally via a generated UUID stored in localStorage since no auth service is provided
+  - Exports use standard browser GET requests to the /api/export/application/:id/docx endpoints

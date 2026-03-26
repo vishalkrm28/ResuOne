@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ParsePilot AI API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: applications
+    description: Job application management
+  - name: analysis
+    description: CV analysis and AI operations
 paths:
   /healthz:
     get:
@@ -24,6 +27,195 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /applications:
+    get:
+      operationId: listApplications
+      tags: [applications]
+      summary: List all job applications for the current user
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Application"
+    post:
+      operationId: createApplication
+      tags: [applications]
+      summary: Create a new job application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationBody"
+      responses:
+        "201":
+          description: Created application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+
+  /applications/{id}:
+    get:
+      operationId: getApplication
+      tags: [applications]
+      summary: Get a single application by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Application details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          description: Not found
+    put:
+      operationId: updateApplication
+      tags: [applications]
+      summary: Update an application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateApplicationBody"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+    delete:
+      operationId: deleteApplication
+      tags: [applications]
+      summary: Delete an application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /applications/{id}/analyze:
+    post:
+      operationId: analyzeApplication
+      tags: [analysis]
+      summary: Analyze CV against job description and return ATS-optimized result
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeApplicationBody"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+
+  /applications/{id}/cover-letter:
+    post:
+      operationId: generateCoverLetter
+      tags: [analysis]
+      summary: Generate an ATS-friendly cover letter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateCoverLetterBody"
+      responses:
+        "200":
+          description: Cover letter content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoverLetterResult"
+
+  /parse-cv:
+    post:
+      operationId: parseCv
+      tags: [analysis]
+      summary: Parse uploaded CV text (after file upload)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseCvBody"
+      responses:
+        "200":
+          description: Parsed CV text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseCvResult"
+
+  /upload-cv:
+    post:
+      operationId: uploadCv
+      tags: [analysis]
+      summary: Upload a CV file (PDF or DOCX) and extract its text
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        "200":
+          description: Extracted CV text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadCvResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +226,209 @@ components:
       required:
         - status
 
+    Application:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        jobTitle:
+          type: string
+        company:
+          type: string
+        jobDescription:
+          type: string
+        originalCvText:
+          type: string
+        tailoredCvText:
+          type: string
+          nullable: true
+        coverLetterText:
+          type: string
+          nullable: true
+        keywordMatchScore:
+          type: number
+          nullable: true
+        missingKeywords:
+          type: array
+          items:
+            type: string
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+        missingInfoQuestions:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [draft, analyzed, exported]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - jobTitle
+        - company
+        - jobDescription
+        - originalCvText
+        - missingKeywords
+        - matchedKeywords
+        - missingInfoQuestions
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateApplicationBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        jobTitle:
+          type: string
+        company:
+          type: string
+        jobDescription:
+          type: string
+        originalCvText:
+          type: string
+      required:
+        - userId
+        - jobTitle
+        - company
+        - jobDescription
+        - originalCvText
+
+    UpdateApplicationBody:
+      type: object
+      properties:
+        jobTitle:
+          type: string
+        company:
+          type: string
+        jobDescription:
+          type: string
+        originalCvText:
+          type: string
+        tailoredCvText:
+          type: string
+        coverLetterText:
+          type: string
+        keywordMatchScore:
+          type: number
+        missingKeywords:
+          type: array
+          items:
+            type: string
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+        missingInfoQuestions:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [draft, analyzed, exported]
+
+    AnalyzeApplicationBody:
+      type: object
+      properties:
+        confirmedAnswers:
+          type: object
+          additionalProperties:
+            type: string
+          description: User's answers to missing info questions from previous analysis
+      required: []
+
+    AnalysisResult:
+      type: object
+      properties:
+        tailoredCvText:
+          type: string
+        keywordMatchScore:
+          type: number
+        missingKeywords:
+          type: array
+          items:
+            type: string
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+        missingInfoQuestions:
+          type: array
+          items:
+            type: string
+        sectionSuggestions:
+          type: array
+          items:
+            type: string
+      required:
+        - tailoredCvText
+        - keywordMatchScore
+        - missingKeywords
+        - matchedKeywords
+        - missingInfoQuestions
+        - sectionSuggestions
+
+    GenerateCoverLetterBody:
+      type: object
+      properties:
+        tone:
+          type: string
+          enum: [professional, enthusiastic, concise]
+          default: professional
+        additionalContext:
+          type: string
+      required: []
+
+    CoverLetterResult:
+      type: object
+      properties:
+        coverLetterText:
+          type: string
+      required:
+        - coverLetterText
+
+    ParseCvBody:
+      type: object
+      properties:
+        rawText:
+          type: string
+      required:
+        - rawText
+
+    ParseCvResult:
+      type: object
+      properties:
+        parsedText:
+          type: string
+        sections:
+          type: array
+          items:
+            type: string
+      required:
+        - parsedText
+        - sections
+
+    UploadCvResult:
+      type: object
+      properties:
+        extractedText:
+          type: string
+        fileName:
+          type: string
+        fileSize:
+          type: number
+      required:
+        - extractedText
+        - fileName
+        - fileSize
