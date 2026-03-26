@@ -1,0 +1,89 @@
+Implement Milestone 13 now.
+
+Goal:
+Create a high-converting landing page for ParsePilot.
+
+Product positioning:
+ParsePilot helps job seekers upload their current CV and a job description, then generates:
+- a more targeted resume
+- keyword alignment insights
+- missing input suggestions
+- optional cover letter
+
+Offer structure:
+- Free: 3 credits
+- Pro: more credits, exports, cover letters, advanced insights
+- 7-day free trial on Pro
+
+What to build:
+1. Redesign the public landing page for conversion, not just aesthetics.
+2. Keep the design clean, premium, and modern.
+3. Create these sections in order:
+
+A. Hero section
+- strong headline
+- clear subheadline
+- primary CTA
+- secondary CTA
+- product screenshot/mock result panel if practical
+
+B. Social-proof / trust section
+- trust-oriented messaging
+- “No fake experience invented”
+- “ATS-friendly output”
+- “Edit before export”
+
+C. How it works
+- upload CV
+- paste job description
+- get optimized resume + insights
+- edit and export
+
+D. Value/benefits section
+Focus on outcomes:
+- tailor faster
+- improve relevance
+- identify missing inputs
+- save time across many applications
+
+E. Pricing preview
+- Free
+- Pro
+- mention 7-day free trial
+- mention credits simply and clearly
+
+F. FAQ section
+Include:
+- Does ParsePilot invent experience?
+- How do credits work?
+- Can I cancel during trial?
+- Can I edit the generated resume?
+- Is it ATS-friendly?
+
+G. Final CTA section
+- clear upgrade/start prompt
+
+4. Add strong CTA copy variants and choose the best one in-context.
+5. Make page responsive and polished.
+6. Reuse existing design system and components where practical.
+7. Keep copy specific to ParsePilot.
+
+Copy rules:
+- Avoid vague AI buzzwords
+- Focus on trust, speed, and outcome
+- Make it clear the tool improves resumes without fabricating experience
+- Keep the language simple and convincing
+- Avoid clutter
+
+Conversion rules:
+- the main CTA should be obvious above the fold
+- pricing should feel low-friction
+- the 7-day trial should be visible
+- the free plan should reduce friction
+- the page should lead naturally into signup or upgrade
+
+After implementation:
+1. Show exact files changed
+2. Show final landing page copy section by section
+3. List top 5 conversion weaknesses
+4. Fix the top 3 immediately
