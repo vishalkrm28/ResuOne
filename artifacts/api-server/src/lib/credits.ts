@@ -12,9 +12,16 @@ export const CREDIT_COSTS = {
   cover_letter: 1,
   docx_export: 0,
   pdf_export: 0,
+  // Charged when a CV for a different person is detected on the same account.
+  // Applied in addition to cv_optimization (total cost: 2 credits).
+  identity_switch_penalty: 1,
 } as const;
 
-export type CreditEventType = keyof typeof CREDIT_COSTS | "credits_init" | "credits_reset_pro";
+export type CreditEventType =
+  | keyof typeof CREDIT_COSTS
+  | "credits_init"
+  | "credits_reset_pro"
+  | "identity_switch";
 
 // ─── getUserCredits ────────────────────────────────────────────────────────────
 // Returns the user's current credit balance row, or null if not found.

@@ -14,6 +14,10 @@ import { requirePro } from "../middlewares/requirePro.js";
 import { isUserPro } from "../lib/billing.js";
 import { spendCredits, getUserCredits, CREDIT_COSTS } from "../lib/credits.js";
 import { applyFreeFilter, applyProPass } from "../lib/preview.js";
+import {
+  extractIdentityFromParsedCv,
+  checkAndRecordIdentity,
+} from "../lib/identity.js";
 
 const router: IRouter = Router();
 
@@ -350,34 +354,24 @@ router.patch("/applications/:id/cover-letter-save", requirePro, async (req, res)
 });
 
 // ─── POST /applications/:id/analyze ─────────────────────────────────────────
+//
+// Order of operations (important — do not rearrange):
+//   1. Fetch app  →  ownership check  →  identity check
+//   2. Credit gate: base cost + optional identity-switch penalty
+//   3. AI analysis + DB save
+//   4. Content filter (free vs Pro) + return
 
 router.post("/applications/:id/analyze", async (req, res) => {
   const { id } = req.params;
+  const ownerUserId = req.user?.id;
+
   const parsed = AnalyzeApplicationBody.safeParse(req.body);
   const confirmedAnswers = parsed.success
     ? (parsed.data.confirmedAnswers as Record<string, string> | undefined)
     : undefined;
 
-  // ── Credit gate ───────────────────────────────────────────────────────────
-  const ownerUserId = req.user?.id;
-  if (ownerUserId) {
-    const cost = CREDIT_COSTS.cv_optimization;
-    if (cost > 0) {
-      const spend = await spendCredits(ownerUserId, cost, "cv_optimization", { applicationId: id });
-      if (!spend.success) {
-        const balance = await getUserCredits(ownerUserId);
-        res.status(402).json({
-          error: "You've used all your optimization credits.",
-          code: "CREDITS_EXHAUSTED",
-          remainingCredits: balance?.availableCredits ?? 0,
-        });
-        return;
-      }
-    }
-  }
-  // ─────────────────────────────────────────────────────────────────────────
-
   try {
+    // ── 1. Fetch app ────────────────────────────────────────────────────────
     const [app] = await db
       .select()
       .from(applicationsTable)
@@ -388,13 +382,70 @@ router.post("/applications/:id/analyze", async (req, res) => {
       return;
     }
 
-    // ── Ownership check ───────────────────────────────────────────────────────
+    // ── Ownership check ─────────────────────────────────────────────────────
     if (ownerUserId && app.userId !== ownerUserId) {
       res.status(403).json({ error: "Access denied", code: "FORBIDDEN" });
       return;
     }
 
-    // Parse the job description first (for richer analysis context)
+    // ── Identity check ──────────────────────────────────────────────────────
+    // Extract identity from the already-parsed CV (no extra AI call needed).
+    // Falls back gracefully if parsedCvJson is null or identity check fails.
+    let identityResult = {
+      isDifferentIdentity: false,
+      isAboveLimit: false,
+      distinctIdentityCount: 0,
+    };
+
+    if (ownerUserId && app.parsedCvJson) {
+      const identity = extractIdentityFromParsedCv(app.parsedCvJson as any);
+      identityResult = await checkAndRecordIdentity(ownerUserId, identity, id);
+    }
+
+    // ── 2. Credit gate ──────────────────────────────────────────────────────
+    if (ownerUserId) {
+      // Base cost: 1 credit for every CV optimization
+      const baseCost = CREDIT_COSTS.cv_optimization;
+      if (baseCost > 0) {
+        const spend = await spendCredits(ownerUserId, baseCost, "cv_optimization", {
+          applicationId: id,
+        });
+        if (!spend.success) {
+          const balance = await getUserCredits(ownerUserId);
+          res.status(402).json({
+            error: "You've used all your optimization credits.",
+            code: "CREDITS_EXHAUSTED",
+            remainingCredits: balance?.availableCredits ?? 0,
+          });
+          return;
+        }
+      }
+
+      // Penalty cost: +1 credit when a different person's CV is detected.
+      // We charge this after the base cost check — if the user has exactly 1
+      // credit left they still get to run the analysis (base cost succeeds)
+      // but the penalty is a best-effort deduct (non-blocking if insufficient).
+      if (identityResult.isDifferentIdentity) {
+        const penaltyCost = CREDIT_COSTS.identity_switch_penalty;
+        if (penaltyCost > 0) {
+          // Non-blocking: if they can't afford it, log it but don't fail the request.
+          const penaltySpend = await spendCredits(
+            ownerUserId,
+            penaltyCost,
+            "identity_switch_penalty",
+            { applicationId: id, distinctIdentityCount: identityResult.distinctIdentityCount },
+          );
+          if (!penaltySpend.success) {
+            logger.warn(
+              { userId: ownerUserId, applicationId: id },
+              "Identity switch penalty could not be charged — insufficient credits",
+            );
+          }
+        }
+      }
+    }
+
+    // ── 3. AI analysis + DB save ────────────────────────────────────────────
     let parsedJd = app.parsedJdJson ?? null;
     if (!parsedJd) {
       try {
@@ -404,7 +455,6 @@ router.post("/applications/:id/analyze", async (req, res) => {
       }
     }
 
-    // Analyze CV against job description (using parsed JD for extra context)
     const result = await analyzeCvForJob({
       originalCvText: app.originalCvText,
       jobDescription: app.jobDescription,
@@ -414,8 +464,8 @@ router.post("/applications/:id/analyze", async (req, res) => {
       confirmedAnswers,
     });
 
-    // Save everything — always persist full tailoredCvText so Pro features
-    // remain accessible after a free→Pro upgrade.
+    // Always persist full tailoredCvText so Pro features remain accessible
+    // after a free→Pro upgrade.
     await db
       .update(applicationsTable)
       .set({
@@ -431,13 +481,21 @@ router.post("/applications/:id/analyze", async (req, res) => {
       })
       .where(eq(applicationsTable.id, id));
 
-    // ── Strip premium content from the response for free users ───────────
+    // ── 4. Content filter + response ────────────────────────────────────────
     const pro = ownerUserId ? await isUserPro(ownerUserId) : false;
     const safeResult = pro
       ? applyProPass({ ...result, parsedJd })
       : applyFreeFilter({ ...result, parsedJd });
 
-    res.json(safeResult);
+    res.json({
+      ...safeResult,
+      // Identity warning fields — consumed by the frontend to show a banner.
+      // Included even when isDifferentIdentity is false so the client always
+      // has a stable shape to destructure.
+      identityWarning: identityResult.isDifferentIdentity,
+      identityAboveLimit: identityResult.isAboveLimit,
+      distinctIdentityCount: identityResult.distinctIdentityCount,
+    });
   } catch (err) {
     logger.error({ err, id }, "Failed to analyze application");
     res.status(500).json({ error: "Analysis failed. Please try again.", code: "ANALYSIS_ERROR" });

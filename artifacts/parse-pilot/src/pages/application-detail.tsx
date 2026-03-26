@@ -251,6 +251,13 @@ export default function ApplicationDetail() {
   const [coverTone, setCoverTone] = useState<"professional" | "enthusiastic" | "concise">("professional");
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
+  // Identity warning — shown when the server detects a different person's CV
+  const [identityWarning, setIdentityWarning] = useState<{
+    show: boolean;
+    isAboveLimit: boolean;
+    distinctCount: number;
+  } | null>(null);
+
   // Editable CV state (Pro only — server rejects saves from free users)
   const [editedCv, setEditedCv] = useState<string | null>(null);
   const cvDirty = editedCv !== null;
@@ -293,11 +300,23 @@ export default function ApplicationDetail() {
 
   const handleAnalyze = async (answers?: Record<string, string>) => {
     setAnalyzeError(null);
+    setIdentityWarning(null);
     try {
-      await analyzeMutation.mutateAsync({
+      const result = await analyzeMutation.mutateAsync({
         id,
         data: { confirmedAnswers: answers || {} },
       });
+
+      // Check for identity warning from server (different person's CV detected)
+      const raw = result as any;
+      if (raw?.identityWarning === true) {
+        setIdentityWarning({
+          show: true,
+          isAboveLimit: raw.identityAboveLimit === true,
+          distinctCount: typeof raw.distinctIdentityCount === "number" ? raw.distinctIdentityCount : 2,
+        });
+      }
+
       toast({ title: "Analysis complete", description: "Your CV has been tailored to the job description." });
       setActiveTab("cv");
       refetch();
@@ -458,6 +477,42 @@ export default function ApplicationDetail() {
           />
         </div>
       )}
+
+      {/* ── Identity mismatch warning ─────────────────────────────────── */}
+      <AnimatePresence>
+        {identityWarning?.show && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3.5 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/60">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                  {identityWarning.isAboveLimit
+                    ? "Multiple profiles detected — consider a separate account"
+                    : "This looks like a different profile"}
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                  {identityWarning.isAboveLimit
+                    ? `You've optimized CVs for ${identityWarning.distinctCount} different people on this account. ParsePilot works best as a personal CV tool — 1 extra credit was applied.`
+                    : "ParsePilot works best per individual. Optimizing for a different person used 1 extra credit."}
+                </p>
+              </div>
+              <button
+                onClick={() => setIdentityWarning(null)}
+                className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 shrink-0 font-medium"
+                aria-label="Dismiss identity warning"
+              >
+                Dismiss
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
       <div className="flex space-x-1 border-b border-border mb-8 overflow-x-auto pb-[1px]">

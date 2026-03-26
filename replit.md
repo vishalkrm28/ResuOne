@@ -111,6 +111,14 @@ artifacts-monorepo/
 - `status` (enum: draft | analyzed | exported)
 - `createdAt`, `updatedAt` (timestamptz)
 
+### `user_identity_profiles` table
+- `userId` (varchar, PK, FK → users.id) — one row per user
+- `primaryIdentityHash` (varchar) — SHA256[:32] of first CV identity seen (name + email)
+- `primaryIdentityName`, `primaryIdentityEmail` (varchar, nullable) — display fields for logging
+- `distinctIdentityCount` (integer) — total distinct people ever submitted
+- `identityHistory` (jsonb) — append-only list of up to 20 `{ hash, name, email, detectedAt }` entries
+- `createdAt`, `updatedAt` (timestamptz)
+
 ### `sessions` table
 - `id` (text, PK) — session token
 - `userId` (text)
@@ -171,7 +179,7 @@ pnpm --filter @workspace/api-spec run codegen
 - `spendCredits(userId, amount, type)` — atomic (`UPDATE ... WHERE available_credits >= amount`); returns `{success, remaining}`; no race condition possible
 - `canSpendCredits` / `getUserCredits` — read helpers
 
-**Credit costs:** cv_optimization=1, cover_letter=1, docx_export=0, pdf_export=0
+**Credit costs:** cv_optimization=1, cover_letter=1, docx_export=0, pdf_export=0, identity_switch_penalty=1 (charged in addition to cv_optimization when a different person's CV is detected)
 
 **API endpoint:** `GET /api/billing/credits` → `{availableCredits, lifetimeCreditsUsed, billingPeriodEnd, planAllowance, isPro}`
 
@@ -183,6 +191,65 @@ pnpm --filter @workspace/api-spec run codegen
 **Gated routes:**
 - `POST /applications/:id/analyze` → 1 credit; returns 402 `CREDITS_EXHAUSTED` if blocked
 - `POST /applications/:id/cover-letter` → 1 credit; returns 402 `CREDITS_EXHAUSTED` if blocked
+
+## Identity & Anti-Abuse System (Milestone 16)
+
+### Goal
+Prevent one Pro account from being used as a CV-generation service for many different people, without hard-blocking legitimate use.
+
+### Strategy: friction, not blocks
+- No hard blocks. If a different identity is detected, analysis still succeeds.
+- An **extra 1 credit** is charged (total: 2 credits instead of 1) for any CV submitted for a person other than the account's primary identity.
+- A **soft limit of 3 distinct identities** per account is tracked. Beyond that the same penalty applies indefinitely.
+- An **amber warning banner** is shown in the UI immediately after analysis completes.
+
+### How identity is detected
+
+**Source:** `parsedCvJson.name` and `parsedCvJson.email` — already extracted by the AI CV parser at upload time. No extra AI call needed.
+
+**`isSameIdentity(a, b)` — confidence ladder:**
+1. **Email match (definitive):** if both sides have an email, they must match exactly.
+2. **Name match (fallback):** token-sorted lowercase comparison so "John Smith" and "Smith, John" resolve to the same person.
+3. **No signal (conservative):** if both name and email are missing on either side, returns `true` (same person) to avoid false positives.
+
+**Identity hash:** `SHA256(normalized_name + "||" + email)[:32]` — stored instead of raw PII.
+
+### Database table: `user_identity_profiles`
+
+One row per user. Created when the first CV is analyzed.
+
+| Column | Type | Description |
+|---|---|---|
+| `user_id` | varchar PK | FK → `users.id` |
+| `primary_identity_hash` | varchar | Hash of the first identity ever seen |
+| `primary_identity_name` | varchar | Name from first CV |
+| `primary_identity_email` | varchar | Email from first CV |
+| `distinct_identity_count` | integer | Running count of distinct identities |
+| `identity_history` | jsonb | Append-only log, capped at 20 entries |
+| `created_at`, `updated_at` | timestamptz | — |
+
+### Audit trail
+- Every identity switch is recorded in `usage_events` with `type: "identity_switch"` and `creditsDelta: 0`.
+- The penalty credit spend is recorded separately with `type: "identity_switch_penalty"`.
+- `logger.warn(...)` is emitted for every switch with `{ userId, applicationId, fromHash, toHash, distinctCount }`.
+
+### Key files
+- `artifacts/api-server/src/lib/identity.ts` — `extractIdentityFromParsedCv()`, `isSameIdentity()`, `checkAndRecordIdentity()`, `MAX_DISTINCT_IDENTITIES = 3`
+- `lib/db/src/schema/identity.ts` — `userIdentityProfilesTable` Drizzle schema
+- `artifacts/api-server/src/routes/applications.ts` — `POST /analyze` restructured to: fetch app → ownership check → identity check → credit gate (base + penalty) → AI analysis → return
+
+### Non-fatal design
+Every error in the identity check is caught and logged. The analysis always proceeds. If the identity system is unavailable (DB failure), the user sees no penalty and no warning.
+
+### Analyze route response shape (new fields)
+```json
+{
+  "identityWarning": true,
+  "identityAboveLimit": false,
+  "distinctIdentityCount": 2,
+  "...existing fields..."
+}
+```
 
 ## Environment Validation
 
