@@ -1,0 +1,128 @@
+Implement Milestone 15 now.
+
+Goal:
+Improve the free-plan result experience in ParsePilot so users can only view a limited preview, cannot easily use the output directly, and are pushed toward upgrading.
+
+Context:
+- Milestone 14 already changed the backend so free users only receive limited preview data
+- Pro users still receive full result data
+- Billing and Pro gating already exist
+- The goal now is UI/UX hardening, not fake security
+
+Business objective:
+Make the free plan useful enough to demonstrate value, but too limited to replace the paid product.
+
+What to build:
+
+1. Update the results page UI for free users with locked preview cards.
+
+2. Create reusable UI components for locked preview states, such as:
+   - components/results/locked-preview-card.tsx
+   - components/results/upgrade-cta-card.tsx
+   - components/results/blurred-locked-section.tsx
+   - or equivalent structure consistent with the existing codebase
+
+3. Free plan result UI should show:
+   - match score fully visible
+   - matched keywords fully visible
+   - missing keywords fully visible
+   - missing input suggestions fully visible
+   - limited summary preview
+   - only 1 visible rewritten bullet
+   - remaining bullets/sections displayed as blurred or locked placeholders
+   - cover letter section as locked preview only
+   - export buttons disabled or replaced with upgrade prompt
+   - copy buttons hidden or disabled
+
+4. Pro plan result UI should remain fully usable:
+   - full content visible
+   - full editing enabled
+   - copy actions enabled
+   - DOCX/PDF export enabled
+
+5. Build locked UI behavior carefully:
+   - use clear visual hierarchy
+   - make locked sections obvious
+   - add subtle blur/gradient overlays
+   - add “Unlock with Pro” messaging
+   - add “Start 7-day free trial” CTA where appropriate
+   - avoid making the page feel broken or cheap
+
+6. Add at least 3 upgrade CTA placements:
+   - near locked summary/resume section
+   - near cover letter locked section
+   - near disabled export area
+
+7. Add a pricing/upgrade message for free users such as:
+   - Unlock the full optimized resume
+   - Export to DOCX and PDF
+   - Generate full cover letters
+   - Access advanced insights
+   - Start your 7-day free trial
+
+8. Disable easy copy-style interactions for free locked sections:
+   - no copy button
+   - disable text selection on locked placeholders if appropriate
+   - do not add fake security that breaks accessibility everywhere
+   - keep this limited to locked/premium sections only
+
+9. Important security rule:
+   - do not rely on frontend blur for security
+   - assume backend already prevents full premium data from being sent to free users
+   - frontend only improves UX and conversion
+
+10. Add a reusable plan-aware rendering pattern:
+   - one clean place to branch between free preview UI and pro full UI
+   - avoid deeply duplicated markup
+
+11. Update empty/loading/error states if needed so the locked flow still feels polished
+
+12. Update README briefly:
+   - explain locked preview UI behavior for free users
+   - note that backend remains the true protection layer
+
+Design requirements:
+- premium SaaS look
+- clean spacing
+- subtle but noticeable locked treatment
+- modern cards
+- no clutter
+- keep brand consistent with ParsePilot
+- use existing design system and styles where practical
+
+Copy requirements:
+- no aggressive spammy upsell language
+- confident, product-focused, clear
+- emphasize value, not pressure
+- use ParsePilot naming consistently
+
+Suggested CTA copy direction:
+- Unlock the full optimized resume
+- See the complete rewrite and export it
+- Start your 7-day Pro trial
+- Upgrade to ParsePilot Pro
+
+Suggested locked section labels:
+- Full resume rewrite locked
+- Cover letter preview only
+- Export available on Pro
+- Advanced output locked
+
+Accessibility requirements:
+- do not destroy keyboard navigation
+- keep visible labels understandable
+- disabled actions should look intentionally disabled, not broken
+
+Rules:
+- Do not expose premium data in HTML for free users
+- Do not duplicate entitlement logic across many components
+- Keep the code production-minded
+- Reuse existing helpers where possible
+- Keep free user experience useful but incomplete
+
+After implementation:
+1. Show exact files changed
+2. Show the before/after UI logic for free vs pro users
+3. List top 5 ways premium content could still leak through the frontend
+4. Fix the top 3 immediately
+5. Tell me whether any remaining leakage risk must be solved on the backend instead of the frontend

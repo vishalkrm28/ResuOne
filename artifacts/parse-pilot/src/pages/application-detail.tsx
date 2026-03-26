@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "wouter";
-import { Link } from "wouter";
 import {
   useGetApplication,
   useAnalyzeApplication,
@@ -28,13 +27,14 @@ import {
   RotateCcw,
   AlertTriangle,
   Lock,
-  Crown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useBillingStatus } from "@/hooks/use-billing-status";
-import { ProGate } from "@/components/billing/pro-gate";
+import { LockedPreviewCard } from "@/components/results/locked-preview-card";
+import { BlurredLockedSection } from "@/components/results/blurred-locked-section";
+import { UpgradeCTACard } from "@/components/results/upgrade-cta-card";
 
 // ─── Analysis progress steps shown during loading ─────────────────────────────
 
@@ -111,102 +111,114 @@ interface FreePreview {
   lockedSectionsCount: number;
 }
 
-// ─── Locked CV section — shown to free users after analysis ──────────────────
+// ─── Locked cover letter section — shown in cover tab for free users ──────────
 
-function LockedCvSection({ preview }: { preview: FreePreview }) {
-  // Fake locked lines that look like CV content
-  const lockedLines = [
-    { w: "100%" },
-    { w: "88%" },
-    { w: "75%" },
-    { w: "92%" },
-    { w: "60%" },
-    { w: "83%" },
-    { w: "70%" },
-    { w: "95%" },
-  ];
-
+function LockedCoverLetterSection() {
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        {/* Header */}
-        <div className="bg-muted px-6 py-3 border-b border-border flex justify-between items-center rounded-t-2xl">
-          <span className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5" />
-            Tailored CV — Preview
-          </span>
-          <span className="text-xs text-violet-600 font-semibold bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-            <Crown className="w-3 h-3" /> Pro unlocks full CV
-          </span>
-        </div>
-
-        {/* Visible preview content */}
-        <div className="p-6 font-mono text-sm space-y-4 relative">
-
-          {/* Summary section — visible */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-              Professional Summary
-            </p>
-            <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-              {preview.summaryPreview}
-            </p>
-          </div>
-
-          {/* First bullet — visible */}
-          {preview.firstBullet && (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Left column: controls greyed out */}
+      <div className="lg:col-span-1 space-y-6">
+        <Card>
+          <CardContent className="p-6 space-y-6">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                Work Experience — First Highlight
-              </p>
-              <p className="text-foreground leading-relaxed flex gap-2">
-                <span className="text-muted-foreground">•</span>
-                {preview.firstBullet}
-              </p>
-            </div>
-          )}
-
-          {/* Locked blur section */}
-          <div className="relative mt-2 rounded-xl overflow-hidden">
-            {/* Blurred content */}
-            <div className="space-y-2.5 blur-[5px] pointer-events-none select-none opacity-60 p-4">
-              {lockedLines.map((l, i) => (
-                <div
-                  key={i}
-                  className="h-3 bg-muted-foreground/20 rounded-full"
-                  style={{ width: l.w }}
-                />
-              ))}
-            </div>
-
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background flex flex-col items-center justify-end pb-6 text-center px-4">
-              <div className="bg-card border border-violet-200 shadow-xl rounded-2xl p-6 max-w-xs w-full">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center mx-auto mb-3">
-                  <Lock className="w-5 h-5 text-violet-500" />
-                </div>
-                <p className="font-semibold text-sm mb-1">
-                  {preview.lockedSectionsCount} section{preview.lockedSectionsCount !== 1 ? "s" : ""} locked
-                </p>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Upgrade to Pro to view, edit, and export your full tailored CV.
-                </p>
-                <Link href="/settings">
-                  <Button
-                    size="sm"
-                    className="w-full gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-md"
+              <h3 className="font-bold text-lg mb-2">Tone</h3>
+              <div className="space-y-2 opacity-40 pointer-events-none select-none" aria-hidden="true">
+                {(["professional", "enthusiastic", "concise"] as const).map((t) => (
+                  <label
+                    key={t}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border"
                   >
-                    <Sparkles className="w-4 h-4" />
-                    Try Pro free for 7 days
-                  </Button>
-                </Link>
-                <p className="text-[10px] text-muted-foreground mt-2">No card charged for 7 days</p>
+                    <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/40" />
+                    <div>
+                      <span className="capitalize font-medium text-sm block">{t}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t === "professional" && "Formal, polished, measured"}
+                        {t === "enthusiastic" && "Warm, energetic, excited"}
+                        {t === "concise" && "Brief, direct, 3 paragraphs"}
+                      </span>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
+
+            <Button
+              className="w-full h-12 opacity-50 cursor-not-allowed"
+              disabled
+              aria-disabled="true"
+              aria-label="Generate cover letter — available on ParsePilot Pro"
+            >
+              <Lock className="w-5 h-5 mr-2" />
+              Generate Letter
+            </Button>
+            <p className="text-xs text-center text-muted-foreground">Available on ParsePilot Pro</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right column: blurred preview + upgrade CTA */}
+      <div className="lg:col-span-2 space-y-4">
+        <Card className="overflow-hidden">
+          <div className="bg-muted px-4 py-3 border-b border-border flex justify-between items-center rounded-t-2xl">
+            <span className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+              Cover Letter — Preview only
+            </span>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+          <BlurredLockedSection
+            label="Cover letter locked"
+            lineCount={14}
+            lineWidths={["85%", "100%", "92%", "78%", "100%", "88%", "72%", "100%", "95%", "80%", "100%", "65%", "88%", "50%"]}
+          />
+        </Card>
+
+        {/* CTA placement 2 — cover letter upgrade */}
+        <UpgradeCTACard
+          headline="Generate a tailored cover letter"
+          description="ParsePilot Pro writes a personalized cover letter that matches your optimized resume and the job description."
+          variant="cover"
+          ctaLabel="Start 7-day Pro trial"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Locked export bar — shown below header for free users ───────────────────
+
+function LockedExportBar() {
+  return (
+    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+      {/* Disabled export buttons — intentionally disabled, not broken */}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          className="gap-2 bg-card opacity-40 cursor-not-allowed"
+          disabled
+          aria-disabled="true"
+          aria-label="Export CV as DOCX — available on ParsePilot Pro"
+          title="Export to DOCX — available on ParsePilot Pro"
+        >
+          <Download className="w-4 h-4" />
+          CV.docx
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2 bg-card opacity-40 cursor-not-allowed"
+          disabled
+          aria-disabled="true"
+          aria-label="Export CV as PDF — available on ParsePilot Pro"
+          title="Export to PDF — available on ParsePilot Pro"
+        >
+          <Download className="w-4 h-4" />
+          CV.pdf
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+        <Lock className="w-3 h-3 text-violet-500 shrink-0" aria-hidden="true" />
+        Export available on ParsePilot Pro
+      </p>
+    </div>
   );
 }
 
@@ -223,11 +235,11 @@ export default function ApplicationDetail() {
   const [coverTone, setCoverTone] = useState<"professional" | "enthusiastic" | "concise">("professional");
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
-  // Editable CV state
+  // Editable CV state (Pro only — server rejects saves from free users)
   const [editedCv, setEditedCv] = useState<string | null>(null);
   const cvDirty = editedCv !== null;
 
-  // Editable cover letter state
+  // Editable cover letter state (Pro only)
   const [editedCover, setEditedCover] = useState<string | null>(null);
   const coverDirty = editedCover !== null;
 
@@ -238,6 +250,7 @@ export default function ApplicationDetail() {
 
   // Extra field added by the server-side content gate — not in the generated type
   const freePreview = (app as any)?.freePreview as FreePreview | null | undefined;
+
   const analyzeMutation = useAnalyzeApplication();
   const coverLetterMutation = useGenerateCoverLetter();
   const saveCvMutation = useSaveTailoredCv();
@@ -335,7 +348,7 @@ export default function ApplicationDetail() {
 
   // ─── Tabs config ─────────────────────────────────────────────────────────────
 
-  const tabs: { id: TabId; label: string; icon: React.ElementType; count?: number }[] = [
+  const tabs: { id: TabId; label: string; icon: React.ElementType; count?: number; locked?: boolean }[] = [
     { id: "cv", label: "Tailored CV", icon: FileText },
     { id: "keywords", label: "Keyword Analysis", icon: LayoutList },
     {
@@ -345,7 +358,7 @@ export default function ApplicationDetail() {
       count: app.missingInfoQuestions?.length || 0,
     },
     { id: "suggestions", label: "Suggestions", icon: Lightbulb, count: app.sectionSuggestions?.length || 0 },
-    { id: "cover", label: "Cover Letter", icon: PenTool },
+    { id: "cover", label: "Cover Letter", icon: PenTool, locked: !isPro },
   ];
 
   return (
@@ -364,47 +377,52 @@ export default function ApplicationDetail() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          {/* Re-analyze always accessible */}
-          <Button
-            variant="outline"
-            className="flex-1 lg:flex-none gap-2 bg-card"
-            onClick={() => handleAnalyze()}
-            disabled={analyzeMutation.isPending}
-          >
-            {analyzeMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RotateCcw className="w-4 h-4" />
-            )}
-            {needsAnalysis ? "Run Analysis" : "Re-analyze"}
-          </Button>
-          {isPro ? (
-            <>
-              <Button
-                variant="outline"
-                className="flex-1 lg:flex-none gap-2 bg-card"
-                onClick={() => window.open(`/api/export/application/${id}/docx`, "_blank")}
-                disabled={needsAnalysis}
-                title="Download tailored CV as DOCX"
-              >
-                <Download className="w-4 h-4" />
-                CV.docx
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 lg:flex-none gap-2 bg-card"
-                onClick={() => window.open(`/api/export/application/${id}/pdf`, "_blank")}
-                disabled={needsAnalysis}
-                title="Print or save tailored CV as PDF"
-              >
-                <Download className="w-4 h-4" />
-                CV.pdf
-              </Button>
-            </>
-          ) : (
-            <ProGate isPro={false} feature="Export to DOCX / PDF" compact className="flex-1 lg:flex-none" />
-          )}
+        <div className="flex flex-col items-start lg:items-end gap-2 w-full lg:w-auto">
+          <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+            {/* Re-analyze always accessible */}
+            <Button
+              variant="outline"
+              className="flex-1 lg:flex-none gap-2 bg-card"
+              onClick={() => handleAnalyze()}
+              disabled={analyzeMutation.isPending}
+            >
+              {analyzeMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RotateCcw className="w-4 h-4" />
+              )}
+              {needsAnalysis ? "Run Analysis" : "Re-analyze"}
+            </Button>
+
+            {/* Export — Pro users get active buttons, free users get disabled + CTA */}
+            {isPro ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1 lg:flex-none gap-2 bg-card"
+                  onClick={() => window.open(`/api/export/application/${id}/docx`, "_blank")}
+                  disabled={needsAnalysis}
+                  title="Download tailored CV as DOCX"
+                >
+                  <Download className="w-4 h-4" />
+                  CV.docx
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 lg:flex-none gap-2 bg-card"
+                  onClick={() => window.open(`/api/export/application/${id}/pdf`, "_blank")}
+                  disabled={needsAnalysis}
+                  title="Print or save tailored CV as PDF"
+                >
+                  <Download className="w-4 h-4" />
+                  CV.pdf
+                </Button>
+              </>
+            ) : null}
+          </div>
+
+          {/* CTA placement 3 — export area (free users only) */}
+          {!isPro && <LockedExportBar />}
         </div>
       </div>
 
@@ -420,9 +438,16 @@ export default function ApplicationDetail() {
                 "relative flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
+              aria-current={isActive ? "page" : undefined}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
+              {tab.locked && (
+                <Lock
+                  className="w-3 h-3 text-violet-400 ml-0.5"
+                  aria-label="Pro feature"
+                />
+              )}
               {!!tab.count && (
                 <span className="ml-1 bg-accent text-accent-foreground w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold">
                   {tab.count}
@@ -478,8 +503,8 @@ export default function ApplicationDetail() {
                     </CardContent>
                   </Card>
                 ) : isLockedForFree && freePreview ? (
-                  /* Free user — analysis complete but content gated server-side */
-                  <LockedCvSection preview={freePreview} />
+                  /* CTA placement 1 — free user after analysis: locked preview card + upgrade CTA */
+                  <LockedPreviewCard preview={freePreview} />
                 ) : needsAnalysis ? (
                   /* Empty state — no analysis yet */
                   <Card className="border-dashed border-2 bg-transparent text-center p-12">
@@ -497,12 +522,13 @@ export default function ApplicationDetail() {
                     </Button>
                   </Card>
                 ) : (
-                  /* Tailored CV — editable */
+                  /* Pro user — tailored CV fully editable */
                   <Card>
                     <CardContent className="p-0">
                       <div className="bg-muted px-6 py-3 border-b border-border flex justify-between items-center rounded-t-2xl">
                         <span className="text-sm font-semibold text-muted-foreground">
-                          Tailored CV{cvDirty && <span className="ml-2 text-amber-600 font-bold">· Unsaved changes</span>}
+                          Tailored CV
+                          {cvDirty && <span className="ml-2 text-amber-600 font-bold">· Unsaved changes</span>}
                         </span>
                         <div className="flex gap-2">
                           {cvDirty && (
@@ -580,7 +606,7 @@ export default function ApplicationDetail() {
                     {/* Score circle */}
                     <Card className="md:col-span-1 flex flex-col items-center justify-center p-8 text-center">
                       <div className="relative w-40 h-40 flex items-center justify-center mb-4">
-                        <svg className="w-full h-full transform -rotate-90">
+                        <svg className="w-full h-full transform -rotate-90" aria-hidden="true">
                           <circle
                             cx="80"
                             cy="80"
@@ -797,160 +823,165 @@ export default function ApplicationDetail() {
 
             {/* ── TAB: COVER LETTER ────────────────────────────────────── */}
             {activeTab === "cover" && (
-              <ProGate isPro={isPro} feature="Cover Letter Generation" className="min-h-[300px] justify-center">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Controls */}
-                <div className="lg:col-span-1 space-y-6">
-                  <Card>
-                    <CardContent className="p-6 space-y-6">
-                      <div>
-                        <h3 className="font-bold text-lg mb-2">Tone</h3>
-                        <div className="space-y-2">
-                          {(["professional", "enthusiastic", "concise"] as const).map((t) => (
-                            <label
-                              key={t}
-                              className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-secondary transition-colors"
-                            >
-                              <input
-                                type="radio"
-                                name="tone"
-                                checked={coverTone === t}
-                                onChange={() => setCoverTone(t)}
-                                className="w-4 h-4 text-primary focus:ring-primary"
-                              />
-                              <div>
-                                <span className="capitalize font-medium text-sm block">{t}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {t === "professional" && "Formal, polished, measured"}
-                                  {t === "enthusiastic" && "Warm, energetic, excited"}
-                                  {t === "concise" && "Brief, direct, 3 paragraphs"}
-                                </span>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+              <>
+                {/* CTA placement 2 — locked cover letter tab for free users */}
+                {!isPro ? (
+                  <LockedCoverLetterSection />
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Controls */}
+                    <div className="lg:col-span-1 space-y-6">
+                      <Card>
+                        <CardContent className="p-6 space-y-6">
+                          <div>
+                            <h3 className="font-bold text-lg mb-2">Tone</h3>
+                            <div className="space-y-2">
+                              {(["professional", "enthusiastic", "concise"] as const).map((t) => (
+                                <label
+                                  key={t}
+                                  className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-secondary transition-colors"
+                                >
+                                  <input
+                                    type="radio"
+                                    name="tone"
+                                    checked={coverTone === t}
+                                    onChange={() => setCoverTone(t)}
+                                    className="w-4 h-4 text-primary focus:ring-primary"
+                                  />
+                                  <div>
+                                    <span className="capitalize font-medium text-sm block">{t}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {t === "professional" && "Formal, polished, measured"}
+                                      {t === "enthusiastic" && "Warm, energetic, excited"}
+                                      {t === "concise" && "Brief, direct, 3 paragraphs"}
+                                    </span>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
 
-                      <Button
-                        className="w-full h-12"
-                        onClick={handleGenerateCoverLetter}
-                        disabled={coverLetterMutation.isPending || !app.tailoredCvText}
-                      >
-                        {coverLetterMutation.isPending ? (
-                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                        ) : (
-                          <PenTool className="w-5 h-5 mr-2" />
-                        )}
-                        {app.coverLetterText ? "Regenerate" : "Generate Letter"}
-                      </Button>
-
-                      {!app.tailoredCvText && (
-                        <p className="text-xs text-destructive text-center font-medium">
-                          Run CV analysis first before generating a cover letter.
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Cover letter output — editable */}
-                <div className="lg:col-span-2">
-                  <Card className="h-full min-h-[500px] flex flex-col">
-                    <div className="bg-muted px-4 py-3 border-b border-border flex flex-wrap justify-between items-center gap-2 rounded-t-2xl">
-                      <span className="text-sm font-semibold text-muted-foreground">
-                        Cover Letter
-                        {coverDirty && (
-                          <span className="ml-2 text-amber-600 font-bold">· Unsaved changes</span>
-                        )}
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {coverDirty && (
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditedCover(null)}
-                            className="text-muted-foreground"
+                            className="w-full h-12"
+                            onClick={handleGenerateCoverLetter}
+                            disabled={coverLetterMutation.isPending || !app.tailoredCvText}
                           >
-                            Discard
-                          </Button>
-                        )}
-                        {coverDirty && (
-                          <Button
-                            size="sm"
-                            onClick={handleSaveCoverLetter}
-                            disabled={saveCoverMutation.isPending}
-                            className="gap-1.5"
-                          >
-                            {saveCoverMutation.isPending ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
+                            {coverLetterMutation.isPending ? (
+                              <Loader2 className="w-5 h-5 animate-spin mr-2" />
                             ) : (
-                              <Save className="w-3 h-3" />
+                              <PenTool className="w-5 h-5 mr-2" />
                             )}
-                            Save
+                            {app.coverLetterText ? "Regenerate" : "Generate Letter"}
                           </Button>
-                        )}
-                        {app.coverLetterText && !coverDirty && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1.5"
-                              onClick={() => navigator.clipboard.writeText(currentCoverText)}
-                            >
-                              Copy
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1.5"
-                              onClick={() => window.open(`/api/export/application/${id}/docx?type=cover`, "_blank")}
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              .docx
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1.5"
-                              onClick={() => window.open(`/api/export/application/${id}/pdf?type=cover`, "_blank")}
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              .pdf
-                            </Button>
-                          </>
-                        )}
-                      </div>
+
+                          {!app.tailoredCvText && (
+                            <p className="text-xs text-destructive text-center font-medium">
+                              Run CV analysis first before generating a cover letter.
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
                     </div>
-                    {coverLetterMutation.isPending ? (
-                      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-                        <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                        <p className="text-muted-foreground text-sm">Writing your cover letter…</p>
-                      </div>
-                    ) : app.coverLetterText || editedCover ? (
-                      <Textarea
-                        value={currentCoverText}
-                        onChange={(e) => {
-                          if (e.target.value !== app.coverLetterText) {
-                            setEditedCover(e.target.value);
-                          } else {
-                            setEditedCover(null);
-                          }
-                        }}
-                        className="flex-1 border-0 rounded-none rounded-b-2xl focus-visible:ring-0 resize-none font-serif text-base p-8 leading-relaxed"
-                      />
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-12 text-center">
-                        <PenTool className="w-12 h-12 mb-4 opacity-20" />
-                        <p>
-                          Choose your preferred tone and click Generate to create a cover letter based on your
-                          tailored CV.
-                        </p>
-                      </div>
-                    )}
-                  </Card>
-                </div>
-              </div>
-              </ProGate>
+
+                    {/* Cover letter output — editable */}
+                    <div className="lg:col-span-2">
+                      <Card className="h-full min-h-[500px] flex flex-col">
+                        <div className="bg-muted px-4 py-3 border-b border-border flex flex-wrap justify-between items-center gap-2 rounded-t-2xl">
+                          <span className="text-sm font-semibold text-muted-foreground">
+                            Cover Letter
+                            {coverDirty && (
+                              <span className="ml-2 text-amber-600 font-bold">· Unsaved changes</span>
+                            )}
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {coverDirty && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditedCover(null)}
+                                className="text-muted-foreground"
+                              >
+                                Discard
+                              </Button>
+                            )}
+                            {coverDirty && (
+                              <Button
+                                size="sm"
+                                onClick={handleSaveCoverLetter}
+                                disabled={saveCoverMutation.isPending}
+                                className="gap-1.5"
+                              >
+                                {saveCoverMutation.isPending ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Save className="w-3 h-3" />
+                                )}
+                                Save
+                              </Button>
+                            )}
+                            {app.coverLetterText && !coverDirty && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5"
+                                  onClick={() => navigator.clipboard.writeText(currentCoverText)}
+                                >
+                                  Copy
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5"
+                                  onClick={() => window.open(`/api/export/application/${id}/docx?type=cover`, "_blank")}
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  .docx
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5"
+                                  onClick={() => window.open(`/api/export/application/${id}/pdf?type=cover`, "_blank")}
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  .pdf
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {coverLetterMutation.isPending ? (
+                          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
+                            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                            <p className="text-muted-foreground text-sm">Writing your cover letter…</p>
+                          </div>
+                        ) : app.coverLetterText || editedCover ? (
+                          <Textarea
+                            value={currentCoverText}
+                            onChange={(e) => {
+                              if (e.target.value !== app.coverLetterText) {
+                                setEditedCover(e.target.value);
+                              } else {
+                                setEditedCover(null);
+                              }
+                            }}
+                            className="flex-1 border-0 rounded-none rounded-b-2xl focus-visible:ring-0 resize-none font-serif text-base p-8 leading-relaxed"
+                          />
+                        ) : (
+                          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-12 text-center">
+                            <PenTool className="w-12 h-12 mb-4 opacity-20" />
+                            <p>
+                              Choose your preferred tone and click Generate to create a cover letter based on your
+                              tailored CV.
+                            </p>
+                          </div>
+                        )}
+                      </Card>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </motion.div>
         </AnimatePresence>
