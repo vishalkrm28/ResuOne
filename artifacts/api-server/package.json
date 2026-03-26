@@ -27,6 +27,7 @@
     "pdfjs-dist": "^5.5.207",
     "pino": "^9",
     "pino-http": "^10",
+    "stripe": "^20.4.1",
     "zod": "catalog:"
   },
   "devDependencies": {

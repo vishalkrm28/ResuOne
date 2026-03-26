@@ -21,6 +21,13 @@ export const usersTable = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+
+  // Stripe billing fields
+  stripeCustomerId: varchar("stripe_customer_id").unique(),
+  stripeSubscriptionId: varchar("stripe_subscription_id").unique(),
+  subscriptionStatus: varchar("subscription_status"),
+  subscriptionPriceId: varchar("subscription_price_id"),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
 });
 
 export type UpsertUser = typeof usersTable.$inferInsert;
