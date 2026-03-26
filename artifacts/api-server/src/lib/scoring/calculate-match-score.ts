@@ -34,8 +34,10 @@ function scoreRequired(input: ScoringInput, cvPool: string[]): KeywordComponentR
       .map(w => w.charAt(0).toUpperCase() + w.slice(1));
 
     if (fallback.length === 0) {
+      // JD has no extractable keywords at all — neutral 50% rather than
+      // an arbitrary bonus score that rewards CVs for empty job descriptions.
       return {
-        rawScore: Math.round(WEIGHTS.required * 0.6),
+        rawScore: Math.round(WEIGHTS.required * 0.5),
         maxScore: WEIGHTS.required,
         matched: 0,
         total: 0,
@@ -96,8 +98,10 @@ function scorePreferred(input: ScoringInput, cvPool: string[]): KeywordComponent
 
 function scoreResponsibilities(input: ScoringInput): ScoringComponentResult {
   if (input.jdResponsibilities.length === 0) {
+    // No responsibilities parsed from JD — neutral 50%, consistent with
+    // the other component fallbacks. Was 60% (arbitrary bonus), now 50%.
     return {
-      rawScore: Math.round(WEIGHTS.responsibility * 0.6),
+      rawScore: Math.round(WEIGHTS.responsibility * 0.5),
       maxScore: WEIGHTS.responsibility,
       matched: 0,
       total: 0,
@@ -187,13 +191,43 @@ function scoreIndustryComponent(input: ScoringInput): ScoringComponentResult & {
 }
 
 function computeInputHash(input: ScoringInput): string {
+  // Include every field that actually influences the score so that two
+  // different scoring inputs cannot produce the same hash.
+  //
+  // Previous version only hashed cvSkills + JD required/preferred/mustHave,
+  // missing cvBullets, cvTitles, jdNiceToHave, jdResponsibilities — all of
+  // which affect responsibilities, seniority, and preferred-keyword scoring.
+
+  const cvKeys = normalizeKeywords([
+    ...input.cvSkills,
+    ...input.cvTitles,
+  ]).sort();
+
+  const cvBulletTokens = normalizeKeywords(
+    input.cvBullets.flatMap(b => b.split(/\s+/)).filter(Boolean)
+  ).sort();
+
   const jdKeys = normalizeKeywords([
     ...input.jdRequiredSkills,
     ...input.jdPreferredSkills,
     ...input.jdMustHave,
+    ...input.jdNiceToHave,
   ]).sort();
-  const cvKeys = normalizeKeywords(input.cvSkills).sort();
-  const hashInput = cvKeys.join(",") + "|" + jdKeys.join(",");
+
+  const jdRespTokens = normalizeKeywords(
+    input.jdResponsibilities.flatMap(r => r.split(/\s+/)).filter(Boolean)
+  ).sort();
+
+  const yearsStr = input.jdRequiredYears !== null ? String(input.jdRequiredYears) : "";
+
+  const hashInput = [
+    cvKeys.join(","),
+    cvBulletTokens.join(","),
+    jdKeys.join(","),
+    jdRespTokens.join(","),
+    yearsStr,
+  ].join("|");
+
   return createHash("sha256").update(hashInput).digest("hex").slice(0, 16);
 }
 
