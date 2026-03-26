@@ -68,6 +68,8 @@ export const applicationsTable = pgTable("applications", {
   matchedKeywords: jsonb("matched_keywords").$type<string[]>().default([]).notNull(),
   missingInfoQuestions: jsonb("missing_info_questions").$type<string[]>().default([]).notNull(),
   sectionSuggestions: jsonb("section_suggestions").$type<string[]>().default([]).notNull(),
+  scoringBreakdownJson: jsonb("scoring_breakdown_json").$type<Record<string, unknown>>(),
+  inputHash: text("input_hash"),
   status: text("status", { enum: ["draft", "analyzed", "exported"] }).default("draft").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

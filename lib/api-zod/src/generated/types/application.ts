@@ -8,6 +8,7 @@
 import type { ApplicationStatus } from "./applicationStatus";
 import type { ParsedCv } from "./parsedCv";
 import type { ParsedJobDescription } from "./parsedJobDescription";
+import type { ScoringBreakdown } from "./scoringBreakdown";
 
 export interface Application {
   id: string;
@@ -25,6 +26,7 @@ export interface Application {
   matchedKeywords: string[];
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
+  scoringBreakdownJson?: ScoringBreakdown | null;
   status: ApplicationStatus;
   createdAt: Date;
   updatedAt: Date;

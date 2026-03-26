@@ -10,6 +10,7 @@ import {
   PenTool,
   ChevronDown,
   ChevronUp,
+  BarChart2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -29,12 +30,32 @@ interface FreePreview {
   lockedSectionsCount: number;
 }
 
+interface ScoringComponentResult {
+  rawScore: number;
+  maxScore: number;
+  matched: number;
+  total: number;
+}
+
+interface ScoringBreakdownLike {
+  totalScore: number;
+  scoreBand: string;
+  scoreBandLabel: string;
+  requiredKeywords: ScoringComponentResult;
+  preferredKeywords: ScoringComponentResult;
+  responsibilities: ScoringComponentResult;
+  seniority: ScoringComponentResult;
+  industry: ScoringComponentResult;
+  detectedIndustry: string;
+}
+
 interface ApplicationLike {
   keywordMatchScore?: number | null;
   matchedKeywords?: string[];
   missingKeywords?: string[];
   missingInfoQuestions?: string[];
   sectionSuggestions?: string[];
+  scoringBreakdownJson?: ScoringBreakdownLike | null;
   status: string;
 }
 
@@ -354,6 +375,56 @@ export function FreeResultsView({
           )}
         </CardContent>
       </Card>
+
+      {/* ══ SECTION 1b: Score Breakdown ══════════════════════════════════════ */}
+      {app.scoringBreakdownJson && (
+        <Card>
+          <CardContent className="p-5">
+            <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-blue-500" />
+              Score Breakdown
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Detected industry:{" "}
+              <span className="font-medium text-foreground">
+                {app.scoringBreakdownJson.detectedIndustry}
+              </span>
+            </p>
+            <div className="space-y-3">
+              {(
+                [
+                  { label: "Required Keywords", weight: "45%", comp: app.scoringBreakdownJson.requiredKeywords },
+                  { label: "Responsibilities", weight: "20%", comp: app.scoringBreakdownJson.responsibilities },
+                  { label: "Preferred Keywords", weight: "15%", comp: app.scoringBreakdownJson.preferredKeywords },
+                  { label: "Seniority", weight: "10%", comp: app.scoringBreakdownJson.seniority },
+                  { label: "Industry", weight: "10%", comp: app.scoringBreakdownJson.industry },
+                ] as const
+              ).map(({ label, weight, comp }) => {
+                const pct = comp.maxScore > 0 ? Math.round((comp.rawScore / comp.maxScore) * 100) : 0;
+                return (
+                  <div key={label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium">{label}</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {comp.matched}/{comp.total} · <span className="font-semibold">{weight}</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-700",
+                          pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-destructive",
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ══ CTA-1: Compact banner ════════════════════════════════════════════ */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50/60 border border-violet-200/80">

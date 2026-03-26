@@ -128,6 +128,38 @@ export const ApplicationStatus = {
   exported: "exported",
 } as const;
 
+export type ScoringBreakdownScoreBand =
+  (typeof ScoringBreakdownScoreBand)[keyof typeof ScoringBreakdownScoreBand];
+
+export const ScoringBreakdownScoreBand = {
+  strong: "strong",
+  moderate: "moderate",
+  low: "low",
+} as const;
+
+export interface ScoringComponentResult {
+  rawScore: number;
+  maxScore: number;
+  matched: number;
+  total: number;
+}
+
+export interface ScoringBreakdown {
+  totalScore: number;
+  scoreBand: ScoringBreakdownScoreBand;
+  scoreBandLabel: string;
+  scoreBandDescription: string;
+  requiredKeywords: ScoringComponentResult;
+  preferredKeywords: ScoringComponentResult;
+  responsibilities: ScoringComponentResult;
+  seniority: ScoringComponentResult;
+  industry: ScoringComponentResult;
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  detectedIndustry: string;
+  inputHash: string;
+}
+
 export interface Application {
   id: string;
   userId: string;
@@ -144,6 +176,7 @@ export interface Application {
   matchedKeywords: string[];
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
+  scoringBreakdownJson?: ScoringBreakdown | null;
   status: ApplicationStatus;
   createdAt: string;
   updatedAt: string;

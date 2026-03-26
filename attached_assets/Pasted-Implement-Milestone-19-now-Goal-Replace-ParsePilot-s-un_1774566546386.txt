@@ -1,0 +1,327 @@
+Implement Milestone 19 now.
+
+Goal:
+Replace ParsePilot's unstable AI-generated match percentage with a deterministic, weighted ATS-style scoring engine that stays consistent across reanalysis.
+
+Problem:
+Right now the match score changes each time because AI is likely deciding or influencing the score directly. This creates inconsistency and reduces trust.
+
+Core requirement:
+The same CV + same job description input must always produce the same match score.
+
+High-level strategy:
+- AI may still be used for structured extraction
+- AI must NOT decide the final numeric score
+- The numeric score must be calculated in code using deterministic rules
+
+--------------------------------------------------
+1. Refactor the scoring architecture
+--------------------------------------------------
+
+Update the analysis pipeline so that:
+
+A. AI is only used for structured extraction of:
+- CV keywords / skills
+- JD keywords / skills
+- responsibilities
+- optional seniority signals
+- optional industry signals
+
+B. The final match score is calculated entirely in code using a deterministic scoring function.
+
+Do NOT allow the model to return:
+- final percentage
+- final score band
+- final weighted score
+
+AI can still return structured inputs used by the scoring engine, but not the final score.
+
+--------------------------------------------------
+2. Build a deterministic weighted scoring engine
+--------------------------------------------------
+
+Create a new scoring layer, for example in:
+
+- lib/scoring/
+  - normalize-keywords.ts
+  - keyword-similarity.ts
+  - calculate-match-score.ts
+  - score-bands.ts
+  - scoring-types.ts
+
+The scoring engine should calculate score based on weighted components.
+
+Recommended score model:
+
+A. Required keyword match = 45%
+- match against required skills / required terms from JD
+
+B. Preferred keyword match = 15%
+- match against preferred skills / nice-to-have terms
+
+C. Responsibility alignment = 20%
+- compare CV experience signals against JD responsibilities
+
+D. Seniority / role fit = 10%
+- compare years/level/title signals if available
+
+E. Industry / domain alignment = 10%
+- compare industry/domain terms where relevant
+
+Total = 100%
+
+Rules:
+- all scoring must be deterministic
+- no random weighting
+- no model-generated percentage
+- all inputs normalized before matching
+
+--------------------------------------------------
+3. Keyword normalization
+--------------------------------------------------
+
+Create deterministic normalization for keywords:
+
+- lowercase
+- trim whitespace
+- remove duplicates
+- remove punctuation where appropriate
+- normalize separators
+- optionally singular/plural simplification if easy and safe
+- avoid overengineering with full NLP unless already available cleanly
+
+Create helper:
+- normalizeKeywords(input: string[]): string[]
+
+--------------------------------------------------
+4. Smarter keyword matching
+--------------------------------------------------
+
+Add a matching helper that improves accuracy beyond exact string matching.
+
+For example:
+- exact match
+- normalized match
+- simple synonym map / alias map
+- partial safe match where appropriate
+
+Examples:
+- "project management" ~ "project manager" only if you implement this safely
+- "ms excel" ~ "excel"
+- "stakeholder management" ~ "stakeholder coordination" only if explicitly mapped
+
+Important:
+- keep it deterministic
+- keep synonym mapping explicit and maintainable
+- do NOT use AI for fuzzy scoring decisions at runtime
+
+Suggested helper:
+- getMatchedKeywords(jdKeywords, cvKeywords, options)
+
+Also create a small maintainable alias/synonym dictionary for common resume terms.
+
+--------------------------------------------------
+5. Industry-specific weighting support
+--------------------------------------------------
+
+Add optional industry-specific logic in a clean, extensible way.
+
+Example:
+- logistics / operations roles may weight:
+  - supply chain
+  - vendor management
+  - planning
+  - ERP tools
+- software roles may weight:
+  - languages
+  - frameworks
+  - cloud / infra
+- marketing roles may weight:
+  - campaigns
+  - analytics
+  - content / growth
+
+Implementation rule:
+- keep this modular
+- do not hardcode everything inline
+- use a config-based approach if possible
+
+Suggested files:
+- lib/scoring/industry-config.ts
+
+The first version can support only a few basic categories if needed:
+- general
+- logistics
+- software
+- marketing
+- finance
+
+If industry is unknown, default to general scoring.
+
+--------------------------------------------------
+6. Score bands and UI labels
+--------------------------------------------------
+
+Create deterministic score band logic.
+
+Example:
+- 80–100 = Strong Match
+- 60–79 = Moderate Match
+- 0–59 = Low Match
+
+Create helper:
+- getScoreBand(score)
+
+Update UI to show:
+- match score %
+- score band label
+- short explanation, for example:
+  - "Strong keyword alignment with this role"
+  - "Moderate fit with some missing requirements"
+  - "Low alignment; key requirements are missing"
+
+--------------------------------------------------
+7. Persist and reuse score
+--------------------------------------------------
+
+Update database usage so:
+- the computed deterministic matchScore is stored
+- score components are optionally stored in structured JSON
+- the same stored score is reused on reload instead of recomputing unnecessarily
+
+Suggested:
+- keep current matchScore field
+- also store scoringBreakdownJson or equivalent if useful
+
+The stored breakdown can include:
+- requiredMatchScore
+- preferredMatchScore
+- responsibilityScore
+- seniorityScore
+- industryScore
+- matchedKeywords
+- missingKeywords
+- normalizedInputsHash
+
+--------------------------------------------------
+8. Input hashing / reanalysis stability
+--------------------------------------------------
+
+Add logic so the app can detect whether the CV + JD inputs have meaningfully changed.
+
+Suggested:
+- create a deterministic hash from normalized CV extracted keywords + normalized JD extracted keywords
+- if the same input hash is analyzed again, reuse score and breakdown if appropriate
+
+This helps guarantee consistency and avoid unnecessary recomputation.
+
+--------------------------------------------------
+9. Explainability
+--------------------------------------------------
+
+Add a clear score breakdown section in the result UI.
+
+Show:
+- overall score
+- score band
+- matched keywords
+- missing keywords
+- optional weighted breakdown
+
+Example:
+- Required Skills: 34 / 45
+- Preferred Skills: 8 / 15
+- Responsibilities: 12 / 20
+- Seniority Fit: 7 / 10
+- Industry Alignment: 6 / 10
+
+This should build user trust.
+
+--------------------------------------------------
+10. Keep AI for the right things
+--------------------------------------------------
+
+AI should still be used for:
+- structured extraction
+- missing input suggestions
+- rewrite generation
+- cover letter generation
+
+AI should NOT be used for:
+- numeric match %
+- weighted score math
+- final score band assignment
+
+--------------------------------------------------
+11. Update result flow
+--------------------------------------------------
+
+Ensure the result page and stored result object clearly separate:
+
+A. Deterministic scoring data
+- matchScore
+- scoreBand
+- matchedKeywords
+- missingKeywords
+- scoringBreakdown
+
+B. AI-generated enhancement data
+- missing input suggestions
+- rewritten summary preview
+- rewritten bullets
+- cover letter
+
+--------------------------------------------------
+12. Edge cases to handle
+--------------------------------------------------
+
+Handle these safely:
+- JD has very few keywords
+- CV extraction is weak or incomplete
+- repeated keywords in JD
+- JD contains buzzwords with little value
+- unknown industry
+- malformed parsed JSON
+- missing required/preferred separation from parser
+
+When data is weak, degrade gracefully instead of giving misleading precision.
+
+--------------------------------------------------
+13. README update
+--------------------------------------------------
+
+Update README with:
+- deterministic scoring explanation
+- why score no longer changes randomly
+- weighted score components
+- how industry-specific weighting works
+- where synonym mappings are configured
+
+--------------------------------------------------
+14. Rules
+--------------------------------------------------
+
+Rules:
+- do not let AI generate the numeric score
+- keep scoring deterministic
+- same input = same score
+- keep code modular and maintainable
+- do not overengineer with heavy NLP unless already cleanly available
+- use explicit mappings/config over hidden magic
+- keep ParsePilot naming consistent
+- preserve existing premium/free logic
+- preserve existing preview/unlock/subscription logic
+
+--------------------------------------------------
+15. After implementation
+--------------------------------------------------
+
+After implementation:
+1. Show exact files changed
+2. Show the scoring function
+3. Show the weighting logic
+4. Show the synonym/alias approach
+5. Show how score stability is guaranteed
+6. Show how scoring breakdown is stored
+7. List top 5 edge cases or false-match risks
+8. Fix the top 3 immediately

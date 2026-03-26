@@ -715,6 +715,11 @@ components:
           type: array
           items:
             type: string
+        scoringBreakdownJson:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/ScoringBreakdown"
+            - type: 'null'
         status:
           type: string
           enum: [draft, analyzed, exported]
@@ -903,3 +908,69 @@ components:
         - extractedText
         - fileName
         - fileSize
+
+    ScoringComponentResult:
+      type: object
+      properties:
+        rawScore:
+          type: number
+        maxScore:
+          type: number
+        matched:
+          type: number
+        total:
+          type: number
+      required:
+        - rawScore
+        - maxScore
+        - matched
+        - total
+
+    ScoringBreakdown:
+      type: object
+      properties:
+        totalScore:
+          type: number
+        scoreBand:
+          type: string
+          enum: [strong, moderate, low]
+        scoreBandLabel:
+          type: string
+        scoreBandDescription:
+          type: string
+        requiredKeywords:
+          $ref: "#/components/schemas/ScoringComponentResult"
+        preferredKeywords:
+          $ref: "#/components/schemas/ScoringComponentResult"
+        responsibilities:
+          $ref: "#/components/schemas/ScoringComponentResult"
+        seniority:
+          $ref: "#/components/schemas/ScoringComponentResult"
+        industry:
+          $ref: "#/components/schemas/ScoringComponentResult"
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+        missingKeywords:
+          type: array
+          items:
+            type: string
+        detectedIndustry:
+          type: string
+        inputHash:
+          type: string
+      required:
+        - totalScore
+        - scoreBand
+        - scoreBandLabel
+        - scoreBandDescription
+        - requiredKeywords
+        - preferredKeywords
+        - responsibilities
+        - seniority
+        - industry
+        - matchedKeywords
+        - missingKeywords
+        - detectedIndustry
+        - inputHash

@@ -9,6 +9,8 @@ import {
 } from "@workspace/api-zod";
 import { z } from "zod";
 import { analyzeCvForJob, generateCoverLetter, parseJobDescription } from "../services/ai.js";
+import { calculateMatchScore } from "../lib/scoring/index.js";
+import type { ScoringInput } from "../lib/scoring/scoring-types.js";
 import { logger } from "../lib/logger.js";
 import { requirePro } from "../middlewares/requirePro.js";
 import { isUserPro, userCanAccessFullResult, hasUnlockedResult } from "../lib/billing.js";
@@ -456,7 +458,7 @@ router.post("/applications/:id/analyze", async (req, res) => {
       }
     }
 
-    // ── 3. AI analysis + DB save ────────────────────────────────────────────
+    // ── 3. AI analysis + scoring engine + DB save ───────────────────────────
     let parsedJd = app.parsedJdJson ?? null;
     if (!parsedJd) {
       try {
@@ -466,7 +468,7 @@ router.post("/applications/:id/analyze", async (req, res) => {
       }
     }
 
-    const result = await analyzeCvForJob({
+    const aiResult = await analyzeCvForJob({
       originalCvText: app.originalCvText,
       jobDescription: app.jobDescription,
       jobTitle: app.jobTitle,
@@ -475,17 +477,54 @@ router.post("/applications/:id/analyze", async (req, res) => {
       confirmedAnswers,
     });
 
+    // Build deterministic scoring input from structured CV/JD data
+    const parsedCv = app.parsedCvJson as any;
+    const cvSkills: string[] = parsedCv?.skills ?? [];
+    const cvBullets: string[] = (parsedCv?.work_experience ?? []).flatMap(
+      (exp: any) => exp.bullets ?? []
+    );
+    const cvTitles: string[] = (parsedCv?.work_experience ?? []).map(
+      (exp: any) => exp.title ?? ""
+    ).filter(Boolean);
+    const cvSummary: string = parsedCv?.summary ?? "";
+
+    const scoringInput: ScoringInput = {
+      cvSkills,
+      cvBullets,
+      cvTitles,
+      cvSummary,
+      cvText: app.originalCvText,
+      jdRequiredSkills: parsedJd?.required_skills ?? [],
+      jdPreferredSkills: parsedJd?.preferred_skills ?? [],
+      jdMustHave: parsedJd?.must_have ?? [],
+      jdNiceToHave: parsedJd?.nice_to_have ?? [],
+      jdResponsibilities: parsedJd?.key_responsibilities ?? [],
+      jdRequiredYears: parsedJd?.required_experience_years ?? null,
+      jdText: app.jobDescription,
+    };
+
+    const scoring = calculateMatchScore(scoringInput);
+
+    const result = {
+      ...aiResult,
+      keywordMatchScore: scoring.totalScore,
+      matchedKeywords: scoring.matchedKeywords,
+      missingKeywords: scoring.missingKeywords,
+    };
+
     // Always persist full tailoredCvText so Pro features remain accessible
     // after a free→Pro upgrade.
     await db
       .update(applicationsTable)
       .set({
         tailoredCvText: result.tailoredCvText,
-        keywordMatchScore: result.keywordMatchScore,
-        missingKeywords: result.missingKeywords,
-        matchedKeywords: result.matchedKeywords,
+        keywordMatchScore: scoring.totalScore,
+        missingKeywords: scoring.missingKeywords,
+        matchedKeywords: scoring.matchedKeywords,
         missingInfoQuestions: result.missingInfoQuestions,
         sectionSuggestions: result.sectionSuggestions,
+        scoringBreakdownJson: scoring as unknown as Record<string, unknown>,
+        inputHash: scoring.inputHash,
         parsedJdJson: parsedJd as any,
         status: "analyzed",
         updatedAt: new Date(),
@@ -495,8 +534,8 @@ router.post("/applications/:id/analyze", async (req, res) => {
     // ── 4. Content filter + response ────────────────────────────────────────
     const pro = ownerUserId ? await isUserPro(ownerUserId) : false;
     const safeResult = pro
-      ? applyProPass({ ...result, parsedJd })
-      : applyFreeFilter({ ...result, parsedJd });
+      ? applyProPass({ ...result, parsedJd, scoringBreakdownJson: scoring })
+      : applyFreeFilter({ ...result, parsedJd, scoringBreakdownJson: scoring });
 
     res.json({
       ...safeResult,

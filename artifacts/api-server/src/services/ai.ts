@@ -50,9 +50,6 @@ const LocalParsedJdSchema = z.object({
 
 const AnalysisOutputSchema = z.object({
   tailoredCvText: z.string().catch(""),
-  keywordMatchScore: z.number().min(0).max(100).catch(0),
-  matchedKeywords: z.array(z.string()).catch([]),
-  missingKeywords: z.array(z.string()).catch([]),
   missingInfoQuestions: z.array(z.string()).catch([]),
   sectionSuggestions: z.array(z.string()).catch([]),
 });
@@ -202,9 +199,6 @@ export interface AnalysisInput {
 
 export interface AnalysisOutput {
   tailoredCvText: string;
-  keywordMatchScore: number;
-  missingKeywords: string[];
-  matchedKeywords: string[];
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
 }
@@ -253,9 +247,6 @@ ATS FORMATTING RULES for tailoredCvText:
 Return ONLY valid JSON matching this schema:
 {
   "tailoredCvText": "complete ATS-formatted CV using ONLY original CV content",
-  "keywordMatchScore": 0–100,
-  "matchedKeywords": ["keywords from JD present in the CV"],
-  "missingKeywords": ["important JD keywords absent from CV"],
   "missingInfoQuestions": ["specific questions about absent experience that would strengthen the application"],
   "sectionSuggestions": ["concrete structural improvements to the CV — only based on existing content"]
 }`;
@@ -286,9 +277,6 @@ Analyze the CV against the job description. Return JSON.`;
     const r = raw as Record<string, unknown>;
     return {
       tailoredCvText: (r.tailoredCvText as string) ?? "",
-      keywordMatchScore: Math.min(100, Math.max(0, (r.keywordMatchScore as number) ?? 0)),
-      matchedKeywords: Array.isArray(r.matchedKeywords) ? (r.matchedKeywords as string[]) : [],
-      missingKeywords: Array.isArray(r.missingKeywords) ? (r.missingKeywords as string[]) : [],
       missingInfoQuestions: Array.isArray(r.missingInfoQuestions) ? (r.missingInfoQuestions as string[]) : [],
       sectionSuggestions: Array.isArray(r.sectionSuggestions) ? (r.sectionSuggestions as string[]) : [],
     };

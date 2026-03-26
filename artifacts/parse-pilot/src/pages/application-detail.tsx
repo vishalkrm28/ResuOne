@@ -27,6 +27,7 @@ import {
   RotateCcw,
   AlertTriangle,
   Lock,
+  BarChart2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -792,6 +793,83 @@ export default function ApplicationDetail() {
                           )}
                         </CardContent>
                       </Card>
+
+                      {/* Score Breakdown */}
+                      {app.scoringBreakdownJson && (
+                        <Card>
+                          <CardContent className="p-6">
+                            <h3 className="font-bold text-lg mb-1 flex items-center gap-2">
+                              <BarChart2 className="w-5 h-5 text-blue-500" />
+                              Score Breakdown
+                            </h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Detected industry:{" "}
+                              <span className="font-medium text-foreground">
+                                {app.scoringBreakdownJson.detectedIndustry}
+                              </span>
+                            </p>
+                            <div className="space-y-4">
+                              {(
+                                [
+                                  {
+                                    label: "Required Keywords",
+                                    weight: "45%",
+                                    comp: app.scoringBreakdownJson.requiredKeywords,
+                                  },
+                                  {
+                                    label: "Responsibilities",
+                                    weight: "20%",
+                                    comp: app.scoringBreakdownJson.responsibilities,
+                                  },
+                                  {
+                                    label: "Preferred Keywords",
+                                    weight: "15%",
+                                    comp: app.scoringBreakdownJson.preferredKeywords,
+                                  },
+                                  {
+                                    label: "Seniority",
+                                    weight: "10%",
+                                    comp: app.scoringBreakdownJson.seniority,
+                                  },
+                                  {
+                                    label: "Industry",
+                                    weight: "10%",
+                                    comp: app.scoringBreakdownJson.industry,
+                                  },
+                                ] as const
+                              ).map(({ label, weight, comp }) => {
+                                const pct =
+                                  comp.maxScore > 0
+                                    ? Math.round((comp.rawScore / comp.maxScore) * 100)
+                                    : 0;
+                                return (
+                                  <div key={label}>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <span className="text-sm font-medium">{label}</span>
+                                      <span className="text-xs text-muted-foreground tabular-nums">
+                                        {comp.matched}/{comp.total} matched · <span className="font-semibold">{weight}</span>
+                                      </span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full transition-all duration-700",
+                                          pct >= 70
+                                            ? "bg-emerald-500"
+                                            : pct >= 40
+                                              ? "bg-amber-500"
+                                              : "bg-destructive",
+                                        )}
+                                        style={{ width: `${pct}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
                     </div>
                   </div>
                 )}
