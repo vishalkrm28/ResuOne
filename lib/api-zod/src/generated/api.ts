@@ -97,6 +97,39 @@ export const ListApplicationsResponseItem = zod.object({
   company: zod.string(),
   jobDescription: zod.string(),
   originalCvText: zod.string(),
+  parsedCvJson: zod
+    .union([
+      zod.object({
+        name: zod.string().nullable(),
+        email: zod.string().nullable(),
+        phone: zod.string().nullable(),
+        location: zod.string().nullable(),
+        summary: zod.string().nullable(),
+        work_experience: zod.array(
+          zod.object({
+            company: zod.string(),
+            title: zod.string(),
+            start_date: zod.string(),
+            end_date: zod.string().nullable(),
+            bullets: zod.array(zod.string()),
+          }),
+        ),
+        education: zod.array(
+          zod.object({
+            institution: zod.string(),
+            degree: zod.string(),
+            field: zod.string().nullish(),
+            start_date: zod.string().nullish(),
+            end_date: zod.string().nullish(),
+          }),
+        ),
+        skills: zod.array(zod.string()),
+        certifications: zod.array(zod.string()),
+        languages: zod.array(zod.string()),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
   tailoredCvText: zod.string().nullish(),
   coverLetterText: zod.string().nullish(),
   keywordMatchScore: zod.number().nullish(),
@@ -118,6 +151,39 @@ export const CreateApplicationBody = zod.object({
   company: zod.string(),
   jobDescription: zod.string(),
   originalCvText: zod.string(),
+  parsedCvJson: zod
+    .union([
+      zod.object({
+        name: zod.string().nullable(),
+        email: zod.string().nullable(),
+        phone: zod.string().nullable(),
+        location: zod.string().nullable(),
+        summary: zod.string().nullable(),
+        work_experience: zod.array(
+          zod.object({
+            company: zod.string(),
+            title: zod.string(),
+            start_date: zod.string(),
+            end_date: zod.string().nullable(),
+            bullets: zod.array(zod.string()),
+          }),
+        ),
+        education: zod.array(
+          zod.object({
+            institution: zod.string(),
+            degree: zod.string(),
+            field: zod.string().nullish(),
+            start_date: zod.string().nullish(),
+            end_date: zod.string().nullish(),
+          }),
+        ),
+        skills: zod.array(zod.string()),
+        certifications: zod.array(zod.string()),
+        languages: zod.array(zod.string()),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
 });
 
 /**
@@ -134,6 +200,39 @@ export const GetApplicationResponse = zod.object({
   company: zod.string(),
   jobDescription: zod.string(),
   originalCvText: zod.string(),
+  parsedCvJson: zod
+    .union([
+      zod.object({
+        name: zod.string().nullable(),
+        email: zod.string().nullable(),
+        phone: zod.string().nullable(),
+        location: zod.string().nullable(),
+        summary: zod.string().nullable(),
+        work_experience: zod.array(
+          zod.object({
+            company: zod.string(),
+            title: zod.string(),
+            start_date: zod.string(),
+            end_date: zod.string().nullable(),
+            bullets: zod.array(zod.string()),
+          }),
+        ),
+        education: zod.array(
+          zod.object({
+            institution: zod.string(),
+            degree: zod.string(),
+            field: zod.string().nullish(),
+            start_date: zod.string().nullish(),
+            end_date: zod.string().nullish(),
+          }),
+        ),
+        skills: zod.array(zod.string()),
+        certifications: zod.array(zod.string()),
+        languages: zod.array(zod.string()),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
   tailoredCvText: zod.string().nullish(),
   coverLetterText: zod.string().nullish(),
   keywordMatchScore: zod.number().nullish(),
@@ -157,6 +256,39 @@ export const UpdateApplicationBody = zod.object({
   company: zod.string().optional(),
   jobDescription: zod.string().optional(),
   originalCvText: zod.string().optional(),
+  parsedCvJson: zod
+    .union([
+      zod.object({
+        name: zod.string().nullable(),
+        email: zod.string().nullable(),
+        phone: zod.string().nullable(),
+        location: zod.string().nullable(),
+        summary: zod.string().nullable(),
+        work_experience: zod.array(
+          zod.object({
+            company: zod.string(),
+            title: zod.string(),
+            start_date: zod.string(),
+            end_date: zod.string().nullable(),
+            bullets: zod.array(zod.string()),
+          }),
+        ),
+        education: zod.array(
+          zod.object({
+            institution: zod.string(),
+            degree: zod.string(),
+            field: zod.string().nullish(),
+            start_date: zod.string().nullish(),
+            end_date: zod.string().nullish(),
+          }),
+        ),
+        skills: zod.array(zod.string()),
+        certifications: zod.array(zod.string()),
+        languages: zod.array(zod.string()),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
   tailoredCvText: zod.string().optional(),
   coverLetterText: zod.string().optional(),
   keywordMatchScore: zod.number().optional(),
@@ -173,6 +305,39 @@ export const UpdateApplicationResponse = zod.object({
   company: zod.string(),
   jobDescription: zod.string(),
   originalCvText: zod.string(),
+  parsedCvJson: zod
+    .union([
+      zod.object({
+        name: zod.string().nullable(),
+        email: zod.string().nullable(),
+        phone: zod.string().nullable(),
+        location: zod.string().nullable(),
+        summary: zod.string().nullable(),
+        work_experience: zod.array(
+          zod.object({
+            company: zod.string(),
+            title: zod.string(),
+            start_date: zod.string(),
+            end_date: zod.string().nullable(),
+            bullets: zod.array(zod.string()),
+          }),
+        ),
+        education: zod.array(
+          zod.object({
+            institution: zod.string(),
+            degree: zod.string(),
+            field: zod.string().nullish(),
+            start_date: zod.string().nullish(),
+            end_date: zod.string().nullish(),
+          }),
+        ),
+        skills: zod.array(zod.string()),
+        certifications: zod.array(zod.string()),
+        languages: zod.array(zod.string()),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
   tailoredCvText: zod.string().nullish(),
   coverLetterText: zod.string().nullish(),
   keywordMatchScore: zod.number().nullish(),
@@ -232,19 +397,50 @@ export const GenerateCoverLetterResponse = zod.object({
 });
 
 /**
- * @summary Parse uploaded CV text
+ * @summary Parse raw CV text into structured JSON using AI
  */
+export const parseCvBodyRawTextMin = 50;
+export const parseCvBodyRawTextMax = 100000;
+
 export const ParseCvBody = zod.object({
-  rawText: zod.string(),
+  rawText: zod.string().min(parseCvBodyRawTextMin).max(parseCvBodyRawTextMax),
 });
 
 export const ParseCvResponse = zod.object({
+  parsedCv: zod.object({
+    name: zod.string().nullable(),
+    email: zod.string().nullable(),
+    phone: zod.string().nullable(),
+    location: zod.string().nullable(),
+    summary: zod.string().nullable(),
+    work_experience: zod.array(
+      zod.object({
+        company: zod.string(),
+        title: zod.string(),
+        start_date: zod.string(),
+        end_date: zod.string().nullable(),
+        bullets: zod.array(zod.string()),
+      }),
+    ),
+    education: zod.array(
+      zod.object({
+        institution: zod.string(),
+        degree: zod.string(),
+        field: zod.string().nullish(),
+        start_date: zod.string().nullish(),
+        end_date: zod.string().nullish(),
+      }),
+    ),
+    skills: zod.array(zod.string()),
+    certifications: zod.array(zod.string()),
+    languages: zod.array(zod.string()),
+  }),
   parsedText: zod.string(),
   sections: zod.array(zod.string()),
 });
 
 /**
- * @summary Upload a CV file (PDF or DOCX) and extract its text
+ * @summary Upload a CV file (PDF or DOCX), extract text, and parse structure with AI
  */
 export const UploadCvBody = zod.object({
   file: zod.instanceof(File),
@@ -252,6 +448,39 @@ export const UploadCvBody = zod.object({
 
 export const UploadCvResponse = zod.object({
   extractedText: zod.string(),
+  parsedCv: zod
+    .union([
+      zod.object({
+        name: zod.string().nullable(),
+        email: zod.string().nullable(),
+        phone: zod.string().nullable(),
+        location: zod.string().nullable(),
+        summary: zod.string().nullable(),
+        work_experience: zod.array(
+          zod.object({
+            company: zod.string(),
+            title: zod.string(),
+            start_date: zod.string(),
+            end_date: zod.string().nullable(),
+            bullets: zod.array(zod.string()),
+          }),
+        ),
+        education: zod.array(
+          zod.object({
+            institution: zod.string(),
+            degree: zod.string(),
+            field: zod.string().nullish(),
+            start_date: zod.string().nullish(),
+            end_date: zod.string().nullish(),
+          }),
+        ),
+        skills: zod.array(zod.string()),
+        certifications: zod.array(zod.string()),
+        languages: zod.array(zod.string()),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
   fileName: zod.string(),
   fileSize: zod.number(),
 });

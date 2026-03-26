@@ -2,6 +2,37 @@ import { pgTable, text, timestamp, real, jsonb, uuid } from "drizzle-orm/pg-core
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export const ParsedWorkExperienceSchema = z.object({
+  company: z.string(),
+  title: z.string(),
+  start_date: z.string(),
+  end_date: z.string().nullable(),
+  bullets: z.array(z.string()),
+});
+
+export const ParsedEducationSchema = z.object({
+  institution: z.string(),
+  degree: z.string(),
+  field: z.string().optional(),
+  start_date: z.string().optional(),
+  end_date: z.string().nullable().optional(),
+});
+
+export const ParsedCvSchema = z.object({
+  name: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  location: z.string().nullable(),
+  summary: z.string().nullable(),
+  work_experience: z.array(ParsedWorkExperienceSchema),
+  education: z.array(ParsedEducationSchema),
+  skills: z.array(z.string()),
+  certifications: z.array(z.string()),
+  languages: z.array(z.string()),
+});
+
+export type ParsedCv = z.infer<typeof ParsedCvSchema>;
+
 export const applicationsTable = pgTable("applications", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
@@ -9,6 +40,7 @@ export const applicationsTable = pgTable("applications", {
   company: text("company").notNull(),
   jobDescription: text("job_description").notNull(),
   originalCvText: text("original_cv_text").notNull(),
+  parsedCvJson: jsonb("parsed_cv_json").$type<ParsedCv>(),
   tailoredCvText: text("tailored_cv_text"),
   coverLetterText: text("cover_letter_text"),
   keywordMatchScore: real("keyword_match_score"),

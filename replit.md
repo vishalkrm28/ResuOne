@@ -84,7 +84,8 @@ artifacts-monorepo/
 - `DELETE /api/applications/:id` — delete application
 - `POST /api/applications/:id/analyze` — AI CV analysis
 - `POST /api/applications/:id/cover-letter` — AI cover letter generation
-- `POST /api/upload-cv` — multipart file upload + text extraction
+- `POST /api/upload-cv` — multipart file upload (PDF/DOCX/DOC/TXT, max 10MB) → extracts text AND parses structured JSON with AI (non-fatal; returns parsedCv: null on parse failure)
+- `POST /api/parse-cv` — parse raw CV text into structured JSON using OpenAI Responses API (Zod-validated body: `{ rawText: string }`)
 - `GET  /api/export/application/:id/docx` — download DOCX
 - `GET  /api/healthz` — health check
 
@@ -96,6 +97,7 @@ artifacts-monorepo/
 - `jobTitle`, `company` (text)
 - `jobDescription` (text)
 - `originalCvText` (text)
+- `parsedCvJson` (jsonb, nullable) — structured CV data from AI parse: `{ name, email, phone, location, summary, work_experience[], education[], skills[], certifications[], languages[] }`
 - `tailoredCvText` (text, nullable)
 - `coverLetterText` (text, nullable)
 - `keywordMatchScore` (real, nullable)
@@ -133,3 +135,9 @@ pnpm --filter @workspace/api-spec run codegen
 ## Vite Config Note
 
 `artifacts/parse-pilot/vite.config.ts` has `fs.allow` set to include the workspace root's `lib/` and `node_modules/` directories so that workspace packages (e.g. `@workspace/replit-auth-web`) can be resolved by Vite in development.
+
+## esbuild / Zod Note
+
+The API server is bundled by esbuild. `lib/db` exports TypeScript source directly (not compiled dist). Because `lib/db/src/schema/*.ts` uses `import { z } from "zod/v4"`, esbuild will fail to resolve this subpath if you import from `@workspace/db` in a way that forces esbuild to traverse into those schema files.
+
+**Rule**: In `artifacts/api-server/src/**`, always `import { z } from "zod"` (not `"zod/v4"`). Only import *types* (not values) from `@workspace/db` schema exports that use `"zod/v4"`. Define local Zod schemas using regular `"zod"` imports for runtime use. `zod` must be listed as a direct dependency in `artifacts/api-server/package.json`.

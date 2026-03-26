@@ -5,6 +5,7 @@
  * ParsePilot AI API specification
  * OpenAPI spec version: 0.2.0
  */
+import type { ParsedCv } from "./parsedCv";
 import type { UpdateApplicationBodyStatus } from "./updateApplicationBodyStatus";
 
 export interface UpdateApplicationBody {
@@ -12,6 +13,7 @@ export interface UpdateApplicationBody {
   company?: string;
   jobDescription?: string;
   originalCvText?: string;
+  parsedCvJson?: ParsedCv | null;
   tailoredCvText?: string;
   coverLetterText?: string;
   keywordMatchScore?: number;

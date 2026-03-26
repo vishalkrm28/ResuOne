@@ -169,6 +169,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Application"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /applications/{id}:
     get:
@@ -281,7 +287,7 @@ paths:
     post:
       operationId: parseCv
       tags: [analysis]
-      summary: Parse uploaded CV text
+      summary: Parse raw CV text into structured JSON using AI
       requestBody:
         required: true
         content:
@@ -290,17 +296,29 @@ paths:
               $ref: "#/components/schemas/ParseCvBody"
       responses:
         "200":
-          description: Parsed CV text
+          description: Parsed CV structure
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ParseCvResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: AI parsing failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /upload-cv:
     post:
       operationId: uploadCv
       tags: [analysis]
-      summary: Upload a CV file (PDF or DOCX) and extract its text
+      summary: Upload a CV file (PDF or DOCX), extract text, and parse structure with AI
       requestBody:
         required: true
         content:
@@ -314,11 +332,29 @@ paths:
               required: [file]
       responses:
         "200":
-          description: Extracted CV text
+          description: Extracted text and parsed CV structure
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UploadCvResult"
+        "400":
+          description: Missing file, invalid type, or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "413":
+          description: File exceeds 10 MB size limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Text extraction failed or file has no readable content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
 components:
   parameters:
@@ -343,6 +379,25 @@ components:
           type: string
       required:
         - status
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+      required:
+        - error
 
     AuthUser:
       type: object
@@ -404,6 +459,99 @@ components:
         success:
           type: boolean
 
+    ParsedWorkExperience:
+      type: object
+      properties:
+        company:
+          type: string
+        title:
+          type: string
+        start_date:
+          type: string
+        end_date:
+          type: string
+          nullable: true
+        bullets:
+          type: array
+          items:
+            type: string
+      required:
+        - company
+        - title
+        - start_date
+        - end_date
+        - bullets
+
+    ParsedEducation:
+      type: object
+      properties:
+        institution:
+          type: string
+        degree:
+          type: string
+        field:
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          nullable: true
+        end_date:
+          type: string
+          nullable: true
+      required:
+        - institution
+        - degree
+
+    ParsedCv:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        summary:
+          type: string
+          nullable: true
+        work_experience:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParsedWorkExperience"
+        education:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParsedEducation"
+        skills:
+          type: array
+          items:
+            type: string
+        certifications:
+          type: array
+          items:
+            type: string
+        languages:
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - email
+        - phone
+        - location
+        - summary
+        - work_experience
+        - education
+        - skills
+        - certifications
+        - languages
+
     Application:
       type: object
       properties:
@@ -419,6 +567,11 @@ components:
           type: string
         originalCvText:
           type: string
+        parsedCvJson:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/ParsedCv"
+            - type: 'null'
         tailoredCvText:
           type: string
           nullable: true
@@ -476,6 +629,11 @@ components:
           type: string
         originalCvText:
           type: string
+        parsedCvJson:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/ParsedCv"
+            - type: 'null'
       required:
         - userId
         - jobTitle
@@ -494,6 +652,11 @@ components:
           type: string
         originalCvText:
           type: string
+        parsedCvJson:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/ParsedCv"
+            - type: 'null'
         tailoredCvText:
           type: string
         coverLetterText:
@@ -578,12 +741,16 @@ components:
       properties:
         rawText:
           type: string
+          minLength: 50
+          maxLength: 100000
       required:
         - rawText
 
     ParseCvResult:
       type: object
       properties:
+        parsedCv:
+          $ref: "#/components/schemas/ParsedCv"
         parsedText:
           type: string
         sections:
@@ -591,6 +758,7 @@ components:
           items:
             type: string
       required:
+        - parsedCv
         - parsedText
         - sections
 
@@ -599,6 +767,11 @@ components:
       properties:
         extractedText:
           type: string
+        parsedCv:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/ParsedCv"
+            - type: 'null'
         fileName:
           type: string
         fileSize:

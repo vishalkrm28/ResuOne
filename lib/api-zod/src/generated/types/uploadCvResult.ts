@@ -5,9 +5,11 @@
  * ParsePilot AI API specification
  * OpenAPI spec version: 0.2.0
  */
+import type { ParsedCv } from "./parsedCv";
 
 export interface UploadCvResult {
   extractedText: string;
+  parsedCv?: ParsedCv | null;
   fileName: string;
   fileSize: number;
 }

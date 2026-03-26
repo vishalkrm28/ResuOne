@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { ApplicationStatus } from "./applicationStatus";
+import type { ParsedCv } from "./parsedCv";
 
 export interface Application {
   id: string;
@@ -14,6 +15,7 @@ export interface Application {
   company: string;
   jobDescription: string;
   originalCvText: string;
+  parsedCvJson?: ParsedCv | null;
   tailoredCvText?: string | null;
   coverLetterText?: string | null;
   keywordMatchScore?: number | null;

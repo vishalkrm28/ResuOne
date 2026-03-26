@@ -6,10 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface ParseCvBody {
-  /**
-   * @minLength 50
-   * @maxLength 100000
-   */
-  rawText: string;
-}
+export type ApiErrorDetailsItem = {
+  field?: string;
+  message?: string;
+};

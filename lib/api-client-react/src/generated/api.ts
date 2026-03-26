@@ -19,6 +19,7 @@ import type {
 import type {
   AnalysisResult,
   AnalyzeApplicationBody,
+  ApiError,
   Application,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
@@ -762,7 +763,7 @@ export const createApplication = async (
 };
 
 export const getCreateApplicationMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -803,13 +804,13 @@ export type CreateApplicationMutationResult = NonNullable<
   Awaited<ReturnType<typeof createApplication>>
 >;
 export type CreateApplicationMutationBody = BodyType<CreateApplicationBody>;
-export type CreateApplicationMutationError = ErrorType<unknown>;
+export type CreateApplicationMutationError = ErrorType<ApiError>;
 
 /**
  * @summary Create a new job application
  */
 export const useCreateApplication = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1261,7 +1262,7 @@ export const useGenerateCoverLetter = <
 };
 
 /**
- * @summary Parse uploaded CV text
+ * @summary Parse raw CV text into structured JSON using AI
  */
 export const getParseCvUrl = () => {
   return `/api/parse-cv`;
@@ -1280,7 +1281,7 @@ export const parseCv = async (
 };
 
 export const getParseCvMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1321,13 +1322,13 @@ export type ParseCvMutationResult = NonNullable<
   Awaited<ReturnType<typeof parseCv>>
 >;
 export type ParseCvMutationBody = BodyType<ParseCvBody>;
-export type ParseCvMutationError = ErrorType<unknown>;
+export type ParseCvMutationError = ErrorType<ApiError>;
 
 /**
- * @summary Parse uploaded CV text
+ * @summary Parse raw CV text into structured JSON using AI
  */
 export const useParseCv = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1347,7 +1348,7 @@ export const useParseCv = <
 };
 
 /**
- * @summary Upload a CV file (PDF or DOCX) and extract its text
+ * @summary Upload a CV file (PDF or DOCX), extract text, and parse structure with AI
  */
 export const getUploadCvUrl = () => {
   return `/api/upload-cv`;
@@ -1368,7 +1369,7 @@ export const uploadCv = async (
 };
 
 export const getUploadCvMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1409,13 +1410,13 @@ export type UploadCvMutationResult = NonNullable<
   Awaited<ReturnType<typeof uploadCv>>
 >;
 export type UploadCvMutationBody = BodyType<UploadCvBody>;
-export type UploadCvMutationError = ErrorType<unknown>;
+export type UploadCvMutationError = ErrorType<ApiError>;
 
 /**
- * @summary Upload a CV file (PDF or DOCX) and extract its text
+ * @summary Upload a CV file (PDF or DOCX), extract text, and parse structure with AI
  */
 export const useUploadCv = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

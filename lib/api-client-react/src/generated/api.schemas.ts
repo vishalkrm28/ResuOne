@@ -9,6 +9,17 @@ export interface HealthStatus {
   status: string;
 }
 
+export type ApiErrorDetailsItem = {
+  field?: string;
+  message?: string;
+};
+
+export interface ApiError {
+  error: string;
+  code?: string;
+  details?: ApiErrorDetailsItem[];
+}
+
 export interface AuthUser {
   id: string;
   email?: string | null;
@@ -37,6 +48,35 @@ export interface LogoutSuccess {
   success: boolean;
 }
 
+export interface ParsedWorkExperience {
+  company: string;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  bullets: string[];
+}
+
+export interface ParsedEducation {
+  institution: string;
+  degree: string;
+  field?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+export interface ParsedCv {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  summary: string | null;
+  work_experience: ParsedWorkExperience[];
+  education: ParsedEducation[];
+  skills: string[];
+  certifications: string[];
+  languages: string[];
+}
+
 export type ApplicationStatus =
   (typeof ApplicationStatus)[keyof typeof ApplicationStatus];
 
@@ -53,6 +93,7 @@ export interface Application {
   company: string;
   jobDescription: string;
   originalCvText: string;
+  parsedCvJson?: ParsedCv | null;
   tailoredCvText?: string | null;
   coverLetterText?: string | null;
   keywordMatchScore?: number | null;
@@ -70,6 +111,7 @@ export interface CreateApplicationBody {
   company: string;
   jobDescription: string;
   originalCvText: string;
+  parsedCvJson?: ParsedCv | null;
 }
 
 export type UpdateApplicationBodyStatus =
@@ -86,6 +128,7 @@ export interface UpdateApplicationBody {
   company?: string;
   jobDescription?: string;
   originalCvText?: string;
+  parsedCvJson?: ParsedCv | null;
   tailoredCvText?: string;
   coverLetterText?: string;
   keywordMatchScore?: number;
@@ -129,16 +172,22 @@ export interface CoverLetterResult {
 }
 
 export interface ParseCvBody {
+  /**
+   * @minLength 50
+   * @maxLength 100000
+   */
   rawText: string;
 }
 
 export interface ParseCvResult {
+  parsedCv: ParsedCv;
   parsedText: string;
   sections: string[];
 }
 
 export interface UploadCvResult {
   extractedText: string;
+  parsedCv?: ParsedCv | null;
   fileName: string;
   fileSize: number;
 }

@@ -5,6 +5,7 @@
  * ParsePilot AI API specification
  * OpenAPI spec version: 0.2.0
  */
+import type { ParsedCv } from "./parsedCv";
 
 export interface CreateApplicationBody {
   userId: string;
@@ -12,4 +13,5 @@ export interface CreateApplicationBody {
   company: string;
   jobDescription: string;
   originalCvText: string;
+  parsedCvJson?: ParsedCv | null;
 }

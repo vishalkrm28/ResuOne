@@ -1,4 +1,138 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
+import type { ParsedCv } from "@workspace/db";
+import { z } from "zod";
+
+// Local zod schema for AI output validation (uses "zod" not "zod/v4" for esbuild compat)
+const LocalParsedCvSchema = z.object({
+  name: z.string().nullable().catch(null),
+  email: z.string().nullable().catch(null),
+  phone: z.string().nullable().catch(null),
+  location: z.string().nullable().catch(null),
+  summary: z.string().nullable().catch(null),
+  work_experience: z
+    .array(
+      z.object({
+        company: z.string().catch(""),
+        title: z.string().catch(""),
+        start_date: z.string().catch(""),
+        end_date: z.string().nullable().catch(null),
+        bullets: z.array(z.string()).catch([]),
+      }),
+    )
+    .catch([]),
+  education: z
+    .array(
+      z.object({
+        institution: z.string().catch(""),
+        degree: z.string().catch(""),
+        field: z.string().optional(),
+        start_date: z.string().optional(),
+        end_date: z.string().nullable().optional(),
+      }),
+    )
+    .catch([]),
+  skills: z.array(z.string()).catch([]),
+  certifications: z.array(z.string()).catch([]),
+  languages: z.array(z.string()).catch([]),
+});
+
+// ─── CV Parsing (Responses API) ────────────────────────────────────────────
+
+const CV_PARSE_INSTRUCTIONS = `You are a precise CV/resume data extraction engine.
+Extract all structured information from the raw CV text provided.
+Return ONLY valid JSON. Do not include commentary, markdown, or explanation.
+
+RULES:
+- Extract only what is explicitly present in the text — never infer or invent
+- Dates should be in the original format from the CV (e.g. "Jan 2021", "2019-2022", "Present")
+- For end_date: use null when the role is current/ongoing
+- bullets: extract each distinct achievement or responsibility as a separate string
+- skills: flat array of all technical and soft skills mentioned
+- certifications: only formal certifications/licences (not skills)
+- languages: human languages only (not programming languages)
+
+Return JSON matching this exact schema:
+{
+  "name": "string or null",
+  "email": "string or null",
+  "phone": "string or null",
+  "location": "string or null",
+  "summary": "string or null — professional summary/objective if present",
+  "work_experience": [
+    {
+      "company": "string",
+      "title": "string",
+      "start_date": "string",
+      "end_date": "string or null",
+      "bullets": ["string", ...]
+    }
+  ],
+  "education": [
+    {
+      "institution": "string",
+      "degree": "string",
+      "field": "string or null",
+      "start_date": "string or null",
+      "end_date": "string or null"
+    }
+  ],
+  "skills": ["string", ...],
+  "certifications": ["string", ...],
+  "languages": ["string", ...]
+}`;
+
+export async function parseCv(rawText: string): Promise<ParsedCv> {
+  if (!rawText || rawText.trim().length < 20) {
+    throw new Error("CV text is too short to parse (minimum 20 characters)");
+  }
+
+  const response = await openai.responses.create({
+    model: "gpt-5.2",
+    instructions: CV_PARSE_INSTRUCTIONS,
+    input: [
+      {
+        role: "user",
+        content: `Extract all structured information from the following CV text and return valid JSON:\n\n${rawText.slice(0, 30000)}`,
+      },
+    ],
+    text: { format: { type: "json_object" } },
+    max_output_tokens: 8192,
+  });
+
+  const content = response.output_text;
+  if (!content) {
+    throw new Error("AI returned empty response during CV parsing");
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(content);
+  } catch {
+    throw new Error("AI returned invalid JSON during CV parsing");
+  }
+
+  const result = LocalParsedCvSchema.safeParse(raw);
+  if (!result.success) {
+    // Attempt lenient recovery: fill missing fields with defaults
+    return {
+      name: null,
+      email: null,
+      phone: null,
+      location: null,
+      summary: null,
+      work_experience: [],
+      education: [],
+      skills: [],
+      certifications: [],
+      languages: [],
+      ...((raw as Record<string, unknown>) ?? {}),
+    } as ParsedCv;
+  }
+
+  return result.data;
+}
+
+// ─── CV Analysis ────────────────────────────────────────────────────────────
 
 export interface AnalysisInput {
   originalCvText: string;
@@ -16,6 +150,15 @@ export interface AnalysisOutput {
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
 }
+
+const AnalysisOutputSchema = z.object({
+  tailoredCvText: z.string(),
+  keywordMatchScore: z.number().min(0).max(100),
+  matchedKeywords: z.array(z.string()),
+  missingKeywords: z.array(z.string()),
+  missingInfoQuestions: z.array(z.string()),
+  sectionSuggestions: z.array(z.string()),
+});
 
 export async function analyzeCvForJob(input: AnalysisInput): Promise<AnalysisOutput> {
   const confirmedContext =
@@ -72,16 +215,31 @@ Analyze the CV against the job description and return the JSON response.`;
     throw new Error("No response from AI");
   }
 
-  const parsed = JSON.parse(content) as AnalysisOutput;
-  return {
-    tailoredCvText: parsed.tailoredCvText ?? "",
-    keywordMatchScore: Math.min(100, Math.max(0, parsed.keywordMatchScore ?? 0)),
-    matchedKeywords: Array.isArray(parsed.matchedKeywords) ? parsed.matchedKeywords : [],
-    missingKeywords: Array.isArray(parsed.missingKeywords) ? parsed.missingKeywords : [],
-    missingInfoQuestions: Array.isArray(parsed.missingInfoQuestions) ? parsed.missingInfoQuestions : [],
-    sectionSuggestions: Array.isArray(parsed.sectionSuggestions) ? parsed.sectionSuggestions : [],
-  };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(content);
+  } catch {
+    throw new Error("AI returned invalid JSON during analysis");
+  }
+
+  const result = AnalysisOutputSchema.safeParse(raw);
+  if (!result.success) {
+    // lenient fallback
+    const r = raw as Record<string, unknown>;
+    return {
+      tailoredCvText: (r.tailoredCvText as string) ?? "",
+      keywordMatchScore: Math.min(100, Math.max(0, (r.keywordMatchScore as number) ?? 0)),
+      matchedKeywords: Array.isArray(r.matchedKeywords) ? (r.matchedKeywords as string[]) : [],
+      missingKeywords: Array.isArray(r.missingKeywords) ? (r.missingKeywords as string[]) : [],
+      missingInfoQuestions: Array.isArray(r.missingInfoQuestions) ? (r.missingInfoQuestions as string[]) : [],
+      sectionSuggestions: Array.isArray(r.sectionSuggestions) ? (r.sectionSuggestions as string[]) : [],
+    };
+  }
+
+  return result.data;
 }
+
+// ─── Cover Letter ────────────────────────────────────────────────────────────
 
 export interface CoverLetterInput {
   originalCvText: string;
@@ -133,5 +291,10 @@ Write the cover letter.`;
     ],
   });
 
-  return response.choices[0]?.message?.content ?? "";
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("AI returned empty cover letter");
+  }
+
+  return content;
 }
