@@ -168,6 +168,42 @@ lib/
 
 ---
 
+## AI credits
+
+ParsePilot uses a credit system to meter AI usage.
+
+### Credit allowances
+
+| Plan | Credits | Resets? |
+|------|---------|---------|
+| Free | 3 (lifetime) | No — fixed allowance |
+| Pro | 100 per billing period | Yes — resets with each Stripe renewal |
+
+### Credit costs
+
+| Action | Cost |
+|--------|------|
+| CV optimization (analyze) | 1 credit |
+| Cover letter generation | 1 credit |
+| DOCX export | Free (0 credits) |
+| PDF export | Free (0 credits) |
+
+### How credits work
+
+1. **New user** — on first login, 3 free credits are initialized automatically (idempotent; safe to run on every login).
+2. **Upgrade to Pro** — the Stripe webhook fires `customer.subscription.created` (or `updated`) with status `trialing` or `active`. The webhook calls `resetProCreditsIfNeeded()` which seeds 100 credits for the new billing period.
+3. **Renewal** — Stripe fires `customer.subscription.updated` with a new `current_period_start`. The credit reset guard compares `billingPeriodStart` in the DB to detect a new period and resets to 100.
+4. **Credit spent** — `POST /applications/:id/analyze` and `POST /applications/:id/cover-letter` deduct 1 credit each. The deduction is **atomic** (single `UPDATE ... WHERE availableCredits >= 1`), preventing race conditions.
+5. **No credits left** — the API returns HTTP 402 with `code: CREDITS_EXHAUSTED`. The UI shows a CTA to upgrade (Free) or wait for the next reset (Pro).
+
+### Race condition protections
+
+- **Atomic deduction**: Credits are deducted in a single SQL `UPDATE ... WHERE available_credits >= amount`. If two requests arrive simultaneously, only one succeeds — the other gets 0 rows updated and returns `CREDITS_EXHAUSTED`.
+- **Idempotent init**: `initFreeCredits()` uses `INSERT ... ON CONFLICT DO NOTHING`. Calling it on every login never double-awards credits.
+- **Idempotent reset**: `resetProCreditsIfNeeded()` checks `billingPeriodStart` before resetting. Replaying the same webhook fires exactly zero extra resets.
+
+---
+
 ## Free trial
 
 ParsePilot Pro starts with a **7-day free trial** for all new subscribers.

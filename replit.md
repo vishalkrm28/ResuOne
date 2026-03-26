@@ -138,6 +138,29 @@ pnpm --filter @workspace/db run push
 pnpm --filter @workspace/api-spec run codegen
 ```
 
+## AI Credits System (Milestone 12)
+
+**Tables:** `usage_balances` (one row per user), `usage_events` (append-only audit trail)
+
+**Central service:** `artifacts/api-server/src/lib/credits.ts`
+- `initFreeCredits(userId)` — idempotent (ON CONFLICT DO NOTHING); called on every login; awards 3 free credits to new users only
+- `resetProCreditsIfNeeded(userId, periodStart, periodEnd)` — idempotent (compares `billingPeriodStart`); seeds 100 Pro credits only when billing period changes; called from `applySubscription` in webhook
+- `spendCredits(userId, amount, type)` — atomic (`UPDATE ... WHERE available_credits >= amount`); returns `{success, remaining}`; no race condition possible
+- `canSpendCredits` / `getUserCredits` — read helpers
+
+**Credit costs:** cv_optimization=1, cover_letter=1, docx_export=0, pdf_export=0
+
+**API endpoint:** `GET /api/billing/credits` → `{availableCredits, lifetimeCreditsUsed, billingPeriodEnd, planAllowance, isPro}`
+
+**Frontend:**
+- `hooks/use-credits.ts` — fetches /api/billing/credits
+- `components/billing/credits-badge.tsx` — compact inline badge in dashboard header
+- `components/billing/credits-card.tsx` — full card in Settings → AI Credits section
+
+**Gated routes:**
+- `POST /applications/:id/analyze` → 1 credit; returns 402 `CREDITS_EXHAUSTED` if blocked
+- `POST /applications/:id/cover-letter` → 1 credit; returns 402 `CREDITS_EXHAUSTED` if blocked
+
 ## Environment Validation
 
 `artifacts/api-server/src/lib/env.ts` — `validateEnv()` runs before `app.listen()` in `index.ts`.

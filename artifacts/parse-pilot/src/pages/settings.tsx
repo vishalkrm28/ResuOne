@@ -1,7 +1,8 @@
 import { useAuth } from "@workspace/replit-auth-web";
 import { AppLayout } from "@/components/layout/app-layout";
 import { SubscriptionCard } from "@/components/billing/subscription-card";
-import { Settings2, User, CreditCard } from "lucide-react";
+import { CreditsCard } from "@/components/billing/credits-card";
+import { Settings2, User, CreditCard, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function SectionTitle({
@@ -90,6 +91,16 @@ export default function Settings() {
             description="Upgrade to Pro or manage your existing plan"
           />
           <SubscriptionCard />
+        </section>
+
+        {/* Credits section */}
+        <section className="space-y-4">
+          <SectionTitle
+            icon={Zap}
+            title="AI Credits"
+            description="Credits are used for CV optimization and cover letter generation"
+          />
+          <CreditsCard />
         </section>
       </div>
     </AppLayout>

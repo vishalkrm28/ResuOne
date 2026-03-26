@@ -7,6 +7,7 @@ import {
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
+import { initFreeCredits } from "../lib/credits.js";
 import {
   clearSession,
   getOidcConfig,
@@ -79,6 +80,10 @@ async function upsertUser(claims: Record<string, unknown>) {
       },
     })
     .returning();
+
+  // Initialize free credits for brand-new users — idempotent (ON CONFLICT DO NOTHING)
+  await initFreeCredits(user.id);
+
   return user;
 }
 

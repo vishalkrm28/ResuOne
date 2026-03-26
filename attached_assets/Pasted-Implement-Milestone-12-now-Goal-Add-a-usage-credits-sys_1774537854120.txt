@@ -1,0 +1,102 @@
+Implement Milestone 12 now.
+
+Goal:
+Add a usage credits system to ParsePilot.
+
+Business model:
+- Free users get a small number of credits
+- Pro users get a larger monthly credit allowance
+- Certain actions consume credits
+- Credits reset monthly for Pro users
+- Free credits do not reset unless explicitly designed to
+
+Credit rules:
+1. Free plan:
+   - 3 credits total
+2. Pro plan:
+   - 100 credits per billing period
+3. Credit cost per action:
+   - resume + job description full optimization = 1 credit
+   - cover letter generation = 1 credit
+   - DOCX export = 0 credits
+   - PDF export = 0 credits
+4. If user has no credits left:
+   - block the action cleanly
+   - show upgrade prompt if Free
+   - show billing/settings CTA if Pro but exhausted
+
+What to build:
+1. Extend Prisma User model or create a dedicated usage model.
+Preferred design:
+- Keep subscription state on User
+- Create a separate UsageBalance model if that keeps code cleaner
+
+Suggested minimum schema:
+- id
+- userId
+- availableCredits Int
+- lifetimeCreditsUsed Int
+- billingPeriodStart DateTime?
+- billingPeriodEnd DateTime?
+- lastResetAt DateTime?
+- createdAt
+- updatedAt
+
+2. Seed/init rules:
+- when a new user is created, initialize Free credits = 3
+- when user becomes Pro, initialize or refill to 100 credits for current billing period
+- when Stripe webhook updates a user to active or trialing, ensure Pro credits are available
+- when subscription becomes canceled/unpaid/inactive, do not continue Pro resets
+
+3. Create reusable helpers:
+- getUserCredits(clerkUserId)
+- canSpendCredits(clerkUserId, amount)
+- spendCredits(userId, amount, reason)
+- resetProCreditsIfNeeded(userId)
+
+4. Add a transaction-safe credit spending flow:
+- credits must be deducted atomically
+- do not allow race conditions that let users overspend
+- use Prisma transaction where appropriate
+
+5. Define usage events / audit trail.
+Create a UsageEvent model with fields like:
+- id
+- userId
+- type
+- creditsDelta
+- metadata Json?
+- createdAt
+
+6. Gate usage-consuming features:
+- main optimization flow consumes 1 credit
+- cover letter consumes 1 credit
+- if blocked, return clear message and remaining credits
+
+7. Add billing-aware reset logic:
+- for Pro users, align period with current subscription period if practical
+- if exact Stripe period syncing is too invasive, use currentPeriodEnd/current period metadata already stored on User
+- keep implementation clean and simple
+
+8. Add UI:
+- show remaining credits in dashboard/settings
+- show Free vs Pro credit allowance
+- show upgrade CTA when low or empty
+
+9. Update README:
+- explain credit model
+- explain where credits are spent
+- explain reset behavior
+
+Rules:
+- Do not remove existing Pro gating; credits are an additional entitlement layer
+- Keep code modular
+- Prefer one central credit service over scattered logic
+- Use production-minded error handling
+- Keep naming consistent with ParsePilot
+
+After implementation:
+1. Show exact files changed
+2. Summarize the credit model
+3. List top 5 abuse/race-condition risks
+4. Fix the top 3 immediately

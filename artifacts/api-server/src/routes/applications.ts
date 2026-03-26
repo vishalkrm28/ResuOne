@@ -12,6 +12,7 @@ import { analyzeCvForJob, generateCoverLetter, parseJobDescription } from "../se
 import { logger } from "../lib/logger.js";
 import { requirePro } from "../middlewares/requirePro.js";
 import { isUserPro } from "../lib/billing.js";
+import { spendCredits, getUserCredits, CREDIT_COSTS } from "../lib/credits.js";
 
 const router: IRouter = Router();
 
@@ -238,6 +239,25 @@ router.post("/applications/:id/analyze", async (req, res) => {
     ? (parsed.data.confirmedAnswers as Record<string, string> | undefined)
     : undefined;
 
+  // ── Credit gate ───────────────────────────────────────────────────────────
+  const ownerUserId = req.user?.id;
+  if (ownerUserId) {
+    const cost = CREDIT_COSTS.cv_optimization;
+    if (cost > 0) {
+      const spend = await spendCredits(ownerUserId, cost, "cv_optimization", { applicationId: id });
+      if (!spend.success) {
+        const balance = await getUserCredits(ownerUserId);
+        res.status(402).json({
+          error: "You've used all your optimization credits.",
+          code: "CREDITS_EXHAUSTED",
+          remainingCredits: balance?.availableCredits ?? 0,
+        });
+        return;
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   try {
     const [app] = await db
       .select()
@@ -299,6 +319,24 @@ router.post("/applications/:id/cover-letter", requirePro, async (req, res) => {
   const parsed = GenerateCoverLetterBody.safeParse(req.body);
   const tone = parsed.success && parsed.data.tone ? parsed.data.tone : "professional";
   const additionalContext = parsed.success ? parsed.data.additionalContext : undefined;
+
+  // ── Credit gate ───────────────────────────────────────────────────────────
+  const ownerUserId = req.user?.id;
+  if (ownerUserId) {
+    const cost = CREDIT_COSTS.cover_letter;
+    if (cost > 0) {
+      const spend = await spendCredits(ownerUserId, cost, "cover_letter", { applicationId: id });
+      if (!spend.success) {
+        res.status(402).json({
+          error: "You've used all your Pro credits for this billing period.",
+          code: "CREDITS_EXHAUSTED",
+          remainingCredits: 0,
+        });
+        return;
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   try {
     const [app] = await db

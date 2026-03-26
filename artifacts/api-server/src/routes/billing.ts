@@ -5,6 +5,8 @@ import { z } from "zod";
 import type Stripe from "stripe";
 import { getStripe } from "../lib/stripe.js";
 import { logger } from "../lib/logger.js";
+import { getUserCredits, FREE_CREDIT_ALLOWANCE, PRO_CREDIT_ALLOWANCE } from "../lib/credits.js";
+import { subscriptionIsActive } from "../lib/billing.js";
 
 /**
  * Extract a structured log context from a Stripe SDK error so we get
@@ -156,6 +158,38 @@ router.get("/billing/status", async (req, res) => {
     logger.error({ err }, "Failed to fetch billing status");
     // Don't expose DB errors to the client; return a safe degraded response
     res.status(500).json({ error: "Could not load billing status", code: "DB_ERROR" });
+  }
+});
+
+// ─── GET /billing/credits ─────────────────────────────────────────────────────
+// Returns the authenticated user's credit balance and plan allowance.
+
+router.get("/billing/credits", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    return;
+  }
+
+  try {
+    const [dbUser] = await db
+      .select({ subscriptionStatus: usersTable.subscriptionStatus })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user.id))
+      .limit(1);
+
+    const isPro = subscriptionIsActive(dbUser?.subscriptionStatus ?? null);
+    const balance = await getUserCredits(req.user.id);
+
+    res.json({
+      availableCredits: balance?.availableCredits ?? 0,
+      lifetimeCreditsUsed: balance?.lifetimeCreditsUsed ?? 0,
+      billingPeriodEnd: balance?.billingPeriodEnd?.toISOString() ?? null,
+      planAllowance: isPro ? PRO_CREDIT_ALLOWANCE : FREE_CREDIT_ALLOWANCE,
+      isPro,
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch credit balance");
+    res.status(500).json({ error: "Could not load credit balance", code: "DB_ERROR" });
   }
 });
 

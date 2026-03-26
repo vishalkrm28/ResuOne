@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useBillingStatus } from "@/hooks/use-billing-status";
+import { CreditsBadge } from "@/components/billing/credits-badge";
 
 const statusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground border-muted-foreground/20" },
@@ -88,7 +89,10 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Applications</h1>
-          <p className="mt-1 text-muted-foreground">Your tailored CV history, newest first.</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-muted-foreground">Your tailored CV history, newest first.</p>
+            <CreditsBadge />
+          </div>
         </div>
         {!isPro && applications && applications.length >= 1 ? (
           <Link href="/settings">

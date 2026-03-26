@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { getStripe } from "../lib/stripe.js";
 import { logger } from "../lib/logger.js";
+import { resetProCreditsIfNeeded } from "../lib/credits.js";
 
 const router: IRouter = Router();
 
@@ -391,6 +392,20 @@ async function applySubscription(userId: string, subscription: Stripe.Subscripti
         : null,
     })
     .where(eq(usersTable.id, userId));
+
+  // Reset Pro credits when the user is active or trialing.
+  // resetProCreditsIfNeeded is idempotent — it only resets if the billing
+  // period has actually changed (guards against duplicate webhook fires).
+  if (subscription.status === "active" || subscription.status === "trialing") {
+    const periodStart = subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000)
+      : new Date();
+    const periodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000)
+      : new Date();
+
+    await resetProCreditsIfNeeded(userId, periodStart, periodEnd);
+  }
 }
 
 export default router;
