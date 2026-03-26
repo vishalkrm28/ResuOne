@@ -370,7 +370,7 @@ export function FreeResultsView({
             className="h-8 px-4 text-xs font-semibold"
           />
           <UpgradeButton
-            label="Try Pro free"
+            label="Go Pro"
             className="h-8 px-4 text-xs font-semibold"
           />
         </div>
@@ -535,12 +535,12 @@ export function FreeResultsView({
               </p>
             </div>
             <UpgradeButton
-              label="Try free →"
+              label="Go Pro →"
               className="shrink-0 h-8 px-3 text-[11px]"
             />
           </div>
           <p className="text-[9px] text-muted-foreground mt-1.5">
-            7-day free trial · No card charged today
+            Cancel anytime · No long-term commitment
           </p>
         </div>
       </div>
@@ -551,7 +551,7 @@ export function FreeResultsView({
         headline="Your tailored resume is ready to use"
         description="Start Pro for unlimited results and cover letters — or unlock just this one for $4."
         variant="bottom"
-        ctaLabel="Start your 7-day free trial"
+        ctaLabel="Get Pro — $12/mo"
         applicationId={applicationId}
       />
 

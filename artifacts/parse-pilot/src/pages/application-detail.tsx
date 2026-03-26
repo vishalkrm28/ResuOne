@@ -935,9 +935,9 @@ export default function ApplicationDetail() {
                               Regenerating cover letters with different tones requires Pro.
                             </p>
                           </div>
-                          <UpgradeButton label="Start Pro — 7 days free" className="w-full" />
+                          <UpgradeButton label="Get Pro — $12/mo" className="w-full" />
                           <p className="text-center text-[11px] text-muted-foreground">
-                            7-day trial · No card charged today
+                            Cancel anytime · No long-term commitment
                           </p>
                         </CardContent>
                       </Card>

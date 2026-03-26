@@ -46,7 +46,7 @@ export function UpgradeCTACard({
   headline = "See the complete rewrite",
   description,
   variant = "cv",
-  ctaLabel = "Try Pro free for 7 days",
+  ctaLabel = "Get Pro — $12/mo",
   dark = false,
   applicationId,
   className,
@@ -80,7 +80,7 @@ export function UpgradeCTACard({
             label={ctaLabel}
             className="h-12 px-8 text-sm font-semibold bg-white text-violet-700 hover:bg-white/90 border-0 shadow-lg"
           />
-          <p className="text-[11px] text-white/55">7-day trial · No card charged · Cancel anytime</p>
+          <p className="text-[11px] text-white/55">Cancel anytime · No long-term commitment</p>
         </div>
 
         {/* One-time unlock option — shown when applicationId is provided */}
@@ -129,7 +129,7 @@ export function UpgradeCTACard({
       <div className="flex flex-col gap-1">
         <UpgradeButton label={ctaLabel} className="w-full h-11 text-sm" />
         <p className="text-center text-[11px] text-muted-foreground">
-          7-day trial · No card charged · Cancel anytime
+          Cancel anytime · No long-term commitment
         </p>
       </div>
     </div>

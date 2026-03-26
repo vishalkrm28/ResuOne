@@ -129,12 +129,12 @@ export function LockedPreviewCard({ preview, applicationId }: LockedPreviewCardP
                     </p>
                   </div>
                   <UpgradeButton
-                    label="Try free →"
+                    label="Go Pro →"
                     className="shrink-0 h-8 px-3 text-[11px]"
                   />
                 </div>
                 <p className="text-[9px] text-muted-foreground mt-1.5">
-                  7-day free trial · No card charged today
+                  Cancel anytime · No long-term commitment
                 </p>
               </div>
 

@@ -14,7 +14,7 @@ interface UpgradeButtonProps {
 export function UpgradeButton({
   className,
   variant = "default",
-  label = "Start 7-day free trial",
+  label = "Get Pro — $12/mo",
 }: UpgradeButtonProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();

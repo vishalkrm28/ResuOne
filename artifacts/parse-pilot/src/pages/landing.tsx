@@ -231,7 +231,7 @@ export default function Landing() {
               onClick={login}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
             >
-              Try free <ArrowRight className="w-3.5 h-3.5" />
+              Get started <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -245,7 +245,7 @@ export default function Landing() {
           <div className="flex-1 text-center lg:text-left max-w-xl mx-auto lg:mx-0">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-sm font-medium mb-6">
               <Sparkles className="w-3.5 h-3.5" />
-              Free to start — no card required
+              3 free optimizations — no card required
             </div>
 
             <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.07] mb-5">
@@ -276,10 +276,10 @@ export default function Landing() {
                   onClick={login}
                   className="flex items-center gap-2 px-6 py-3.5 rounded-xl border border-border hover:border-primary/40 font-medium text-sm transition-colors w-full sm:w-auto justify-center"
                 >
-                  <Star className="w-4 h-4 text-violet-500" />
-                  Start 7-day trial — 100 credits free
+                  <Crown className="w-4 h-4 text-violet-500" />
+                  Get Pro — $12/mo
                 </button>
-                <p className="text-xs text-muted-foreground">No card charged for 7 days</p>
+                <p className="text-xs text-muted-foreground">100 credits · Cancel any time</p>
               </div>
             </div>
           </div>
@@ -380,22 +380,22 @@ export default function Landing() {
           <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">Pricing</p>
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, transparent pricing</h2>
           <p className="text-muted-foreground text-lg max-w-md mx-auto">
-            Start free. Upgrade when you need more.
+            Pay per result or go unlimited with Pro.
           </p>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-          {/* Free card */}
+          {/* One-time unlock card */}
           <div className="bg-card border border-border rounded-2xl p-7 flex flex-col">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Free</p>
-            <p className="text-4xl font-bold mb-1">$0</p>
-            <p className="text-sm text-muted-foreground mb-6">No card required</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">One-time</p>
+            <p className="text-4xl font-bold mb-1">$4<span className="text-lg font-normal text-muted-foreground"> per result</span></p>
+            <p className="text-sm text-muted-foreground mb-6">No subscription needed</p>
             <ul className="space-y-2.5 text-sm flex-1 mb-7">
               {[
-                "3 CV optimizations included",
-                "Full keyword analysis",
-                "Missing info questions",
-                "No time limit on credits",
+                "Full optimized CV for one job",
+                "DOCX & PDF export",
+                "Copy and edit before sending",
+                "Yours forever — no expiry",
               ].map((f) => (
                 <li key={f} className="flex items-center gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
@@ -407,7 +407,7 @@ export default function Landing() {
               onClick={login}
               className="w-full py-2.5 rounded-xl border border-border hover:border-primary/40 text-sm font-semibold transition-colors"
             >
-              Optimize my first CV — free
+              Get started — 3 free optimizations
             </button>
           </div>
 
@@ -415,7 +415,7 @@ export default function Landing() {
           <div className="relative bg-card border-2 border-violet-500 rounded-2xl p-7 flex flex-col">
             <div className="flex justify-center mb-5 -mt-1">
               <span className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold px-3.5 py-1 rounded-full shadow-sm">
-                Most popular
+                Best value
               </span>
             </div>
 
@@ -425,7 +425,7 @@ export default function Landing() {
             </div>
             <p className="text-4xl font-bold mb-1">$12<span className="text-lg font-normal text-muted-foreground">/mo</span></p>
             <p className="text-sm text-muted-foreground mb-6">
-              <span className="font-semibold text-violet-600">7 days free</span> — cancel any time
+              Cancel any time
             </p>
             <ul className="space-y-2.5 text-sm flex-1 mb-7">
               {[
@@ -446,10 +446,10 @@ export default function Landing() {
               onClick={login}
               className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-sm font-semibold transition-all shadow-md"
             >
-              Start 7-day free trial
+              Get Pro — $12/mo
             </button>
             <p className="text-center text-xs text-muted-foreground mt-3">
-              No charge for 7 days. Cancel any time before trial ends.
+              Cancel any time. No long-term commitment.
             </p>
           </div>
         </div>
@@ -494,7 +494,7 @@ export default function Landing() {
               <br />with a better CV.
             </h2>
             <p className="text-violet-200 text-lg mb-8 max-w-md mx-auto">
-              Free plan takes 30 seconds to set up. Pro trial gives you 7 days to see the difference.
+              Start with 3 free optimizations — no card required. Unlock individual results for $4 or go unlimited with Pro.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -509,13 +509,13 @@ export default function Landing() {
                 onClick={login}
                 className="flex items-center gap-2 px-7 py-3.5 rounded-xl border border-white/30 hover:border-white/60 font-semibold text-sm transition-colors"
               >
-                <Star className="w-4 h-4" />
-                Start Pro trial
+                <Crown className="w-4 h-4" />
+                Get Pro — $12/mo
               </button>
             </div>
 
             <p className="mt-5 text-violet-300 text-xs">
-              Free plan: no card needed. Pro trial: no charge for 7 days, cancel any time.
+              No card needed to start. Cancel Pro any time.
             </p>
           </div>
         </div>
