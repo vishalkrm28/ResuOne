@@ -6,6 +6,7 @@ import {
   useGenerateCoverLetter,
   useSaveTailoredCv,
   useSaveCoverLetter,
+  ApiError,
 } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent } from "@/components/Card";
@@ -253,6 +254,7 @@ export default function ApplicationDetail() {
   const [missingAnswers, setMissingAnswers] = useState<Record<string, string>>({});
   const [coverTone, setCoverTone] = useState<"professional" | "enthusiastic" | "concise">("professional");
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [analyzeErrorCode, setAnalyzeErrorCode] = useState<string | null>(null);
 
   // Identity warning — shown when the server detects a different person's CV
   const [identityWarning, setIdentityWarning] = useState<{
@@ -305,6 +307,7 @@ export default function ApplicationDetail() {
 
   const handleAnalyze = async (answers?: Record<string, string>) => {
     setAnalyzeError(null);
+    setAnalyzeErrorCode(null);
     setIdentityWarning(null);
     try {
       const result = await analyzeMutation.mutateAsync({
@@ -326,8 +329,24 @@ export default function ApplicationDetail() {
       setActiveTab("cv");
       refetch();
       if (answers) setMissingAnswers({});
-    } catch {
-      const msg = "Analysis failed. Please check your connection and try again.";
+    } catch (err) {
+      let msg = "Analysis failed. Please check your connection and try again.";
+      let code: string | null = null;
+
+      if (err instanceof ApiError) {
+        const data = err.data as any;
+        code = data?.code ?? null;
+
+        if (err.status === 402 && code === "CREDITS_EXHAUSTED") {
+          msg = "You've run out of optimization credits. Upgrade to Pro to keep going.";
+        } else if (err.status === 503) {
+          msg = "The AI service is temporarily unavailable. Please try again shortly.";
+        } else if (data?.error && typeof data.error === "string") {
+          msg = data.error;
+        }
+      }
+
+      setAnalyzeErrorCode(code);
       setAnalyzeError(msg);
       toast({ variant: "destructive", title: "Analysis failed", description: msg });
     }
@@ -580,13 +599,19 @@ export default function ApplicationDetail() {
                         <AlertTriangle className="w-8 h-8 text-destructive" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold mb-2 text-destructive">Analysis Failed</h3>
+                        <h3 className="text-xl font-bold mb-2 text-destructive">
+                          {analyzeErrorCode === "CREDITS_EXHAUSTED" ? "No credits remaining" : "Analysis Failed"}
+                        </h3>
                         <p className="text-muted-foreground max-w-md">{analyzeError}</p>
                       </div>
-                      <Button onClick={() => handleAnalyze()} className="gap-2">
-                        <RotateCcw className="w-4 h-4" />
-                        Try Again
-                      </Button>
+                      {analyzeErrorCode === "CREDITS_EXHAUSTED" ? (
+                        <UpgradeButton label="Get Pro — $12/mo" />
+                      ) : (
+                        <Button onClick={() => handleAnalyze()} className="gap-2">
+                          <RotateCcw className="w-4 h-4" />
+                          Try Again
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ) : isLockedForFree && freePreview ? (
