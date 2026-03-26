@@ -138,6 +138,23 @@ pnpm --filter @workspace/db run push
 pnpm --filter @workspace/api-spec run codegen
 ```
 
+## Environment Validation
+
+`artifacts/api-server/src/lib/env.ts` — `validateEnv()` runs before `app.listen()` in `index.ts`.
+- Required vars: `PORT`, `DATABASE_URL`, `REPL_ID` — server exits with code 1 if missing
+- Billing vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PARSEPILOT_PRO` — all three must be set together; partial config logs a clear warning
+- Optional vars: `OPENAI_API_KEY`, `STRIPE_CUSTOMER_PORTAL_RETURN_URL` — missing values log actionable hints
+- Startup log includes `billingEnabled` and `aiEnabled` flags
+
+## Webhook Safety
+
+`artifacts/api-server/src/routes/webhook.ts`:
+- Responds `{ received: true }` immediately after signature verification (before processing), so slow DB writes don't cause Stripe retries
+- Each event handler wrapped in `safeHandle()` — a bug in one handler can't crash others
+- Handles: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`
+- `invoice.payment_failed` logs attempt count and next retry time; status downgrade handled by `customer.subscription.updated` from Stripe's dunning system
+- Defensive null-guards on all Stripe object fields throughout
+
 ## Feature Gating (Free vs Pro)
 
 **Backend (source of truth)** — `artifacts/api-server/src/middlewares/requirePro.ts`:

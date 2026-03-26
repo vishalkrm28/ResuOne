@@ -2,8 +2,27 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { z } from "zod";
+import type Stripe from "stripe";
 import { getStripe } from "../lib/stripe.js";
 import { logger } from "../lib/logger.js";
+
+/**
+ * Extract a structured log context from a Stripe SDK error so we get
+ * the Stripe error type, code, and decline code alongside the message.
+ */
+function stripeErrContext(err: unknown): Record<string, unknown> {
+  if (err && typeof err === "object" && "type" in err) {
+    const e = err as Stripe.errors.StripeError;
+    return {
+      stripeType: e.type,
+      stripeCode: e.code ?? null,
+      stripeMessage: e.message,
+      stripeStatus: e.statusCode ?? null,
+      declineCode: (e as Stripe.errors.StripeCardError).decline_code ?? null,
+    };
+  }
+  return { err };
+}
 
 const router: IRouter = Router();
 
@@ -86,7 +105,7 @@ router.post("/billing/checkout", async (req, res) => {
 
     res.json({ url: session.url });
   } catch (err) {
-    logger.error({ err }, "Failed to create Stripe checkout session");
+    logger.error(stripeErrContext(err), "Failed to create Stripe checkout session");
     res.status(500).json({ error: "Could not start checkout. Please try again.", code: "CHECKOUT_ERROR" });
   }
 });
@@ -131,6 +150,7 @@ router.get("/billing/status", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Failed to fetch billing status");
+    // Don't expose DB errors to the client; return a safe degraded response
     res.status(500).json({ error: "Could not load billing status", code: "DB_ERROR" });
   }
 });
@@ -182,7 +202,7 @@ router.post("/billing/portal", async (req, res) => {
 
     res.json({ url: session.url });
   } catch (err) {
-    logger.error({ err }, "Failed to create Stripe portal session");
+    logger.error(stripeErrContext(err), "Failed to create Stripe portal session");
     res.status(500).json({ error: "Could not open billing portal. Please try again.", code: "PORTAL_ERROR" });
   }
 });
