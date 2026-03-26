@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { db, applicationsTable } from "@workspace/db";
 import {
   CreateApplicationBody,
@@ -10,6 +10,8 @@ import {
 import { z } from "zod";
 import { analyzeCvForJob, generateCoverLetter, parseJobDescription } from "../services/ai.js";
 import { logger } from "../lib/logger.js";
+import { requirePro } from "../middlewares/requirePro.js";
+import { isUserPro } from "../lib/billing.js";
 
 const router: IRouter = Router();
 
@@ -46,6 +48,33 @@ router.post("/applications", async (req, res) => {
     });
     return;
   }
+
+  // ── Free-tier gate: limit to 1 application ───────────────────────────────
+  // Use req.user.id when available (auth session), else fall back to body userId.
+  const ownerUserId = req.user?.id ?? parsed.data.userId;
+  try {
+    const pro = await isUserPro(ownerUserId);
+    if (!pro) {
+      const [{ value: appCount }] = await db
+        .select({ value: count() })
+        .from(applicationsTable)
+        .where(eq(applicationsTable.userId, ownerUserId));
+
+      if (appCount >= 1) {
+        res.status(403).json({
+          error: "Free plan is limited to 1 application. Upgrade to Pro for unlimited applications.",
+          code: "PRO_REQUIRED",
+        });
+        return;
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to check Pro status on application create");
+    res.status(500).json({ error: "Could not verify subscription", code: "BILLING_CHECK_ERROR" });
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   try {
     const [app] = await db
       .insert(applicationsTable)
@@ -265,7 +294,7 @@ router.post("/applications/:id/analyze", async (req, res) => {
 
 // ─── POST /applications/:id/cover-letter ─────────────────────────────────────
 
-router.post("/applications/:id/cover-letter", async (req, res) => {
+router.post("/applications/:id/cover-letter", requirePro, async (req, res) => {
   const { id } = req.params;
   const parsed = GenerateCoverLetterBody.safeParse(req.body);
   const tone = parsed.success && parsed.data.tone ? parsed.data.tone : "professional";

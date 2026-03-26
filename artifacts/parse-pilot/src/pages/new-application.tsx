@@ -125,12 +125,21 @@ export default function NewApplication() {
       });
 
       setLocation(`/applications/${app.id}`);
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to save the application. Please try again.",
-      });
+    } catch (error: unknown) {
+      const body = (error as any)?.response?.data as { code?: string; error?: string } | undefined;
+      if (body?.code === "PRO_REQUIRED") {
+        toast({
+          variant: "destructive",
+          title: "Free plan limit reached",
+          description: "Upgrade to Pro for unlimited applications. Visit Settings → Billing.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to save the application. Please try again.",
+        });
+      }
     }
   };
 

@@ -3,12 +3,13 @@ import { eq } from "drizzle-orm";
 import { db, applicationsTable } from "@workspace/db";
 import { buildDocxBuffer, buildPrintHtml } from "../services/exporter.js";
 import { logger } from "../lib/logger.js";
+import { requirePro } from "../middlewares/requirePro.js";
 
 const router: IRouter = Router();
 
-// ─── DOCX Export ─────────────────────────────────────────────────────────────
+// ─── DOCX Export (Pro only) ───────────────────────────────────────────────────
 
-router.get("/export/application/:id/docx", async (req, res) => {
+router.get("/export/application/:id/docx", requirePro, async (req, res) => {
   const { id } = req.params;
   const cvType = (req.query.type as string) === "cover" ? "cover" : "cv";
 
@@ -34,11 +35,11 @@ router.get("/export/application/:id/docx", async (req, res) => {
 
     const buffer = await buildDocxBuffer(text, app.jobTitle, app.company);
     const safeCompany = app.company.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-    const filename = cvType === "cover"
-      ? `cover_letter_${safeCompany}.docx`
-      : `tailored_cv_${safeCompany}.docx`;
+    const filename =
+      cvType === "cover"
+        ? `cover_letter_${safeCompany}.docx`
+        : `tailored_cv_${safeCompany}.docx`;
 
-    // Mark as exported if it was just analyzed
     if (app.status === "analyzed") {
       await db
         .update(applicationsTable)
@@ -46,7 +47,10 @@ router.get("/export/application/:id/docx", async (req, res) => {
         .where(eq(applicationsTable.id, id));
     }
 
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    );
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(buffer);
   } catch (err) {
@@ -55,11 +59,11 @@ router.get("/export/application/:id/docx", async (req, res) => {
   }
 });
 
-// ─── PDF (browser print) Export ───────────────────────────────────────────────
+// ─── PDF Export (Pro only) ────────────────────────────────────────────────────
 // Returns print-optimized HTML that auto-triggers window.print().
-// Users save as PDF from the browser's print dialog — no server-side headless browser needed.
+// Users save as PDF from the browser's print dialog.
 
-router.get("/export/application/:id/pdf", async (req, res) => {
+router.get("/export/application/:id/pdf", requirePro, async (req, res) => {
   const { id } = req.params;
   const cvType = (req.query.type as string) === "cover" ? "cover" : "cv";
 

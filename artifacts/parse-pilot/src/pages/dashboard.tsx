@@ -17,11 +17,13 @@ import {
   Calendar,
   TrendingUp,
   AlertTriangle,
+  Lock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useBillingStatus } from "@/hooks/use-billing-status";
 
 const statusConfig = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground border-muted-foreground/20" },
@@ -32,6 +34,9 @@ const statusConfig = {
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const { status: billingStatus } = useBillingStatus();
+  const isPro = billingStatus?.isPro ?? false;
 
   // Two-step delete: first click → sets confirmDeleteId; second click → deletes
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -85,13 +90,36 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Applications</h1>
           <p className="mt-1 text-muted-foreground">Your tailored CV history, newest first.</p>
         </div>
-        <Link href="/new">
-          <Button size="lg" className="gap-2 flex-shrink-0">
-            <Plus className="w-4 h-4" />
-            New Application
-          </Button>
-        </Link>
+        {!isPro && applications && applications.length >= 1 ? (
+          <Link href="/settings">
+            <Button size="lg" className="gap-2 flex-shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-md">
+              <Sparkles className="w-4 h-4" />
+              Upgrade for More
+            </Button>
+          </Link>
+        ) : (
+          <Link href="/new">
+            <Button size="lg" className="gap-2 flex-shrink-0">
+              <Plus className="w-4 h-4" />
+              New Application
+            </Button>
+          </Link>
+        )}
       </div>
+
+      {/* Free-tier upgrade banner */}
+      {!isPro && applications && applications.length >= 1 && (
+        <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50 px-4 py-3 mb-6 text-sm">
+          <Lock className="w-4 h-4 text-violet-500 flex-shrink-0" />
+          <span className="text-violet-800">
+            <span className="font-semibold">Free plan:</span> 1 application included.{" "}
+            <Link href="/settings" className="underline underline-offset-2 font-semibold hover:text-violet-900">
+              Upgrade to Pro
+            </Link>{" "}
+            for unlimited applications, exports, and cover letters.
+          </span>
+        </div>
+      )}
 
       {/* Stats */}
       {applications && applications.length > 0 && (

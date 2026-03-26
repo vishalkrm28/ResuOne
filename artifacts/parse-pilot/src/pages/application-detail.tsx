@@ -30,6 +30,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useBillingStatus } from "@/hooks/use-billing-status";
+import { ProGate } from "@/components/billing/pro-gate";
 
 // ─── Analysis progress steps shown during loading ─────────────────────────────
 
@@ -118,6 +120,9 @@ export default function ApplicationDetail() {
   // Editable cover letter state
   const [editedCover, setEditedCover] = useState<string | null>(null);
   const coverDirty = editedCover !== null;
+
+  const { status: billingStatus } = useBillingStatus();
+  const isPro = billingStatus?.isPro ?? false;
 
   const { data: app, isLoading, refetch } = useGetApplication(id);
   const analyzeMutation = useAnalyzeApplication();
@@ -258,26 +263,32 @@ export default function ApplicationDetail() {
             )}
             {needsAnalysis ? "Run Analysis" : "Re-analyze"}
           </Button>
-          <Button
-            variant="outline"
-            className="flex-1 lg:flex-none gap-2 bg-card"
-            onClick={() => window.open(`/api/export/application/${id}/docx`, "_blank")}
-            disabled={needsAnalysis}
-            title="Download tailored CV as DOCX"
-          >
-            <Download className="w-4 h-4" />
-            CV.docx
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1 lg:flex-none gap-2 bg-card"
-            onClick={() => window.open(`/api/export/application/${id}/pdf`, "_blank")}
-            disabled={needsAnalysis}
-            title="Print or save tailored CV as PDF"
-          >
-            <Download className="w-4 h-4" />
-            CV.pdf
-          </Button>
+          {isPro ? (
+            <>
+              <Button
+                variant="outline"
+                className="flex-1 lg:flex-none gap-2 bg-card"
+                onClick={() => window.open(`/api/export/application/${id}/docx`, "_blank")}
+                disabled={needsAnalysis}
+                title="Download tailored CV as DOCX"
+              >
+                <Download className="w-4 h-4" />
+                CV.docx
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 lg:flex-none gap-2 bg-card"
+                onClick={() => window.open(`/api/export/application/${id}/pdf`, "_blank")}
+                disabled={needsAnalysis}
+                title="Print or save tailored CV as PDF"
+              >
+                <Download className="w-4 h-4" />
+                CV.pdf
+              </Button>
+            </>
+          ) : (
+            <ProGate isPro={false} feature="Export to DOCX / PDF" compact className="flex-1 lg:flex-none" />
+          )}
         </div>
       </div>
 
@@ -667,6 +678,7 @@ export default function ApplicationDetail() {
 
             {/* ── TAB: COVER LETTER ────────────────────────────────────── */}
             {activeTab === "cover" && (
+              <ProGate isPro={isPro} feature="Cover Letter Generation" className="min-h-[300px] justify-center">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Controls */}
                 <div className="lg:col-span-1 space-y-6">
@@ -819,6 +831,7 @@ export default function ApplicationDetail() {
                   </Card>
                 </div>
               </div>
+              </ProGate>
             )}
           </motion.div>
         </AnimatePresence>

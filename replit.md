@@ -138,6 +138,22 @@ pnpm --filter @workspace/db run push
 pnpm --filter @workspace/api-spec run codegen
 ```
 
+## Feature Gating (Free vs Pro)
+
+**Backend (source of truth)** — `artifacts/api-server/src/middlewares/requirePro.ts`:
+- `requirePro` middleware calls `isUserPro(req.user.id)` → returns 403 `{code: "PRO_REQUIRED"}` for free users
+- Gated routes:
+  - `POST /api/applications` → free users limited to 1 application (checks count before insert)
+  - `POST /api/applications/:id/cover-letter` → Pro only (`requirePro` middleware)
+  - `GET /api/export/application/:id/docx` → Pro only
+  - `GET /api/export/application/:id/pdf` → Pro only
+
+**Frontend (UX)** — no duplicated logic, gates driven by `GET /api/billing/status`:
+- `artifacts/parse-pilot/src/hooks/use-billing-status.ts` — React hook, 30 s cache
+- `artifacts/parse-pilot/src/components/billing/pro-gate.tsx` — `<ProGate isPro compact>` wrapper (compact = inline lock button, full = upgrade card)
+- Dashboard (`dashboard.tsx`) — shows violet upgrade banner + "Upgrade for More" button when free user has ≥ 1 app
+- Application detail (`application-detail.tsx`) — compact ProGate replaces export buttons; full ProGate covers Cover Letter tab
+
 ## Vite Config Note
 
 `artifacts/parse-pilot/vite.config.ts` has `fs.allow` set to include the workspace root's `lib/` and `node_modules/` directories so that workspace packages (e.g. `@workspace/replit-auth-web`) can be resolved by Vite in development.
