@@ -1,6 +1,7 @@
 import { FileDown, PenTool, FileText, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UpgradeButton } from "@/components/billing/upgrade-button";
+import { UnlockButton } from "@/components/billing/unlock-button";
 
 interface UpgradeCTACardProps {
   headline?: string;
@@ -11,6 +12,11 @@ interface UpgradeCTACardProps {
   ctaLabel?: string;
   /** Render as a dark gradient banner (for bottom-of-page placement) */
   dark?: boolean;
+  /**
+   * When provided, show a secondary $4 one-time unlock option below the Pro CTA.
+   * Only renders in dark mode (bottom banner).
+   */
+  applicationId?: string;
 }
 
 const BULLETS: Record<NonNullable<UpgradeCTACardProps["variant"]>, { icon: React.ElementType; text: string }[]> = {
@@ -42,6 +48,7 @@ export function UpgradeCTACard({
   variant = "cv",
   ctaLabel = "Try Pro free for 7 days",
   dark = false,
+  applicationId,
   className,
 }: UpgradeCTACardProps) {
   const bullets = BULLETS[variant];
@@ -75,6 +82,20 @@ export function UpgradeCTACard({
           />
           <p className="text-[11px] text-white/55">7-day trial · No card charged · Cancel anytime</p>
         </div>
+
+        {/* One-time unlock option — shown when applicationId is provided */}
+        {applicationId && (
+          <div className="flex flex-col items-center gap-2 pt-2 border-t border-white/20 w-full">
+            <p className="text-[11px] text-white/60">
+              Just need this one result? No subscription required.
+            </p>
+            <UnlockButton
+              applicationId={applicationId}
+              label="Unlock this result for $4"
+              className="h-9 px-5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/25 shadow-none"
+            />
+          </div>
+        )}
       </div>
     );
   }

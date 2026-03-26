@@ -1,4 +1,4 @@
-import { Crown, Sparkles } from "lucide-react";
+import { Crown, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/Card";
 import { BlurredLockedSection } from "./blurred-locked-section";
 import { UpgradeButton } from "@/components/billing/upgrade-button";
@@ -15,17 +15,19 @@ interface LockedPreviewCardProps {
   applicationId: string;
 }
 
+const UNLOCK_INCLUDES = [
+  "Full rewritten resume — every section",
+  "Download as DOCX or PDF",
+  "Copy and edit in-browser",
+];
+
 /**
  * Shown in the CV tab when a free user has run analysis.
  *
- * Layout:
- *  - Card header: "Your optimized resume is ready" + Pro badge
- *  - Visible: Professional summary preview + first rewritten bullet
- *  - Blurred: placeholder lines for locked sections
- *  - Overlay: two CTAs — "Unlock this result — $4" and "Start Pro trial"
- *
- * Security: The full tailored CV is never sent by the server to free users.
- * This component only renders the preview data the server intentionally shared.
+ * Design intent:
+ *  - $4 one-time unlock is the PRIMARY action (no-commitment, instant)
+ *  - Pro subscription is the SECONDARY action (better long-term value)
+ *  - Both are honest about what they cost and what they include
  */
 export function LockedPreviewCard({ preview, applicationId }: LockedPreviewCardProps) {
   return (
@@ -44,7 +46,6 @@ export function LockedPreviewCard({ preview, applicationId }: LockedPreviewCardP
 
         {/* ── Visible preview content ──────────────────────────────── */}
         <div className="px-6 pt-5 pb-0 font-mono text-sm space-y-4">
-
           {preview.summaryPreview && (
             <section aria-label="Professional summary preview">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
@@ -71,60 +72,80 @@ export function LockedPreviewCard({ preview, applicationId }: LockedPreviewCardP
 
         {/* ── Blurred locked section + in-card CTA overlay ─────────── */}
         <div className="relative mt-4">
-          {/* Blurred placeholder lines */}
           <BlurredLockedSection
             lineCount={preview.lockedSectionsCount > 3 ? 14 : 10}
             lineWidths={["100%", "92%", "82%", "100%", "72%", "88%", "95%", "65%", "100%", "78%", "88%", "60%", "93%", "74%"]}
           />
 
-          {/* In-card dual-CTA overlay — floats over the blurred section */}
-          <div className="absolute inset-0 flex items-end justify-center pb-6 px-4">
-            <div className="bg-card/95 backdrop-blur-sm border border-border shadow-xl rounded-2xl p-5 w-full max-w-sm">
-              {/* Section count context */}
-              <p className="text-[11px] font-semibold text-muted-foreground text-center mb-3 uppercase tracking-wider">
-                {preview.lockedSectionsCount} more section{preview.lockedSectionsCount !== 1 ? "s" : ""} optimized
-              </p>
+          {/* Overlay — floats over the blurred section */}
+          <div className="absolute inset-0 flex items-end justify-center pb-5 px-4">
+            <div className="bg-card/96 backdrop-blur-sm border border-border shadow-2xl rounded-2xl overflow-hidden w-full max-w-sm">
 
-              {/* Headline */}
-              <h4 className="text-base font-bold text-foreground text-center mb-4 leading-snug">
-                See exactly how we rewrote<br />your experience for this role
-              </h4>
-
-              {/* ── Primary CTA: one-time unlock ── */}
-              <UnlockButton
-                applicationId={applicationId}
-                label="Unlock this result — $4"
-                className="w-full h-10 text-sm mb-2"
-              />
-              <p className="text-[10px] text-muted-foreground text-center mb-3">
-                No subscription. Instant access. Includes DOCX & PDF export.
-              </p>
-
-              {/* Divider */}
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                  or
-                </span>
-                <div className="flex-1 h-px bg-border" />
+              {/* ── Header ── */}
+              <div className="px-5 pt-5 pb-4 text-center border-b border-border/60">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                  {preview.lockedSectionsCount} section{preview.lockedSectionsCount !== 1 ? "s" : ""} rewritten &amp; waiting
+                </p>
+                <h4 className="text-[15px] font-bold text-foreground leading-snug">
+                  Get the full resume,<br />tailored for this role
+                </h4>
               </div>
 
-              {/* ── Secondary CTA: Pro subscription ── */}
-              <UpgradeButton
-                label="Start Pro — 7 days free"
-                className="w-full h-9 text-sm"
-              />
-              <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-                Unlimited results · Cover letters · Better value for repeat use
-              </p>
+              {/* ── Primary: one-time unlock ── */}
+              <div className="px-5 py-4">
+                <div className="flex items-baseline justify-between mb-3">
+                  <span className="text-sm font-bold text-foreground">Unlock this result</span>
+                  <span className="text-lg font-bold text-foreground">$4 <span className="text-xs font-normal text-muted-foreground">one-time</span></span>
+                </div>
+
+                <ul className="space-y-1.5 mb-4">
+                  {UNLOCK_INCLUDES.map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-[12px] text-foreground/80">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+
+                <UnlockButton
+                  applicationId={applicationId}
+                  label="Unlock now — $4"
+                  className="w-full h-10 text-sm font-semibold"
+                />
+                <p className="text-[10px] text-muted-foreground text-center mt-2">
+                  No subscription · No recurring charge · Instant access
+                </p>
+              </div>
+
+              {/* ── Secondary: Pro subscription ── */}
+              <div className="px-5 pb-4 pt-3 border-t border-border/60 bg-muted/30">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-foreground">
+                      ParsePilot Pro — $12/mo
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Unlimited results · Cover letters · Better value if you apply to multiple roles
+                    </p>
+                  </div>
+                  <UpgradeButton
+                    label="Try free →"
+                    className="shrink-0 h-8 px-3 text-[11px]"
+                  />
+                </div>
+                <p className="text-[9px] text-muted-foreground mt-1.5">
+                  7-day free trial · No card charged today
+                </p>
+              </div>
+
             </div>
           </div>
         </div>
 
-        {/* Extra bottom padding so the overlay CTA doesn't clip */}
-        <div className="h-8" aria-hidden="true" />
+        {/* Extra bottom padding */}
+        <div className="h-6" aria-hidden="true" />
 
-        {/* Sparkles footer hint */}
+        {/* Footer hint */}
         <div className="border-t border-border px-6 py-3 flex items-center justify-center gap-2 bg-muted/40 rounded-b-2xl">
           <Sparkles className="w-3.5 h-3.5 text-violet-400" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">
