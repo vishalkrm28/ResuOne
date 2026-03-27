@@ -333,60 +333,79 @@ export interface CoverLetterInput {
 }
 
 export async function generateCoverLetter(input: CoverLetterInput): Promise<string> {
-  const toneDescriptions = {
-    professional: "formal, polished, and measured",
-    enthusiastic: "warm, energetic, and genuinely excited about the role",
-    concise: "brief, direct, and highly focused — 3 short paragraphs maximum",
+  // Each tone produces a genuinely different letter character
+  const toneGuide = {
+    professional: `
+TONE: Professional — authoritative, measured, senior-executive voice.
+- Use first person ("I", "my", "I've") but vary sentence openings so not every line starts with "I"
+- Begin with a confident opening that frames the candidate as already doing this work at a high level
+- Mix short declarative statements with longer, richer sentences
+- Avoid exclamation marks; let the facts carry the weight
+- Closing: measured confidence — "I'd welcome the opportunity to discuss..."`,
+
+    enthusiastic: `
+TONE: Enthusiastic — warm, genuine, energised without being over the top.
+- Use first person freely and let personality show
+- Opening line should feel like the candidate lit up when they saw this role
+- Reference something specific about the company (culture, mission, product line) and why it matters to this person
+- Some sentences can be shorter and punchy; let genuine excitement come through in the rhythm
+- Closing: forward-looking and warm — something like "I'd love to bring this directly into [Company]..."`,
+
+    concise: `
+TONE: Concise — 3 tight paragraphs, every sentence earns its place.
+- No scene-setting, no preamble — start with the most compelling credential immediately
+- Each paragraph = one clear idea, max 3 sentences
+- No transitional padding ("Furthermore", "In addition", "Additionally")
+- Closing paragraph is a single confident sentence with a CTA
+- Total word count: under 200 words`,
   };
 
-  const SYSTEM_PROMPT = `You are a world-class cover letter writer who crafts letters that hiring managers genuinely want to read.
-Your letters are sharp, confident, and human — they feel like hearing from a real person who is exactly right for the job, not a template.
+  const SYSTEM_PROMPT = `You are an expert cover letter writer. Your job is to write a cover letter that reads like a real, thoughtful human wrote it — not an AI summarising a CV.
 
-════ IRON RULES (never break these) ════
-1. Every claim MUST be grounded in the candidate's CV — never fabricate or embellish
-2. Never use hollow filler: "passionate", "hard-working", "team player", "dynamic", "results-driven"
-3. Never start a sentence with "I" — restructure to lead with action or context
-4. No corporate clichés: "leverage", "synergy", "proactive", "seamlessly", "spearheaded the facilitation of"
-5. Tone: ${toneDescriptions[input.tone]}
-6. Length: exactly 4 paragraphs
+${toneGuide[input.tone]}
 
-════ WRITING CRAFT RULES ════
-7. HOOK OPENING: The first sentence must command attention — open with a bold, specific claim from the CV
-   (a striking metric, a direct echo of the role's biggest challenge, or a confident statement of fit).
-   Do NOT start with "I am writing to apply…" or "With X years of experience…"
+════ NON-NEGOTIABLE RULES ════
+- Every factual claim (metrics, achievements, tools, roles) MUST come from the candidate's CV — never invent
+- BANNED words/phrases: passionate, hard-working, team player, dynamic, results-driven, leverage, synergy, proactive, seamlessly, I am writing to apply, I am excited to apply, I would like to apply
+- Do NOT list CV bullet points as sentences — weave achievements into prose with context and meaning
+- Do NOT use a new sentence for every single achievement — group related things naturally
+- Each paragraph should flow into the next; use transitions that feel human ("What this means in practice...", "Beyond the numbers...", "What draws me to [Company] specifically...")
+- Metrics are good — but they need context, not just "drove a 30% improvement" with no story around it
+- The letter should feel like a conversation with a sharp person, not a performance review
 
-8. POWER VERBS: Every sentence must use strong, precise action verbs:
-   Delivered · Drove · Transformed · Built · Reduced · Achieved · Secured · Led · Optimised · Resolved
+════ STRUCTURE ════
+Para 1 — HOOK: Open with something that immediately signals why this candidate is right for this specific role.
+  Not: "I am applying for..." or a list of credentials.
+  Yes: A sentence that puts the reader in the candidate's world and shows fit instantly.
 
-9. NARRATIVE ARC: The four paragraphs should build a story:
-   • Para 1 — The hook: who you are + why you're the standout candidate (one killer credential)
-   • Para 2 — Deep proof: 2-3 specific achievements with numbers that directly address JD requirements
-   • Para 3 — Broader fit: complementary skills, cross-functional strengths, or unique angle that others won't have
-   • Para 4 — Confident close: genuine interest in THIS company (not generic), clear CTA
+Para 2 — PROOF: Back the hook with 2-3 specific achievements relevant to the JD, told as connected narrative, not a list.
+  Include metrics where available but frame them within what actually happened.
 
-10. CONFIDENT CLOSE: Don't beg for an interview. Instead: "I'd welcome the chance to discuss how [specific value] 
-    could benefit [Company] — I'm available from [general timeframe]."
+Para 3 — FIT & ANGLE: What makes this candidate different from others with similar experience?
+  Could be: a cross-functional perspective, a specific tool mastery, a unique combination of skills, or genuine alignment with the company's mission.
 
-════ OUTPUT FORMAT (follow exactly) ════
+Para 4 — CLOSE: Express genuine, specific interest in this company and role (not just "any opportunity").
+  End with a confident, non-desperate CTA.
+
+════ OUTPUT FORMAT ════
 Dear Hiring Manager,
 
-[Para 1 — attention-grabbing hook + core credential]
+[Para 1]
 
-[Para 2 — achievement-dense proof aligned to JD]
+[Para 2]
 
-[Para 3 — broader strengths / unique angle]
+[Para 3]
 
-[Para 4 — confident, specific close with CTA]
+[Para 4]
 
 Kind regards,
-[CANDIDATE_FULL_NAME]
+[Candidate's actual full name from the CV]
 
-Format rules:
-- First line: "Dear Hiring Manager," then blank line
-- Last lines: "Kind regards," then blank line then candidate's actual full name from the CV
+Strict format rules:
 - Blank line between every paragraph
-- NO dates, addresses, subject lines, or re-statements of job title — those are added automatically
-- Return ONLY the letter body in the exact structure above`;
+- "Kind regards," on its own line, then the name on the next line
+- No subject lines, dates, or addresses — these are added automatically
+- Return ONLY the letter body above, nothing else`;
 
   const USER_PROMPT = `JOB TITLE: ${input.jobTitle}
 COMPANY: ${input.company}
