@@ -455,7 +455,7 @@ export async function buildDocxBuffer(
     creator: "ParsePilot AI",
     styles: { default: { document: { run: { font: "Calibri", size: 20 } } } },
     sections: [{
-      properties: { page: { margin: { top: 720, right: 900, bottom: 720, left: 900 } } },
+      properties: { page: { margin: { top: 1008, right: 1440, bottom: 1008, left: 1440 } } },
       children,
     }],
   });
@@ -557,7 +557,7 @@ async function buildCoverDocx(
     creator: "ParsePilot AI",
     styles: { default: { document: { run: { font: "Calibri", size: 22 } } } },
     sections: [{
-      properties: { page: { margin: { top: 1000, right: 1080, bottom: 1000, left: 1080 } } },
+      properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
       children,
     }],
   });
@@ -605,9 +605,16 @@ body{font-family:'Calibri','Arial',sans-serif;font-size:11pt;line-height:1.55;
      border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
 .btn:hover{background:#3a72b5}
 
-/* ── Page ── */
-.doc{max-width:800px;margin:24px auto 52px;background:#fff;
-     padding:44px 56px 50px;border-radius:4px;box-shadow:0 4px 28px rgba(0,0,0,.13)}
+/* ── Page — A4 proportions on screen, Word margins in print ── */
+/* A4 at 96 dpi = 794px wide. Word default = 25.4mm (1 in) each side → 160mm text area ≈ 605px */
+.doc{
+  width:794px;max-width:100%;
+  margin:24px auto 52px;
+  background:#fff;
+  padding:56px 96px 64px;  /* ≈ 25mm side margins on-screen */
+  border-radius:2px;
+  box-shadow:0 2px 20px rgba(0,0,0,.18);
+}
 
 /* ── CV Header ── */
 .cv-name{font-size:26pt;font-weight:700;color:#1e3a5f;
@@ -661,7 +668,7 @@ body{font-family:'Calibri','Arial',sans-serif;font-size:11pt;line-height:1.55;
 .cv-tag-sep{color:#bbb;margin:0 4px}
 
 /* ── Body paragraph (summary, etc.) ── */
-.cv-body{font-size:9.5pt;margin-bottom:4px;line-height:1.6;color:#1a1a1a}
+.cv-body{font-size:9.5pt;margin-bottom:4px;line-height:1.6;color:#1a1a1a;text-align:justify}
 
 /* ── Cover letter ── */
 .cl-date{font-size:9.5pt;color:#666;text-align:right;margin-bottom:22px}
@@ -675,22 +682,27 @@ body{font-family:'Calibri','Arial',sans-serif;font-size:11pt;line-height:1.55;
 .cl-sign-name{font-weight:700;color:#1e3a5f;font-size:12pt}
 
 /* ── Print ── */
+/* Word default margins: 25.4 mm (1 inch) on all sides                  */
+/* .doc has padding:0 so only @page margins frame the text on paper.    */
 @media print{
   body{background:#fff}
   .banner{display:none!important}
-  .doc{margin:0;padding:0;box-shadow:none;border-radius:0;max-width:100%}
+  .doc{margin:0;padding:0;box-shadow:none;border-radius:0;width:100%;max-width:100%}
   .cv-ci a{color:#555!important}
   .cv-section{break-after:avoid}
   .cv-job-header{break-after:avoid}
+  .cl-para{text-align:justify}
+  .cv-body{text-align:justify}
+  .cv-bullets li{text-align:left}   /* bullet text stays left-aligned */
 }
-@page{size:A4;margin:14mm 13mm}
+@page{size:A4;margin:25.4mm 25.4mm}
 </style>
 </head>
 <body>
 <div class="banner">
   <div>
     <strong>ParsePilot AI — ${esc(pageTitle)}</strong>
-    <p>Ctrl+P (Cmd+P on Mac) → Save as PDF · Set margins to "None" or "Minimum"</p>
+    <p>Ctrl+P (Cmd+P on Mac) → Save as PDF · Leave margins as "Default"</p>
   </div>
   <button class="btn" onclick="window.print()">⬇ Save as PDF</button>
 </div>
