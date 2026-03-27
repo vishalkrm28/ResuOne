@@ -148,7 +148,7 @@ const SYNONYM_GROUPS: string[][] = [
 
   // ── Business skills ───────────────────────────────────────────────────────
   ["stakeholder management", "stakeholder engagement", "stakeholder coordination"],
-  ["change management", "change management process", "organizational change"],
+  ["change management", "change management process", "organizational change", "change control"],
   ["risk management", "risk assessment", "risk mitigation", "risk analysis"],
   ["strategic planning", "strategy", "strategic management"],
   ["business development", "biz dev"],
@@ -302,6 +302,93 @@ const SYNONYM_GROUPS: string[][] = [
   ["saas", "software as a service"],
   ["paas", "platform as a service"],
   ["iaas", "infrastructure as a service"],
+
+  // ── Frontend / backend / fullstack ──────────────────────────────────────
+  ["frontend", "front end", "front-end", "client side", "client-side"],
+  ["backend", "back end", "back-end", "server side", "server-side"],
+  ["full stack", "full-stack", "fullstack"],
+  ["mobile development", "mobile app development", "mobile apps"],
+  ["ios development", "ios developer", "swift development"],
+  ["android development", "android developer", "kotlin development"],
+  ["web development", "web developer", "web application development"],
+  ["software development", "software engineer", "software engineering", "swe"],
+  ["software architecture", "solution architecture", "solutions architect"],
+  ["cloud architecture", "cloud architect", "cloud engineering"],
+  ["data architecture", "data architect"],
+  ["platform engineering", "platform engineer", "infrastructure engineering"],
+  ["site reliability engineering", "sre", "reliability engineering"],
+
+  // ── Architecture & design patterns ───────────────────────────────────────
+  ["event driven architecture", "event-driven", "event driven", "message driven"],
+  ["domain driven design", "ddd"],
+  ["clean architecture", "hexagonal architecture", "ports and adapters"],
+  ["design patterns", "software design patterns", "architectural patterns"],
+  ["solid principles", "solid"],
+
+  // ── Additional databases & data tools ────────────────────────────────────
+  ["database administration", "dba", "database admin", "database management"],
+  ["sql querying", "sql queries", "sql database", "relational database", "rdbms"],
+  ["data lake", "data lakehouse"],
+  ["real-time data", "real time data", "streaming data", "stream processing"],
+
+  // ── Additional cloud & networking ─────────────────────────────────────────
+  ["virtual private cloud", "vpc"],
+  ["load balancing", "load balancer"],
+  ["cdn", "content delivery network"],
+  ["dns", "domain name system"],
+  ["ssl/tls", "ssl", "tls", "https", "certificates"],
+  ["api gateway", "api management"],
+  ["serverless", "functions as a service", "faas"],
+  ["cloud native", "cloud-native"],
+  ["hybrid cloud", "multi cloud", "multi-cloud"],
+
+  // ── Security & auth ───────────────────────────────────────────────────────
+  ["identity and access management", "iam"],
+  ["oauth", "oauth2", "openid connect", "oidc", "saml"],
+  ["single sign on", "sso"],
+  ["zero trust", "zero-trust security"],
+  ["vulnerability assessment", "vulnerability management", "vulnerability scanning"],
+
+  // ── Observability & operations ────────────────────────────────────────────
+  ["distributed tracing", "opentelemetry", "otel"],
+  ["prometheus", "grafana", "metrics monitoring"],
+  ["datadog", "new relic", "application performance monitoring", "apm"],
+  ["splunk", "log management", "log aggregation"],
+  ["incident management", "incident response", "on-call", "problem management"],
+  ["capacity planning", "performance tuning", "performance optimisation",
+   "performance optimization"],
+
+  // ── Project & delivery ────────────────────────────────────────────────────
+  ["product management", "product manager", "product owner", "po"],
+  ["product roadmap", "roadmap planning"],
+  ["sprint planning", "sprint review", "sprint retrospective"],
+  ["backlog management", "backlog grooming", "backlog refinement"],
+  ["release management", "release planning", "deployment management"],
+  ["it service management", "itsm", "service management"],
+
+  // ── Seniority / roles ─────────────────────────────────────────────────────
+  ["c-suite", "c suite", "c level", "executive level"],
+  ["board level", "board of directors"],
+  ["vice president", "vp", "evp", "svp"],
+  ["chief technology officer", "cto"],
+  ["chief information officer", "cio"],
+  ["chief executive officer", "ceo"],
+  ["engineering manager", "engineering lead", "tech lead", "technical lead"],
+  ["people management", "team management", "managing teams", "line management"],
+  ["individual contributor", "ic"],
+
+  // ── Soft skills (additional) ─────────────────────────────────────────────
+  ["time management", "deadline management", "meeting deadlines"],
+  ["decision making", "decision-making"],
+  ["conflict resolution", "conflict management"],
+  ["active listening", "listening skills"],
+  ["written communication", "written communication skills", "technical writing"],
+  ["influencing skills", "influencing without authority", "persuasion"],
+  ["adaptability", "flexibility", "adaptable"],
+  ["creativity", "innovative thinking", "innovation"],
+  ["emotional intelligence", "eq", "empathy"],
+  ["cultural awareness", "cultural sensitivity", "global mindset"],
+  ["multitasking", "multi-tasking", "managing multiple priorities"],
 
   // ── Word-family groups (verb ↔ noun ↔ adjective forms) ──────────────────
   // These supplement the stemmer for verb/noun pairs whose roots don't

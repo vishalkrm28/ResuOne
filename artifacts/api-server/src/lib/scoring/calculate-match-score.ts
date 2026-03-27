@@ -113,7 +113,7 @@ function scoreResponsibilities(input: ScoringInput): ScoringComponentResult {
   let matchedScore = 0;
 
   for (const responsibility of input.jdResponsibilities) {
-    const terms = extractKeywordsFromText(responsibility, 4).slice(0, 5);
+    const terms = extractKeywordsFromText(responsibility, 3).slice(0, 6);
     if (terms.length === 0) {
       matchedScore += 0.5;
       continue;

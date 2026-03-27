@@ -132,7 +132,19 @@ const JD_PARSE_INSTRUCTIONS = `You are a job description analysis engine.
 Extract structured requirements from the job description provided.
 Return ONLY valid JSON. Do not include commentary, markdown, or explanation.
 
-RULES:
+SKILL EXTRACTION RULES (critical for required_skills, preferred_skills, must_have, nice_to_have):
+- Extract each skill as a SHORT, ATOMIC term — ideally 1–3 words. Never include qualifiers.
+- WRONG: "5+ years of experience with Python" → RIGHT: "Python"
+- WRONG: "strong proficiency in SQL databases" → RIGHT: "SQL"
+- WRONG: "excellent communication and leadership skills" → RIGHT: ["communication", "leadership"]
+- WRONG: "experience with AWS cloud infrastructure" → RIGHT: "AWS"
+- WRONG: "knowledge of Agile/Scrum methodologies" → RIGHT: ["Agile", "Scrum"]
+- Do NOT include phrases like "experience with", "proficiency in", "knowledge of", "understanding of",
+  "familiarity with", "X years of", "strong", "excellent", "good", "solid", "proven" as part of a skill.
+- Do split compound "A and B" or "A/B" skill items into separate array entries.
+- Preserve technology names exactly (e.g. "Node.js", "CI/CD", "PostgreSQL", "RESTful API").
+
+OTHER RULES:
 - required_skills: skills explicitly marked as required, must-have, or essential
 - preferred_skills: skills marked as preferred, nice-to-have, bonus, or desirable
 - required_experience_years: extract the minimum years if explicitly stated (e.g. "5+ years" → 5), else null
