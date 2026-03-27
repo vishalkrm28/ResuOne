@@ -1,0 +1,314 @@
+Implement Milestone 20 now.
+
+Goal:
+Create a high-conversion landing page for ParsePilot that clearly communicates value, builds trust without testimonials, and drives users to start analysis and convert to $4 unlock or Pro.
+
+Core positioning:
+ParsePilot is NOT an AI resume builder.
+
+It is:
+“See exactly why your CV gets rejected — and fix it instantly.”
+
+--------------------------------------------------
+1. Landing page route
+--------------------------------------------------
+
+Create or update:
+- app/page.tsx
+
+This page must be conversion-focused, clean, and trust-first.
+
+Do not add testimonials.
+Instead, build trust through:
+- product clarity
+- transparent value
+- proof-style UI
+- trust signals
+
+--------------------------------------------------
+2. Hero section (most important)
+--------------------------------------------------
+
+Above the fold must include:
+
+A. Headline:
+“See exactly why your CV gets rejected — and fix it instantly.”
+
+B. Subheadline:
+“Upload your CV, paste a job description, and get a real match score, missing keywords, and a rewritten version tailored for the role.”
+
+C. Primary CTA:
+“Analyze My CV”
+
+D. Secondary CTA:
+“See Example”
+
+E. Hero visual / product mock:
+Show a clean preview of:
+- match score
+- missing keywords
+- blurred optimized summary
+- locked resume preview
+
+The visual should immediately communicate:
+- this is analysis-first
+- this is not a generic resume builder
+- this shows problems and fixes
+
+--------------------------------------------------
+3. Problem section (emotional hook)
+--------------------------------------------------
+
+Add a section that frames the pain clearly.
+
+Headline:
+“Sending applications and hearing nothing back?”
+
+Supporting bullets:
+- “Your CV doesn’t match the keywords recruiters are filtering for”
+- “ATS systems reject weak alignment before a recruiter even reads it”
+- “Generic resumes underperform against role-specific applications”
+
+This section should feel sharp, relatable, and credible.
+
+--------------------------------------------------
+4. Solution section (product positioning)
+--------------------------------------------------
+
+Headline:
+“ParsePilot shows you what’s wrong — and how to fix it”
+
+Create 4 clean blocks/cards:
+
+1. Match Score
+- “See how closely your CV matches the role”
+
+2. Missing Keywords
+- “Find the terms and requirements your CV is missing”
+
+3. Resume Rewrite
+- “Get a stronger version tailored to the job”
+
+4. Cover Letter
+- “Generate a role-specific letter when you need it”
+
+Keep this simple and benefit-focused.
+
+--------------------------------------------------
+5. How it works section
+--------------------------------------------------
+
+Simple 3-step section:
+
+1. Upload your CV
+2. Paste the job description
+3. Get instant analysis and unlock the full optimized result
+
+Make this visually clean and easy to scan.
+
+--------------------------------------------------
+6. Trust section (replace testimonials)
+--------------------------------------------------
+
+Create a dedicated trust section.
+
+Headline:
+“Built for trust, not hype”
+
+Include clear trust signals such as:
+- “ATS-friendly formatting”
+- “No fake experience added”
+- “See the analysis before you pay”
+- “Edit before export”
+
+Add short supporting copy:
+“ParsePilot helps you tailor your resume without inventing skills, tools, or experience you don’t have.”
+
+This section should replace the need for testimonials.
+
+--------------------------------------------------
+7. Proof-style product section (very important)
+--------------------------------------------------
+
+Create a section that acts as proof instead of social proof.
+
+Headline:
+“See what you’re missing before you apply”
+
+Show a realistic example UI with:
+- Match Score: e.g. 72%
+- Missing Keywords:
+  - SAP
+  - KPI reporting
+  - stakeholder communication
+- Optimized Summary Preview:
+  - first 1–2 lines visible
+  - rest blurred/locked
+- Rewritten Bullet Preview:
+  - 1 strong bullet visible
+  - others blurred/locked
+
+This section should make users think:
+“This tool already understands the problem.”
+
+--------------------------------------------------
+8. Before vs After section (strong conversion driver)
+--------------------------------------------------
+
+Add a section:
+
+Headline:
+“From generic to role-specific”
+
+Show a simple before/after comparison:
+
+Before:
+- weaker, generic bullet
+
+After:
+- stronger, more targeted bullet
+
+Example style:
+Before:
+“Worked with vendors and handled deliveries.”
+
+After:
+“Coordinated vendor workflows and delivery planning to support operational readiness and reduce timeline risk.”
+
+Important:
+- make it clean and visual
+- do not overdo it
+- focus on clarity
+
+--------------------------------------------------
+9. Pricing section
+--------------------------------------------------
+
+Keep pricing simple and easy to understand.
+
+Free:
+- Preview analysis
+- Match score
+- Missing keywords
+- Partial result preview
+
+Unlock:
+- $4 per result
+- Full optimized resume
+- Cover letter
+- Copy + export
+
+Pro:
+- $15/month
+- 100 credits
+- Best for multiple applications
+
+Add short subtext under unlock:
+“No subscription. Instant access.”
+
+Add short subtext under Pro:
+“Best for active job seekers.”
+
+--------------------------------------------------
+10. Final CTA section
+--------------------------------------------------
+
+Headline:
+“Stop guessing. Start applying with a stronger CV.”
+
+Buttons:
+- Analyze My CV
+- See Example
+
+This should be a clean final push, not overly salesy.
+
+--------------------------------------------------
+11. Navigation
+--------------------------------------------------
+
+Top navbar should include:
+- ParsePilot logo/text
+- Pricing
+- Login
+- Sign up / Analyze My CV
+
+Keep navigation minimal.
+
+--------------------------------------------------
+12. Footer
+--------------------------------------------------
+
+Simple footer with:
+- Terms
+- Privacy
+- Contact
+
+--------------------------------------------------
+13. UI design rules
+--------------------------------------------------
+
+Design requirements:
+- premium SaaS look
+- modern typography
+- lots of whitespace
+- clear hierarchy
+- responsive
+- not cluttered
+- no unnecessary animation
+- product visual should be strong
+
+Style direction:
+- clean and trustworthy
+- closer to Stripe / Linear / Notion style
+- not flashy
+- not generic template-looking
+
+--------------------------------------------------
+14. Copy rules
+--------------------------------------------------
+
+Use:
+- direct language
+- outcome-focused copy
+- product clarity
+- trust-focused phrasing
+
+Avoid:
+- generic AI buzzwords
+- fake urgency
+- vague marketing language
+- empty startup jargon
+
+The page should feel:
+- smart
+- clear
+- credible
+- useful
+
+--------------------------------------------------
+15. Conversion strategy requirements
+--------------------------------------------------
+
+The page should make the user understand in under 5 seconds:
+1. what ParsePilot does
+2. why it is different
+3. why they should trust it
+4. what they get for free
+5. what they pay for
+
+--------------------------------------------------
+16. After implementation
+--------------------------------------------------
+
+After implementation:
+1. Show all files created/updated
+2. Show final section-by-section landing page structure
+3. Show final hero copy
+4. Show final trust section copy
+5. Show final pricing section copy
+6. List top 5 conversion weaknesses
+7. Improve the top 3 immediately
+8. Suggest 3 A/B tests for:
+   - hero headline
+   - CTA text
+   - pricing presentation
