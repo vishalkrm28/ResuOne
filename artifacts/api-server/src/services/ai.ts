@@ -210,10 +210,18 @@ export async function analyzeCvForJob(input: AnalysisInput): Promise<AnalysisOut
   const hasConfirmedAnswers = filledAnswers.length > 0;
 
   const confirmedSection = hasConfirmedAnswers
-    ? `\n\nCANDIDATE-CONFIRMED EXPERIENCE (treat as VERIFIED FACTS — the candidate has confirmed these details in their own words):
-${filledAnswers.map(([q, a]) => `• Question: ${q}\n  Confirmed answer: ${a.trim()}`).join("\n\n")}
+    ? `\n\nCANDIDATE-CONFIRMED INFORMATION (treat as VERIFIED FACTS — confirmed by the candidate):
+${filledAnswers.map(([q, a]) => `• Question: ${q}\n  Answer: ${a.trim()}`).join("\n\n")}
 
-IMPORTANT: You MUST incorporate the above confirmed facts into the tailored CV. These are real experiences the candidate provided — not inventions. Weave them into the relevant job descriptions or PROFESSIONAL SUMMARY. Do NOT generate a missingInfoQuestions entry for anything the candidate has already confirmed above.`
+PLACEMENT RULES — follow precisely for each confirmed answer:
+- If the answer describes an achievement, project, or responsibility at a specific job → add it as a bullet point under that role in WORK EXPERIENCE
+- If the answer names a skill, tool, technology, or methodology → add it to the SKILLS section
+- If the answer describes a certification or qualification → add it to CERTIFICATIONS
+- If the answer relates to education → add it to EDUCATION
+- ONLY add to PROFESSIONAL SUMMARY if the answer is genuinely summary-level (career goals, overall positioning) and does not fit any other section
+- Do NOT cluster all confirmed answers into PROFESSIONAL SUMMARY — distribute them into the correct sections above
+
+CRITICAL: Do NOT include in missingInfoQuestions any topic that the candidate has already answered above. Those questions are CLOSED.`
     : "";
 
   const parsedJdContext = input.parsedJd
@@ -238,8 +246,8 @@ ABSOLUTE RULES — VIOLATION IS GROUNDS FOR FAILURE:
 4. NEVER add years of experience to a skill unless stated in the original CV or confirmed by the candidate
 5. Keep all dates, company names, job titles, and metrics EXACTLY as they appear in the original CV
 6. ONLY rewrite, reorder, and rephrase existing content to better match the job description's language
-7. Candidate-confirmed answers (labeled "CANDIDATE-CONFIRMED EXPERIENCE") are VERIFIED FACTS — treat them exactly like content from the original CV and weave them into the tailored CV
-8. For topics where the candidate LEFT THE FIELD BLANK → add a question to missingInfoQuestions
+7. Candidate-confirmed answers (labeled "CANDIDATE-CONFIRMED INFORMATION") are VERIFIED FACTS — place each answer in the correct CV section: work achievements → WORK EXPERIENCE bullets under the relevant role; skills/tools → SKILLS; certifications → CERTIFICATIONS; education details → EDUCATION; only summary-level info → PROFESSIONAL SUMMARY. Never dump all answers into PROFESSIONAL SUMMARY.
+8. For topics where the candidate LEFT THE FIELD BLANK → add a question to missingInfoQuestions. For topics already answered in CANDIDATE-CONFIRMED INFORMATION → do NOT re-ask them.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ATS FORMATTING RULES for tailoredCvText:
@@ -278,15 +286,38 @@ Analyze the CV against the job description. Return JSON.`;
   const raw = parseJsonResponse(response.output_text, "CV analysis");
   const result = AnalysisOutputSchema.safeParse(raw);
 
+  // Build a set of normalised tokens from already-answered question text so we
+  // can strip any question the AI re-asks despite the candidate having answered it.
+  const answeredTokens: Set<string> = new Set();
+  if (hasConfirmedAnswers) {
+    for (const [q] of filledAnswers) {
+      // Tokenise: lowercase, strip punctuation, split on whitespace — keep words ≥4 chars
+      const tokens = q.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(t => t.length >= 4);
+      tokens.forEach(t => answeredTokens.add(t));
+    }
+  }
+
+  function isAlreadyAnswered(question: string): boolean {
+    if (!hasConfirmedAnswers || answeredTokens.size === 0) return false;
+    const qTokens = question.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(t => t.length >= 4);
+    // Consider it answered if ≥40% of the new question's meaningful tokens match an answered question
+    const matches = qTokens.filter(t => answeredTokens.has(t)).length;
+    return qTokens.length > 0 && matches / qTokens.length >= 0.4;
+  }
+
   if (!result.success) {
     const r = raw as Record<string, unknown>;
+    const questions = Array.isArray(r.missingInfoQuestions) ? (r.missingInfoQuestions as string[]) : [];
     return {
       tailoredCvText: (r.tailoredCvText as string) ?? "",
-      missingInfoQuestions: Array.isArray(r.missingInfoQuestions) ? (r.missingInfoQuestions as string[]) : [],
+      missingInfoQuestions: questions.filter(q => !isAlreadyAnswered(q)),
       sectionSuggestions: Array.isArray(r.sectionSuggestions) ? (r.sectionSuggestions as string[]) : [],
     };
   }
-  return result.data;
+  return {
+    ...result.data,
+    missingInfoQuestions: result.data.missingInfoQuestions.filter(q => !isAlreadyAnswered(q)),
+  };
 }
 
 // ─── Cover Letter Generation ──────────────────────────────────────────────────
