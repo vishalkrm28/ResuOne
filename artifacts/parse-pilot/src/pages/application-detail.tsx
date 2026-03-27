@@ -529,14 +529,10 @@ export default function ApplicationDetail() {
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                  {identityWarning.isAboveLimit
-                    ? "This account is being used for multiple candidates"
-                    : "This looks like a different person's CV"}
+                  This looks like a different person's CV
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
-                  {identityWarning.isAboveLimit
-                    ? `Pro is designed for one person's career — analyzing your own CV for multiple roles. For reviewing ${identityWarning.distinctCount}+ candidates, Bulk Mode is the right tool.`
-                    : "Pro is for tracking your own career across multiple job applications. For analyzing CVs of different candidates, use Bulk Mode instead."}
+                  Pro is for optimising your own CV across multiple roles — not for analysing more than 1 person's CV. Results are hidden. Switch to Bulk Mode for multiple candidates.
                 </p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
@@ -559,7 +555,38 @@ export default function ApplicationDetail() {
         )}
       </AnimatePresence>
 
-      {isLockedForFree && freePreview ? (
+      {identityWarning?.show ? (
+        <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 overflow-hidden bg-amber-50/30 dark:bg-amber-950/10">
+          <div className="relative">
+            <BlurredLockedSection lineCount={16} className="opacity-50" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 p-8 text-center">
+              <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                <AlertTriangle className="w-7 h-7 text-amber-600 dark:text-amber-500" />
+              </div>
+              <div className="max-w-sm">
+                <h3 className="font-bold text-base mb-1.5">Results hidden</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Pro is for your own career only. This CV appears to belong to a different person, so the results are not shown. Use Bulk Mode to analyse multiple candidates.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap justify-center">
+                <a
+                  href="/bulk"
+                  className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Switch to Bulk Mode
+                </a>
+                <button
+                  onClick={() => setIdentityWarning(null)}
+                  className="px-5 py-2 rounded-xl border border-border text-sm font-semibold hover:bg-muted transition-colors"
+                >
+                  Dismiss anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : isLockedForFree && freePreview ? (
         <FreeResultsView
           app={app}
           freePreview={freePreview}
