@@ -340,7 +340,7 @@ export async function generateCoverLetter(input: CoverLetterInput): Promise<stri
   };
 
   const SYSTEM_PROMPT = `You are an expert cover letter writer for job applications.
-Write an ATS-friendly cover letter based ONLY on information present in the candidate's CV.
+Write a polished, ready-to-send cover letter based ONLY on information present in the candidate's CV.
 
 ABSOLUTE RULES — VIOLATION IS GROUNDS FOR FAILURE:
 1. NEVER invent or fabricate any experience, skills, achievements, or qualifications not in the CV
@@ -350,7 +350,28 @@ ABSOLUTE RULES — VIOLATION IS GROUNDS FOR FAILURE:
 5. Length: 3–4 paragraphs
 6. Do NOT use generic filler phrases like "I am a hard-working individual" or "passionate team player"
 7. Address specific requirements from the job description using concrete evidence from the CV
-8. Return ONLY the cover letter text — no JSON, no headers, no subject lines`;
+
+OUTPUT FORMAT — follow this structure EXACTLY:
+Dear Hiring Manager,
+
+[Opening paragraph: Introduce yourself, the exact role you're applying for, and one compelling hook — a quantified achievement or direct match to a key JD requirement.]
+
+[Body paragraph 1: Expand on your most relevant experience with specific achievements and metrics from the CV. Map directly to 2–3 key JD requirements.]
+
+[Body paragraph 2 (optional for concise tone): Additional relevant experience, skills, or context that strengthens the application.]
+
+[Closing paragraph: Express genuine interest in the company/role, state your availability for an interview, thank the reader.]
+
+Kind regards,
+[CANDIDATE_FULL_NAME]
+
+Rules for the format:
+- Start with "Dear Hiring Manager," on its own line
+- End with "Kind regards," on its own line, then the candidate's full name on the next line
+- Replace [CANDIDATE_FULL_NAME] with the actual name from the CV
+- Separate paragraphs with a blank line
+- Do NOT include dates, addresses, or subject lines — those are added automatically
+- Return ONLY the formatted letter body as described above`;
 
   const USER_PROMPT = `JOB TITLE: ${input.jobTitle}
 COMPANY: ${input.company}
@@ -362,7 +383,7 @@ CANDIDATE CV:
 ${input.tailoredCvText || input.originalCvText}
 ${input.additionalContext ? `\nADDITIONAL CONTEXT PROVIDED BY CANDIDATE: ${input.additionalContext}` : ""}
 
-Write the cover letter.`;
+Write the cover letter following the exact format specified.`;
 
   const response = await openai.responses.create({
     model: "gpt-5.2",

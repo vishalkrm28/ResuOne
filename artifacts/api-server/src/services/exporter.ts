@@ -252,13 +252,85 @@ const NAVY_MID = "2d5a8e";
 const RULE     = "c8d4e0";
 const MUTED    = "666666";
 
+// ─── Cover letter parser ──────────────────────────────────────────────────────
+
+interface CoverLetterParts {
+  salutation: string;          // "Dear Hiring Manager,"
+  paragraphs: string[];        // body paragraphs
+  signOffLine: string;         // "Kind regards,"
+  signOffName: string;         // candidate name
+}
+
+/**
+ * Parses AI-generated cover letter text into discrete sections.
+ * Expected format:
+ *   Dear Hiring Manager,
+ *   <blank>
+ *   Paragraph one text...
+ *   <blank>
+ *   Paragraph two text...
+ *   <blank>
+ *   Kind regards,
+ *   Candidate Name
+ */
+function parseCoverLetter(text: string): CoverLetterParts {
+  const lines = text.split("\n");
+  let salutation = "Dear Hiring Manager,";
+  let signOffLine = "Kind regards,";
+  let signOffName = "";
+  const paragraphs: string[] = [];
+
+  let i = 0;
+
+  // Find salutation
+  while (i < lines.length) {
+    const l = lines[i].trim();
+    if (/^dear\b/i.test(l)) { salutation = l; i++; break; }
+    i++;
+  }
+
+  // Find sign-off block (from the end)
+  let end = lines.length - 1;
+  while (end >= 0 && !lines[end].trim()) end--;
+  // Last non-blank line = name
+  if (end >= 0 && !/^(kind regards|sincerely|yours (sincerely|faithfully|truly)|best regards)/i.test(lines[end].trim())) {
+    signOffName = lines[end].trim();
+    end--;
+  }
+  // Second-to-last non-blank = sign-off phrase
+  while (end >= 0 && !lines[end].trim()) end--;
+  if (end >= 0 && /^(kind regards|sincerely|yours|best regards)/i.test(lines[end].trim())) {
+    signOffLine = lines[end].trim();
+    end--;
+  }
+
+  // Everything between salutation and sign-off = paragraphs
+  let buf = "";
+  for (let j = i; j <= end; j++) {
+    const l = lines[j].trim();
+    if (!l) {
+      if (buf) { paragraphs.push(buf); buf = ""; }
+    } else {
+      buf = buf ? buf + " " + l : l;
+    }
+  }
+  if (buf) paragraphs.push(buf);
+
+  return { salutation, paragraphs, signOffLine, signOffName };
+}
+
 // ─── DOCX Builder ─────────────────────────────────────────────────────────────
 
 export async function buildDocxBuffer(
   cvText: string,
   _jobTitle: string,
   _company: string,
+  coverLetterText?: string,
 ): Promise<Buffer> {
+  // ── Cover letter DOCX ──────────────────────────────────────────────────────
+  if (coverLetterText !== undefined) {
+    return buildCoverDocx(coverLetterText, cvText, _company);
+  }
   const lines = parseLines(cvText);
   const children: Paragraph[] = [];
 
@@ -391,6 +463,108 @@ export async function buildDocxBuffer(
   return Buffer.from(await Packer.toBuffer(doc));
 }
 
+// ─── Cover letter DOCX ────────────────────────────────────────────────────────
+
+async function buildCoverDocx(
+  coverText: string,
+  cvText: string,
+  company: string,
+): Promise<Buffer> {
+  const cvLines  = parseLines(cvText);
+  const { salutation, paragraphs, signOffLine, signOffName } = parseCoverLetter(coverText);
+
+  // Extract name and contact from CV header lines
+  const nameLine = cvLines.find((l) => l.type === "name");
+  const titleLine = cvLines.find((l) => l.type === "title");
+  const contactLine = cvLines.find((l) => l.type === "contact");
+  const candidateName = nameLine?.text ?? signOffName ?? "";
+  const displayName   = signOffName || candidateName;
+
+  const children: Paragraph[] = [];
+
+  // ── Candidate header ──────────────────────────────────────────────────────
+  children.push(new Paragraph({
+    children: [new TextRun({ text: candidateName, bold: true, size: 44, color: NAVY, font: "Calibri" })],
+    alignment: AlignmentType.CENTER, spacing: { after: 30 },
+  }));
+
+  if (titleLine) {
+    children.push(new Paragraph({
+      children: [new TextRun({ text: titleLine.text, size: 24, color: NAVY_MID, italics: true, font: "Calibri" })],
+      alignment: AlignmentType.CENTER, spacing: { after: 30 },
+    }));
+  }
+
+  if (contactLine) {
+    const contactIcon: Record<ContactItem["kind"], string> = {
+      location: "⊙  ", phone: "☏  ", email: "✉  ", linkedin: "in  ", github: "⌥  ", url: "🌐  ",
+    };
+    const runs: TextRun[] = [];
+    contactLine.items.forEach((item, idx) => {
+      if (idx > 0) runs.push(new TextRun({ text: "   |   ", size: 18, color: RULE, font: "Calibri" }));
+      runs.push(new TextRun({ text: `${contactIcon[item.kind]}${item.display}`, size: 18, color: MUTED, font: "Calibri" }));
+    });
+    children.push(new Paragraph({
+      children: runs,
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 280 },
+      border: { bottom: { color: RULE, size: 4, style: BorderStyle.SINGLE, space: 8 } },
+    }));
+  }
+
+  // ── Date ─────────────────────────────────────────────────────────────────
+  const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  children.push(new Paragraph({
+    children: [new TextRun({ text: dateStr, size: 20, font: "Calibri", color: MUTED })],
+    alignment: AlignmentType.RIGHT, spacing: { after: 240 },
+  }));
+
+  // ── Recipient block ───────────────────────────────────────────────────────
+  children.push(new Paragraph({
+    children: [new TextRun({ text: "Hiring Team", bold: true, size: 22, font: "Calibri" })],
+    spacing: { after: 10 },
+  }));
+  children.push(new Paragraph({
+    children: [new TextRun({ text: company, size: 22, font: "Calibri" })],
+    spacing: { after: 240 },
+  }));
+
+  // ── Salutation ────────────────────────────────────────────────────────────
+  children.push(new Paragraph({
+    children: [new TextRun({ text: salutation, size: 22, font: "Calibri" })],
+    spacing: { after: 200 },
+  }));
+
+  // ── Body paragraphs ───────────────────────────────────────────────────────
+  for (const para of paragraphs) {
+    children.push(new Paragraph({
+      children: [new TextRun({ text: para, size: 22, font: "Calibri" })],
+      spacing: { after: 180 },
+    }));
+  }
+
+  // ── Sign-off ──────────────────────────────────────────────────────────────
+  children.push(new Paragraph({
+    children: [new TextRun({ text: signOffLine, size: 22, font: "Calibri" })],
+    spacing: { before: 200, after: 100 },
+  }));
+  children.push(new Paragraph({
+    children: [new TextRun({ text: displayName, bold: true, size: 22, color: NAVY, font: "Calibri" })],
+    spacing: { after: 0 },
+  }));
+
+  const doc = new Document({
+    creator: "ParsePilot AI",
+    styles: { default: { document: { run: { font: "Calibri", size: 22 } } } },
+    sections: [{
+      properties: { page: { margin: { top: 1000, right: 1080, bottom: 1000, left: 1080 } } },
+      children,
+    }],
+  });
+
+  return Buffer.from(await Packer.toBuffer(doc));
+}
+
 // ─── HTML / PDF Builder ───────────────────────────────────────────────────────
 
 export function buildPrintHtml(
@@ -398,14 +572,17 @@ export function buildPrintHtml(
   jobTitleParam: string,
   companyParam: string,
   docType: "cv" | "cover",
+  cvText?: string,            // for cover letters: source CV to extract name/contact
 ): string {
-  const lines = parseLines(text);
   const pageTitle =
     docType === "cover"
       ? `Cover Letter — ${companyParam}`
       : `CV — ${jobTitleParam} at ${companyParam}`;
 
-  const body = docType === "cover" ? renderCover(lines) : renderCv(lines);
+  const body =
+    docType === "cover"
+      ? renderCoverLetter(text, cvText ?? "", companyParam)
+      : renderCv(parseLines(text));
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -487,7 +664,15 @@ body{font-family:'Calibri','Arial',sans-serif;font-size:11pt;line-height:1.55;
 .cv-body{font-size:9.5pt;margin-bottom:4px;line-height:1.6;color:#1a1a1a}
 
 /* ── Cover letter ── */
-.cover-p{font-size:11pt;line-height:1.75;margin-bottom:.9em}
+.cl-date{font-size:9.5pt;color:#666;text-align:right;margin-bottom:22px}
+.cl-recipient{margin-bottom:18px}
+.cl-recipient-label{font-size:10pt;font-weight:700;color:#111;margin-bottom:2px}
+.cl-recipient-company{font-size:10pt;color:#444}
+.cl-salutation{font-size:11pt;font-weight:600;color:#1a1a1a;margin-bottom:18px}
+.cl-para{font-size:11pt;line-height:1.8;color:#1a1a1a;margin-bottom:14px;text-align:justify}
+.cl-sign-off{margin-top:28px;font-size:11pt;color:#1a1a1a}
+.cl-sign-off-phrase{margin-bottom:36px}
+.cl-sign-name{font-weight:700;color:#1e3a5f;font-size:12pt}
 
 /* ── Print ── */
 @media print{
@@ -625,20 +810,60 @@ function renderCv(lines: LineKind[]): string {
   return out.join("\n");
 }
 
-function renderCover(lines: LineKind[]): string {
-  return lines
-    .map((line) => {
-      if (line.type === "blank") return `<div style="margin-bottom:.5em"></div>`;
-      if (line.type === "contact") {
-        return renderContactBar(line.items);
-      }
-      const txt =
-        "text" in line
-          ? (line as { text: string }).text
-          : "company" in line
-          ? `${(line as { company: string; jobTitle: string }).company} | ${(line as { company: string; jobTitle: string }).jobTitle}`
-          : "";
-      return `<p class="cover-p">${esc(txt)}</p>`;
-    })
-    .join("\n");
+/**
+ * Renders the cover letter as a proper business letter layout.
+ * @param coverText  Raw AI-generated cover letter text
+ * @param cvText     Source CV text (used to extract candidate name/contact for the header)
+ * @param company    Company name for the recipient block
+ */
+function renderCoverLetter(coverText: string, cvText: string, company: string): string {
+  const { salutation, paragraphs, signOffLine, signOffName } = parseCoverLetter(coverText);
+
+  // Extract header from CV
+  const cvLines = parseLines(cvText);
+  const nameLine    = cvLines.find((l) => l.type === "name");
+  const titleLine   = cvLines.find((l) => l.type === "title");
+  const contactLine = cvLines.find((l) => l.type === "contact");
+  const candidateName = nameLine?.text ?? signOffName ?? "";
+  const displayName   = signOffName || candidateName;
+
+  const dateStr = new Date().toLocaleDateString("en-GB", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+
+  const out: string[] = [];
+
+  // ── Candidate header (same look as CV) ──────────────────────────────────
+  if (candidateName) out.push(`<div class="cv-name">${esc(candidateName)}</div>`);
+  if (titleLine)      out.push(`<div class="cv-sub-title">${esc(titleLine.text)}</div>`);
+  if (contactLine)    out.push(renderContactBar(contactLine.items));
+
+  // ── Date ─────────────────────────────────────────────────────────────────
+  out.push(`<p class="cl-date">${esc(dateStr)}</p>`);
+
+  // ── Recipient ─────────────────────────────────────────────────────────────
+  out.push(
+    `<div class="cl-recipient">` +
+    `<div class="cl-recipient-label">Hiring Team</div>` +
+    `<div class="cl-recipient-company">${esc(company)}</div>` +
+    `</div>`,
+  );
+
+  // ── Salutation ────────────────────────────────────────────────────────────
+  out.push(`<p class="cl-salutation">${esc(salutation)}</p>`);
+
+  // ── Body paragraphs ───────────────────────────────────────────────────────
+  for (const para of paragraphs) {
+    out.push(`<p class="cl-para">${esc(para)}</p>`);
+  }
+
+  // ── Sign-off ──────────────────────────────────────────────────────────────
+  out.push(
+    `<div class="cl-sign-off">` +
+    `<p class="cl-sign-off-phrase">${esc(signOffLine)}</p>` +
+    `<p class="cl-sign-name">${esc(displayName)}</p>` +
+    `</div>`,
+  );
+
+  return out.join("\n");
 }

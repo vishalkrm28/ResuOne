@@ -54,7 +54,11 @@ router.get("/export/application/:id/docx", async (req, res) => {
       return;
     }
 
-    const buffer = await buildDocxBuffer(text, app.jobTitle, app.company);
+    const cvSourceText = app.tailoredCvText ?? app.originalCvText ?? "";
+    const buffer =
+      cvType === "cover"
+        ? await buildDocxBuffer(cvSourceText, app.jobTitle, app.company, text)
+        : await buildDocxBuffer(text, app.jobTitle, app.company);
     const safeCompany = app.company.replace(/[^a-z0-9]/gi, "_").toLowerCase();
     const filename =
       cvType === "cover"
@@ -135,7 +139,8 @@ router.get("/export/application/:id/pdf", async (req, res) => {
       return;
     }
 
-    const html = buildPrintHtml(text, app.jobTitle, app.company, cvType);
+    const cvSourceText = app.tailoredCvText ?? app.originalCvText ?? "";
+    const html = buildPrintHtml(text, app.jobTitle, app.company, cvType, cvSourceText);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (err) {
