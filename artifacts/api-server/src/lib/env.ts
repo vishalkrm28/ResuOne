@@ -10,11 +10,15 @@ export interface EnvCheckResult {
 // ── Required — server won't start without these ───────────────────────────────
 const REQUIRED_VARS = ["PORT", "DATABASE_URL", "REPL_ID"] as const;
 
-// ── Billing — all three must be set together, or none ────────────────────────
+// ── Billing — all must be set together, or none ──────────────────────────────
 const BILLING_VARS = [
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
   "STRIPE_PRICE_PARSEPILOT_PRO",
+  "STRIPE_PRICE_PARSEPILOT_SINGLE_UNLOCK",
+  "STRIPE_PRICE_PARSEPILOT_BULK_10",
+  "STRIPE_PRICE_PARSEPILOT_BULK_25",
+  "STRIPE_PRICE_PARSEPILOT_BULK_50",
 ] as const;
 
 // ── Optional — warn if missing, but don't block startup ──────────────────────

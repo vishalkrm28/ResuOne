@@ -216,9 +216,9 @@ router.post("/billing/unlock", async (req, res) => {
     return;
   }
 
-  const priceId = process.env.STRIPE_PRICE_PARSEPILOT_UNLOCK;
+  const priceId = process.env.STRIPE_PRICE_PARSEPILOT_SINGLE_UNLOCK;
   if (!priceId) {
-    logger.error("STRIPE_PRICE_PARSEPILOT_UNLOCK is not configured");
+    logger.error("STRIPE_PRICE_PARSEPILOT_SINGLE_UNLOCK is not configured");
     res.status(503).json({ error: "One-time unlock is not configured yet", code: "BILLING_NOT_CONFIGURED" });
     return;
   }

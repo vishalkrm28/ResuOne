@@ -1,0 +1,388 @@
+Implement Milestone 24 now.
+
+Goal:
+Integrate Stripe fully into ParsePilot to support:
+- Single CV purchase ($6.99)
+- Bulk CV purchases ($19 / $29 / $39 tiers)
+- Pro subscription ($14.99/month)
+
+System must handle:
+- checkout
+- webhook verification
+- entitlement (what user gets after payment)
+
+Important:
+- Keep existing app flows intact
+- Do not duplicate billing logic
+- Webhook-updated database state must be the source of truth
+- Frontend redirects must never grant access by themselves
+
+--------------------------------------------------
+1. Stripe Setup (Environment)
+--------------------------------------------------
+
+Install Stripe SDK if not already installed:
+
+npm install stripe
+
+Ensure these env variables exist and are used:
+
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+Price IDs:
+
+STRIPE_PRICE_PARSEPILOT_SINGLE_UNLOCK=price_1TFYCvJTOaZlsJyqcoPjFasU
+STRIPE_PRICE_PARSEPILOT_PRO=price_1TFYEYJTOaZlsJyqZJfEStUt
+
+STRIPE_PRICE_PARSEPILOT_BULK_10=price_1TFYKLJTOaZlsJyqRnyLE5FM
+STRIPE_PRICE_PARSEPILOT_BULK_25=price_1TFYKLJTOaZlsJyq2PIy5dlA
+STRIPE_PRICE_PARSEPILOT_BULK_50=price_1TFYKLJTOaZlsJyq7bsdB2Vq
+
+Also update .env.example accordingly.
+
+--------------------------------------------------
+2. Create Stripe Helper
+--------------------------------------------------
+
+Create:
+- lib/stripe.ts
+
+Requirements:
+- initialize Stripe server client using STRIPE_SECRET_KEY
+- keep server-only
+- use TypeScript cleanly
+
+--------------------------------------------------
+3. Create Checkout API
+--------------------------------------------------
+
+Create:
+- /api/stripe/checkout
+
+Function:
+- create Stripe Checkout session
+
+Input payload:
+- type: "single" | "bulk" | "subscription"
+- tier: 10 | 25 | 50 (optional for bulk)
+- analysisId or tailoredVersionId (optional but required for single unlock if your app already uses result-specific unlocks)
+
+Logic:
+
+IF type === "single":
+- use price: STRIPE_PRICE_PARSEPILOT_SINGLE_UNLOCK
+- mode: "payment"
+
+IF type === "bulk":
+- map tier:
+  - 10 → STRIPE_PRICE_PARSEPILOT_BULK_10
+  - 25 → STRIPE_PRICE_PARSEPILOT_BULK_25
+  - 50 → STRIPE_PRICE_PARSEPILOT_BULK_50
+- mode: "payment"
+
+IF type === "subscription":
+- use price: STRIPE_PRICE_PARSEPILOT_PRO
+- mode: "subscription"
+
+Requirements:
+- authenticate user before creating session
+- fetch current user from DB
+- return JSON containing session.url
+- validate bad input cleanly
+- track checkout_started analytics event
+
+--------------------------------------------------
+4. Attach Metadata (CRITICAL)
+--------------------------------------------------
+
+Add metadata to the Stripe session:
+
+For single:
+- purchaseType: "single"
+- userId
+- analysisId or tailoredVersionId if available
+
+For bulk:
+- purchaseType: "bulk"
+- userId
+- tier
+- maxCVs
+
+For subscription:
+- purchaseType: "subscription"
+- userId
+- plan: "pro_monthly"
+
+Also use client_reference_id where appropriate.
+
+--------------------------------------------------
+5. Success & Cancel URLs
+--------------------------------------------------
+
+Use:
+
+success_url:
+${NEXT_PUBLIC_APP_URL}/dashboard?payment=success
+
+cancel_url:
+${NEXT_PUBLIC_APP_URL}/dashboard?payment=cancel
+
+Do not grant access from these pages.
+They are UI feedback only.
+
+--------------------------------------------------
+6. Webhook Setup
+--------------------------------------------------
+
+Create:
+- /api/stripe/webhook
+
+Listen to:
+- checkout.session.completed
+- customer.subscription.updated
+- customer.subscription.deleted
+
+Requirements:
+- use await req.text()
+- verify signature using STRIPE_WEBHOOK_SECRET
+- reject invalid signatures with 400
+- keep logs useful but do not leak secrets
+
+--------------------------------------------------
+7. Database Models
+--------------------------------------------------
+
+Update or create these models as needed:
+
+User:
+- isPro Boolean @default(false)
+- credits Int @default(0)
+- stripeCustomerId String? @unique
+- stripeSubscriptionId String? @unique
+- subscriptionStatus String?
+- subscriptionPriceId String?
+- currentPeriodEnd DateTime?
+
+Purchase:
+- id
+- userId
+- type ("single" | "bulk" | "subscription")
+- amount
+- tier String?
+- stripeCheckoutSessionId String? @unique
+- stripePaymentIntentId String? @unique
+- status String?
+- metadata Json?
+- createdAt
+- updatedAt
+
+BulkSession:
+- id
+- userId
+- maxCVs
+- usedCVs
+- remainingCVs
+- purchaseId
+- expiresAt (optional)
+- createdAt
+- updatedAt
+
+If your existing app already has unlock/result models, connect single purchases to the correct result instead of creating parallel logic.
+
+--------------------------------------------------
+8. Payment Handling Logic
+--------------------------------------------------
+
+On checkout.session.completed:
+
+Read metadata and handle:
+
+IF purchaseType === "single":
+- create Purchase record
+- unlock the relevant CV result
+- mark analysis/result as paid/unlocked
+- do not unlock unrelated results
+
+IF purchaseType === "bulk":
+- create Purchase record
+- create BulkSession entitlement
+- store:
+  - maxCVs
+  - usedCVs = 0
+  - remainingCVs = maxCVs
+
+IF purchaseType === "subscription":
+- create or update Purchase record
+- mark user as Pro
+- assign monthly credits (100)
+- store:
+  - stripeCustomerId
+  - stripeSubscriptionId
+  - subscriptionStatus
+  - subscriptionPriceId
+  - currentPeriodEnd
+
+On customer.subscription.updated:
+- update subscription fields
+- set isPro true when status is active or trialing
+- ensure credits stay aligned with your business rules
+
+On customer.subscription.deleted:
+- set isPro false
+- update subscriptionStatus
+- do not delete purchase history
+
+Track payment_success and payment_failed events where appropriate.
+
+--------------------------------------------------
+9. Entitlement Logic
+--------------------------------------------------
+
+Create reusable helper(s), for example:
+- canAccessSingleResult(userId, resultId)
+- getActiveBulkSession(userId)
+- canUseBulkCVs(userId, requestedCount)
+- canUseCredits(userId, amount)
+- resolveUserEntitlement(userId)
+
+Priority rules:
+
+IF user.isPro AND credits > 0:
+- use credits first
+
+ELSE IF user has active BulkSession with remainingCVs > 0:
+- use bulk session
+
+ELSE IF specific result has been unlocked through single purchase:
+- allow only that result
+
+ELSE:
+- require payment
+
+Keep this centralized.
+Do not scatter entitlement checks everywhere.
+
+--------------------------------------------------
+10. Credit System
+--------------------------------------------------
+
+Rules:
+
+- Single CV purchase:
+  → unlock only the purchased result
+
+- Bulk purchase:
+  → deduct from remainingCVs in active BulkSession
+
+- Subscription:
+  → deduct from user credits
+
+Requirements:
+- deduct atomically using DB transactions where needed
+- prevent overspending/race conditions
+- keep logic deterministic and easy to audit
+
+--------------------------------------------------
+11. Frontend Integration
+--------------------------------------------------
+
+On pricing selection pages and locked result pages:
+
+- call /api/stripe/checkout
+- redirect browser to returned session.url
+
+Integrate with:
+- single unlock CTA
+- bulk pricing cards
+- subscription upgrade button
+
+Show helpful feedback for:
+- loading
+- payment success
+- payment cancel
+
+--------------------------------------------------
+12. Payment Feedback UI
+--------------------------------------------------
+
+On dashboard, detect query params:
+- payment=success
+- payment=cancel
+
+Show:
+- “Payment successful” on success
+- “Payment cancelled” on cancel
+
+Then refresh user/account state from backend.
+Do not assume success means entitlement until webhook has updated DB.
+
+--------------------------------------------------
+13. Analytics Integration
+--------------------------------------------------
+
+Track:
+- checkout_started
+- payment_success
+- payment_failed
+
+Also include metadata where useful:
+- purchaseType
+- tier
+- amount
+
+--------------------------------------------------
+14. Security Rules
+--------------------------------------------------
+
+- NEVER trust frontend for payment state
+- ALWAYS rely on webhook confirmation
+- NEVER unlock content from success page alone
+- NEVER expose secret keys in client code
+- Validate user ownership of any result-specific unlock
+
+--------------------------------------------------
+15. Testing (CRITICAL)
+--------------------------------------------------
+
+Test all flows:
+
+1. $6.99 single
+2. $19 bulk
+3. $29 bulk
+4. $39 bulk
+5. $14.99 subscription
+
+Use Stripe test card:
+4242 4242 4242 4242
+
+Verify for each:
+- checkout session created
+- webhook fires
+- DB updates
+- correct entitlement granted
+- analytics events recorded
+- UI feedback shown correctly
+
+Also test:
+- invalid webhook signature
+- cancelled payment
+- duplicate webhook delivery
+- missing metadata
+- user refreshing success page before webhook completes
+
+--------------------------------------------------
+16. After Implementation
+--------------------------------------------------
+
+After implementation:
+
+1. Show checkout API code
+2. Show webhook handler
+3. Show DB schema changes
+4. Show entitlement logic
+5. Show where frontend calls checkout
+6. List top 5 failure risks
+7. Fix the top 3 immediately
+8. Summarize the final payment architecture end to end
