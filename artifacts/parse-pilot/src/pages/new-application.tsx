@@ -126,7 +126,7 @@ export default function NewApplication() {
 
       setLocation(`/applications/${app.id}`);
     } catch (error: unknown) {
-      const body = (error as any)?.response?.data as { code?: string; error?: string } | undefined;
+      const body = (error as any)?.data as { code?: string; error?: string } | undefined;
       if (body?.code === "PRO_REQUIRED") {
         toast({
           variant: "destructive",

@@ -4,6 +4,8 @@ export interface CreditsStatus {
   availableCredits: number;
   lifetimeCreditsUsed: number;
   billingPeriodEnd: string | null;
+  planAllowance: number;
+  isPro: boolean;
 }
 
 interface UseCreditsResult {

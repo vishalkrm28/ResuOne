@@ -20,8 +20,8 @@ const BILLING_VARS = [
 // ── Optional — warn if missing, but don't block startup ──────────────────────
 const OPTIONAL_VARS: { name: string; hint: string }[] = [
   {
-    name: "OPENAI_API_KEY",
-    hint: "AI CV analysis will fail without this key.",
+    name: "AI_INTEGRATIONS_OPENAI_API_KEY",
+    hint: "AI CV analysis will fail without the OpenAI integration. Add it via the Integrations panel.",
   },
   {
     name: "ISSUER_URL",
@@ -88,7 +88,7 @@ export function validateEnv(): EnvCheckResult {
     logger.info(
       {
         billingEnabled: billingConfigured,
-        aiEnabled: !!process.env.OPENAI_API_KEY,
+        aiEnabled: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
         nodeEnv: process.env.NODE_ENV ?? "development",
       },
       "Environment validated successfully",
