@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, real, jsonb, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, real, jsonb, uuid, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -71,6 +71,7 @@ export const applicationsTable = pgTable("applications", {
   scoringBreakdownJson: jsonb("scoring_breakdown_json").$type<Record<string, unknown>>(),
   inputHash: text("input_hash"),
   status: text("status", { enum: ["draft", "analyzed", "exported"] }).default("draft").notNull(),
+  identityFlagged: boolean("identity_flagged").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

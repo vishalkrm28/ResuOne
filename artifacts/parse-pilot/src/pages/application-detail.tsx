@@ -321,6 +321,15 @@ export default function ApplicationDetail() {
     }
   }, [app?.coverLetterText]);
 
+  // Restore identity warning on page load if this application was previously flagged
+  useEffect(() => {
+    const raw = app as any;
+    if (raw?.identityFlagged === true && !identityWarning) {
+      setIdentityWarning({ show: true, isAboveLimit: false, distinctCount: 2 });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app?.id]);
+
   // ─── Handlers ───────────────────────────────────────────────────────────────
 
   const handleAnalyze = async (answers?: Record<string, string>) => {

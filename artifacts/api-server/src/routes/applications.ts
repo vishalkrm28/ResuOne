@@ -171,7 +171,7 @@ router.get("/applications/:id", async (req, res) => {
         ? applyUnlockPass(app)
         : applyFreeFilter(app);
 
-    res.json(response);
+    res.json({ ...response, identityFlagged: app.identityFlagged });
   } catch (err) {
     logger.error({ err, id }, "Failed to get application");
     res.status(500).json({ error: "Failed to retrieve application", code: "DB_ERROR" });
@@ -531,6 +531,7 @@ router.post("/applications/:id/analyze", async (req, res) => {
         inputHash: scoring.inputHash,
         parsedJdJson: parsedJd as any,
         status: "analyzed",
+        identityFlagged: identityResult.isDifferentIdentity,
         updatedAt: new Date(),
       })
       .where(eq(applicationsTable.id, id));
