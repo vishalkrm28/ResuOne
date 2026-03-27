@@ -462,7 +462,7 @@ export default function BulkSession() {
       });
 
       updateItem(item.id, { status: "analyzing", applicationId: app.id });
-      const result: AnalysisResult = await analyzeApplication(app.id, {}, { credentials: "include" });
+      const result: AnalysisResult = await analyzeApplication(app.id, { isBulkSession: true }, { credentials: "include" });
 
       updateItem(item.id, { status: "done", applicationId: app.id });
 

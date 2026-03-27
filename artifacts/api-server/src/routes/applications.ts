@@ -20,7 +20,6 @@ import {
   extractIdentityFromParsedCv,
   checkAndRecordIdentity,
 } from "../lib/identity.js";
-import { hasBulkAccess } from "../lib/bulk.js";
 
 const router: IRouter = Router();
 
@@ -403,18 +402,19 @@ router.post("/applications/:id/analyze", async (req, res) => {
     }
 
     // ── Identity check ──────────────────────────────────────────────────────
-    // Skip entirely for users with an active bulk pass — bulk mode is designed
-    // for multiple different candidates (recruiters/HR), so identity switching
-    // is expected and should never be penalised.
+    // Skip when the request comes from the bulk session UI — bulk mode is
+    // explicitly for multiple different candidates (recruiters/HR) so identity
+    // switching is expected and must never trigger a warning or penalty.
+    // For regular Pro users the check always runs.
+    const isBulkSession = parsed.success && parsed.data.isBulkSession === true;
+
     let identityResult = {
       isDifferentIdentity: false,
       isAboveLimit: false,
       distinctIdentityCount: 0,
     };
 
-    const userHasBulkPass = ownerUserId ? await hasBulkAccess(ownerUserId) : false;
-
-    if (ownerUserId && app.parsedCvJson && !userHasBulkPass) {
+    if (ownerUserId && app.parsedCvJson && !isBulkSession) {
       const identity = extractIdentityFromParsedCv(app.parsedCvJson as any);
       identityResult = await checkAndRecordIdentity(ownerUserId, identity, id);
     }

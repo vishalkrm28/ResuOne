@@ -219,6 +219,7 @@ export type AnalyzeApplicationBodyConfirmedAnswers = { [key: string]: string };
 
 export interface AnalyzeApplicationBody {
   confirmedAnswers?: AnalyzeApplicationBodyConfirmedAnswers;
+  isBulkSession?: boolean;
 }
 
 export interface AnalysisResult {

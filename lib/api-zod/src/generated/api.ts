@@ -804,6 +804,7 @@ export const AnalyzeApplicationParams = zod.object({
 
 export const AnalyzeApplicationBody = zod.object({
   confirmedAnswers: zod.record(zod.string(), zod.string()).optional(),
+  isBulkSession: zod.boolean().optional(),
 });
 
 export const AnalyzeApplicationResponse = zod.object({
