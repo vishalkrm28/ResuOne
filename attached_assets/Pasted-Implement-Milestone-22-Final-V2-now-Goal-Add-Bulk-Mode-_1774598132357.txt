@@ -1,0 +1,242 @@
+Implement Milestone 22 (Final V2) now.
+
+Goal:
+Add Bulk Mode with a refined pricing strategy and smart upsell system to maximize revenue while guiding users toward higher-value plans.
+
+Core Pricing:
+
+Single CV:
+- $6.99 per unlock
+
+Subscription:
+- $14.99/month
+- includes credits (e.g., 100 CVs/month)
+
+Bulk Mode (START HIGHER — IMPORTANT):
+
+Tier 1:
+- up to 10 CVs → $19
+
+Tier 2:
+- up to 25 CVs → $29
+
+Tier 3:
+- up to 50 CVs → $39
+
+--------------------------------------------------
+1. Positioning Rules (CRITICAL)
+--------------------------------------------------
+
+- Single CV = quick fix
+- Bulk = power feature
+- Subscription = best value
+
+NEVER position bulk as cheap.
+
+--------------------------------------------------
+2. Pricing UI (with smart psychology)
+--------------------------------------------------
+
+On /dashboard/bulk:
+
+Display 3 pricing cards:
+
+----------------------------------
+
+Option 1:
+“Analyze up to 10 CVs”
+$19
+
+Subtext:
+“Quick shortlist for small batches”
+
+----------------------------------
+
+Option 2 (HIGHLIGHT THIS):
+“Analyze up to 25 CVs”
+$29
+
+Badge:
+“Most Popular”
+
+Subtext:
+“Best balance of speed and value”
+
+----------------------------------
+
+Option 3:
+“Analyze up to 50 CVs”
+$39
+
+Badge:
+“Best Value”
+
+Subtext:
+“Process large batches efficiently”
+
+----------------------------------
+
+--------------------------------------------------
+3. Smart Upsell Logic (VERY IMPORTANT)
+--------------------------------------------------
+
+When user selects a LOWER tier:
+
+Example:
+User selects $19 (10 CVs)
+
+Show modal or inline nudge:
+
+“You’re analyzing multiple candidates.
+
+For just $10 more, you can analyze 25 CVs instead of 10.”
+
+Buttons:
+- Upgrade to 25 CVs (primary)
+- Continue with 10 CVs (secondary)
+
+--------------------------------------------------
+
+If user selects 25 CVs:
+
+Show:
+
+“Planning to analyze more profiles?
+
+Upgrade to 50 CVs for full flexibility.”
+
+--------------------------------------------------
+
+RULE:
+- Never block user
+- Always guide, not force
+- Keep tone helpful, not pushy
+
+--------------------------------------------------
+4. Subscription Upsell (SMART)
+--------------------------------------------------
+
+If user:
+- uses bulk more than once
+- OR selects higher tier
+
+Show:
+
+“You might save more with Pro.
+
+$14.99/month includes up to 100 CV analyses.”
+
+Buttons:
+- Start Pro (primary)
+- Continue with one-time (secondary)
+
+--------------------------------------------------
+5. Single vs Bulk Anchoring
+--------------------------------------------------
+
+On bulk page, subtly show:
+
+“Single CV analysis: $6.99”
+
+Then:
+
+“Bulk starts at $19 for 10 CVs”
+
+This creates perceived value.
+
+--------------------------------------------------
+6. Payment Flow
+--------------------------------------------------
+
+Before processing:
+
+1. user selects tier
+2. show summary:
+   - selected plan
+   - CV limit
+   - price
+
+3. Stripe checkout (mode: payment)
+
+Metadata:
+- userId
+- tier
+- cvLimit
+
+--------------------------------------------------
+7. Enforce Limits
+--------------------------------------------------
+
+Strict backend rules:
+
+- 10 CV plan → max 10
+- 25 CV plan → max 25
+- 50 CV plan → max 50
+
+If exceeded:
+- block OR
+- suggest upgrade
+
+--------------------------------------------------
+8. Pro Plan Override
+--------------------------------------------------
+
+If user is Pro:
+
+- skip payment screen
+- use credits instead
+
+Example:
+- 1 CV = 1 credit
+- 25 CV bulk = 25 credits
+
+If not enough credits:
+- show upgrade prompt
+
+--------------------------------------------------
+9. Free Plan Behavior
+--------------------------------------------------
+
+Free users:
+
+- bulk locked OR
+- max 2 CV preview
+
+No full results
+
+--------------------------------------------------
+10. UX Rules
+--------------------------------------------------
+
+- pricing visible BEFORE upload
+- upsell appears at decision points
+- no aggressive popups
+- smooth flow
+
+--------------------------------------------------
+11. Revenue Optimization Logic
+--------------------------------------------------
+
+System should:
+
+- encourage upgrade from 10 → 25
+- encourage upgrade from 25 → 50
+- encourage switch to subscription
+
+BUT:
+- never annoy user
+- never block choice
+
+--------------------------------------------------
+12. After Implementation
+--------------------------------------------------
+
+After implementation:
+
+1. Show pricing UI code
+2. Show upsell modal logic
+3. Show Stripe tier setup
+4. Show enforcement logic
+5. Show subscription override logic
+6. List top 5 conversion improvements
+7. Fix top 3 immediately

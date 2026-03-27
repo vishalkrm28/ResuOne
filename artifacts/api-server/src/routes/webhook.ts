@@ -2,10 +2,11 @@ import { Router, type IRouter } from "express";
 import express from "express";
 import type Stripe from "stripe";
 import { and, eq } from "drizzle-orm";
-import { db, usersTable, unlockPurchasesTable } from "@workspace/db";
+import { db, usersTable, unlockPurchasesTable, bulkPassesTable } from "@workspace/db";
 import { getStripe } from "../lib/stripe.js";
 import { logger } from "../lib/logger.js";
 import { resetProCreditsIfNeeded } from "../lib/credits.js";
+import { isValidTier, BULK_TIERS } from "../lib/bulk.js";
 
 const router: IRouter = Router();
 
@@ -137,6 +138,11 @@ async function onCheckoutSessionCompleted(session: Stripe.Checkout.Session): Pro
   // ── Dispatch by purchase type ──────────────────────────────────────────────
   if (session.metadata?.purchaseType === "one_time_unlock") {
     await onUnlockCheckoutCompleted(session);
+    return;
+  }
+
+  if (session.metadata?.purchaseType === "bulk_pass") {
+    await onBulkPassCheckoutCompleted(session);
     return;
   }
 
@@ -408,6 +414,64 @@ async function onUnlockCheckoutCompleted(session: Stripe.Checkout.Session): Prom
   logger.info(
     { userId, applicationId, sessionId: session.id, amountTotal, paymentStatus },
     "One-time unlock purchase recorded",
+  );
+}
+
+// ─── bulk_pass checkout ───────────────────────────────────────────────────────
+// Fired when a user completes a bulk tier payment.
+// Activates the bulk pass by setting status → "paid".
+
+async function onBulkPassCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
+  const userId = session.metadata?.userId ?? null;
+  const tier = session.metadata?.tier ?? null;
+  const cvLimitStr = session.metadata?.cvLimit ?? null;
+
+  if (!userId || !tier || !cvLimitStr) {
+    logger.error(
+      { session_id: session.id, metadata: session.metadata },
+      "bulk_pass webhook: missing metadata — pass NOT activated",
+    );
+    return;
+  }
+
+  if (!isValidTier(tier)) {
+    logger.error({ tier, session_id: session.id }, "bulk_pass webhook: invalid tier");
+    return;
+  }
+
+  const cvLimit = BULK_TIERS[tier].cvLimit;
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
+
+  await db
+    .insert(bulkPassesTable)
+    .values({
+      userId,
+      tier,
+      cvLimit,
+      cvsUsed: 0,
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId: paymentIntentId,
+      amountPaid: session.amount_total ?? null,
+      currency: session.currency ?? null,
+      status: session.payment_status === "paid" ? "paid" : "pending",
+    })
+    .onConflictDoUpdate({
+      target: bulkPassesTable.stripeCheckoutSessionId,
+      set: {
+        stripePaymentIntentId: paymentIntentId,
+        amountPaid: session.amount_total ?? null,
+        currency: session.currency ?? null,
+        status: session.payment_status === "paid" ? "paid" : "pending",
+        updatedAt: new Date(),
+      },
+    });
+
+  logger.info(
+    { userId, tier, cvLimit, sessionId: session.id, paymentStatus: session.payment_status },
+    "Bulk pass activated",
   );
 }
 

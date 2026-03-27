@@ -14,6 +14,9 @@ import UnlockSuccess from "@/pages/unlock-success";
 import Settings from "@/pages/settings";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
+import BulkPricing from "@/pages/bulk-pricing";
+import BulkSuccess from "@/pages/bulk-success";
+import BulkSession from "@/pages/bulk-session";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -54,6 +57,9 @@ function AppRouter() {
       <Route path="/billing/cancel" component={BillingCancel} />
       <Route path="/billing/unlock-success" component={UnlockSuccess} />
       <Route path="/settings" component={Settings} />
+      <Route path="/bulk" component={BulkPricing} />
+      <Route path="/bulk/success" component={BulkSuccess} />
+      <Route path="/bulk/session" component={BulkSession} />
       <Route component={NotFound} />
     </Switch>
   );

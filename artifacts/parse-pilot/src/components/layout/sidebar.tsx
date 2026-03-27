@@ -7,12 +7,14 @@ import {
   LogOut,
   ChevronRight,
   Settings2,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/new", label: "New Application", icon: FilePlus2 },
+  { href: "/bulk", label: "Bulk Mode", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings2 },
 ];
 

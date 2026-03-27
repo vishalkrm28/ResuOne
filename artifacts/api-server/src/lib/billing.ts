@@ -1,5 +1,6 @@
 import { db, usersTable, unlockPurchasesTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { hasBulkAccess } from "./bulk.js";
 
 /**
  * Returns true if the given Stripe subscription status is considered active.
@@ -69,11 +70,12 @@ export async function userCanAccessFullResult(
   userId: string,
   applicationId: string,
 ): Promise<boolean> {
-  const [pro, unlocked] = await Promise.all([
+  const [pro, unlocked, bulk] = await Promise.all([
     isUserPro(userId),
     hasUnlockedResult(userId, applicationId),
+    hasBulkAccess(userId),
   ]);
-  return pro || unlocked;
+  return pro || unlocked || bulk;
 }
 
 /**

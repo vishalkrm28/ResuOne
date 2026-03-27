@@ -34,7 +34,7 @@ artifacts-monorepo/
 │   │       └── services/   # ai.ts, fileParser.ts, exporter.ts
 │   └── parse-pilot/        # React + Vite frontend (served at /)
 │       └── src/
-│           ├── pages/      # landing.tsx, dashboard.tsx, new-application.tsx, application-detail.tsx, terms.tsx, privacy.tsx
+│           ├── pages/      # landing.tsx, dashboard.tsx, new-application.tsx, application-detail.tsx, terms.tsx, privacy.tsx, bulk-pricing.tsx, bulk-session.tsx, bulk-success.tsx
 │           ├── components/ # Button, Card, Badge, Input, Textarea, layout/ (sidebar, app-layout, footer)
 │           └── hooks/      # use-toast.ts
 ├── lib/
@@ -43,7 +43,7 @@ artifacts-monorepo/
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   ├── replit-auth-web/    # useAuth() hook for browser auth
 │   ├── db/                 # Drizzle ORM schema + DB connection
-│   │   └── src/schema/     # applications.ts, auth.ts (sessions, users)
+│   │   └── src/schema/     # applications.ts, auth.ts (sessions, users), bulk.ts
 │   └── integrations-openai-ai-server/  # Replit AI Integration client
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
@@ -312,6 +312,7 @@ Allow free users to pay $4 once to unlock the full tailored CV + DOCX/PDF export
 - Required vars: `PORT`, `DATABASE_URL`, `REPL_ID` — server exits with code 1 if missing
 - Billing vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PARSEPILOT_PRO` — all three must be set together; partial config logs a clear warning
 - One-time unlock: `STRIPE_PRICE_PARSEPILOT_UNLOCK` — Stripe Price ID for the $4 one-time result unlock; `POST /billing/unlock` returns 503 if missing
+- Bulk Mode: `STRIPE_PRICE_BULK_10`, `STRIPE_PRICE_BULK_25`, `STRIPE_PRICE_BULK_50` — Stripe Price IDs for each bulk tier (one-time payments at $19/$29/$39); `POST /billing/bulk-checkout` returns 503 per missing tier
 - Optional vars: `OPENAI_API_KEY`, `STRIPE_CUSTOMER_PORTAL_RETURN_URL` — missing values log actionable hints
 - Startup log includes `billingEnabled` and `aiEnabled` flags
 
