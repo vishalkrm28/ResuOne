@@ -1,16 +1,39 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useUploadCv, useCreateApplication, analyzeApplication } from "@workspace/api-client-react";
+import {
+  useUploadCv,
+  useCreateApplication,
+  analyzeApplication,
+} from "@workspace/api-client-react";
+import type { AnalysisResult } from "@workspace/api-client-react";
 import { useDropzone } from "react-dropzone";
 import { AppLayout } from "@/components/layout/app-layout";
 import {
-  Users, Loader2, CheckCircle2, AlertCircle, ChevronRight,
-  Lock, Crown, UploadCloud, X, Play, FileText, ExternalLink,
+  Users,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  ChevronRight,
+  Lock,
+  Crown,
+  UploadCloud,
+  X,
+  Play,
+  FileText,
   Clock,
+  ArrowLeft,
+  Target,
+  TrendingUp,
+  TrendingDown,
+  ChevronDown,
+  ChevronUp,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+
+const SESSION_KEY = "bulk_completed_results";
 
 interface BulkStatus {
   isPro: boolean;
@@ -41,6 +64,18 @@ interface CvQueueItem {
   applicationId?: string;
   errorMessage?: string;
 }
+
+interface CompletedResult {
+  applicationId: string;
+  fileName: string;
+  score: number;
+  matchedCount: number;
+  missingCount: number;
+  jobTitle: string;
+  company: string;
+}
+
+type PageView = "session" | "results";
 
 // ─── Slot progress bar ────────────────────────────────────────────────────────
 
@@ -128,6 +163,187 @@ function StatusBadge({ status }: { status: CvItemStatus }) {
   );
 }
 
+// ─── Score ring ────────────────────────────────────────────────────────────────
+
+function ScoreRing({ score }: { score: number }) {
+  const color =
+    score >= 75 ? "text-emerald-600" :
+    score >= 50 ? "text-amber-500" :
+    "text-red-500";
+  const bg =
+    score >= 75 ? "bg-emerald-500/10" :
+    score >= 50 ? "bg-amber-500/10" :
+    "bg-red-500/10";
+
+  return (
+    <div className={cn("w-14 h-14 rounded-full flex flex-col items-center justify-center flex-shrink-0", bg)}>
+      <span className={cn("text-lg font-extrabold leading-none", color)}>{score}</span>
+      <span className={cn("text-[9px] font-semibold uppercase tracking-wide", color)}>score</span>
+    </div>
+  );
+}
+
+// ─── Score label ───────────────────────────────────────────────────────────────
+
+function ScoreLabel({ score }: { score: number }) {
+  if (score >= 75) return <span className="text-xs font-semibold text-emerald-600">Strong match</span>;
+  if (score >= 50) return <span className="text-xs font-semibold text-amber-600">Moderate match</span>;
+  return <span className="text-xs font-semibold text-red-600">Weak match</span>;
+}
+
+// ─── Results list view ────────────────────────────────────────────────────────
+
+interface ResultsViewProps {
+  results: CompletedResult[];
+  onBack: () => void;
+  onViewDetail: (applicationId: string) => void;
+}
+
+function ResultsView({ results, onBack, onViewDetail }: ResultsViewProps) {
+  const sorted = [...results].sort((a, b) => b.score - a.score);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-5">
+      {/* Header row */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to session
+        </button>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-extrabold tracking-tight mb-0.5">Batch results</h2>
+        <p className="text-sm text-muted-foreground">
+          {sorted.length} candidate{sorted.length !== 1 ? "s" : ""} analysed — ranked by match score
+        </p>
+      </div>
+
+      {/* Summary bar */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          {
+            icon: <BarChart2 className="w-4 h-4 text-primary" />,
+            label: "Avg score",
+            value: `${Math.round(sorted.reduce((s, r) => s + r.score, 0) / sorted.length)}`,
+          },
+          {
+            icon: <TrendingUp className="w-4 h-4 text-emerald-600" />,
+            label: "Strong matches",
+            value: `${sorted.filter((r) => r.score >= 75).length}`,
+          },
+          {
+            icon: <TrendingDown className="w-4 h-4 text-red-500" />,
+            label: "Weak matches",
+            value: `${sorted.filter((r) => r.score < 50).length}`,
+          },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-xl border border-border bg-card p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5 text-muted-foreground">{stat.icon}</div>
+            <p className="text-xl font-extrabold">{stat.value}</p>
+            <p className="text-xs text-muted-foreground">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Ranked list */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <ul className="divide-y divide-border/60">
+          {sorted.map((result, idx) => {
+            const isExpanded = expandedId === result.applicationId;
+            return (
+              <li key={result.applicationId} className="hover:bg-muted/30 transition-colors">
+                {/* Main row */}
+                <div className="flex items-center gap-4 px-5 py-4">
+                  {/* Rank badge */}
+                  <span className="text-xs font-bold text-muted-foreground w-5 text-center flex-shrink-0">
+                    #{idx + 1}
+                  </span>
+
+                  {/* Score ring */}
+                  <ScoreRing score={result.score} />
+
+                  {/* File info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{result.fileName}</p>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <ScoreLabel score={result.score} />
+                      <span className="text-muted-foreground text-xs">·</span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Target className="w-3 h-3" />
+                        {result.matchedCount} matched
+                      </span>
+                      <span className="text-muted-foreground text-xs">·</span>
+                      <span className="text-xs text-muted-foreground">
+                        {result.missingCount} missing
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => onViewDetail(result.applicationId)}
+                      className="text-xs font-semibold text-primary hover:underline hidden sm:block"
+                    >
+                      View full analysis
+                    </button>
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : result.applicationId)}
+                      className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                      aria-label={isExpanded ? "Collapse" : "Expand"}
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div className="px-5 pb-4 pt-0 border-t border-border/40 bg-muted/20">
+                    <div className="flex flex-col sm:flex-row gap-3 pt-3">
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Role</p>
+                        <p className="text-sm">{result.jobTitle}{result.company !== "—" ? ` · ${result.company}` : ""}</p>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Keywords</p>
+                        <p className="text-sm">{result.matchedCount} matched · {result.missingCount} missing</p>
+                      </div>
+                      <button
+                        onClick={() => onViewDetail(result.applicationId)}
+                        className="self-end inline-flex items-center gap-2 text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
+                      >
+                        View full analysis
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {/* Run another batch */}
+      <div className="pt-2 border-t border-border/40">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Run another batch
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function BulkSession() {
@@ -145,10 +361,28 @@ export default function BulkSession() {
   const [queue, setQueue] = useState<CvQueueItem[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
+  const [view, setView] = useState<PageView>("session");
+  const [completedResults, setCompletedResults] = useState<CompletedResult[]>([]);
+
   const uploadMutation = useUploadCv();
   const createMutation = useCreateApplication();
-
   const isRunningRef = useRef(false);
+
+  // Restore completed results from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(SESSION_KEY);
+      if (stored) {
+        const parsed: CompletedResult[] = JSON.parse(stored);
+        if (parsed.length > 0) {
+          setCompletedResults(parsed);
+          setView("results");
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -194,17 +428,27 @@ export default function BulkSession() {
     setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   };
 
+  const addCompletedResult = (result: CompletedResult) => {
+    setCompletedResults((prev) => {
+      const next = [...prev, result];
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   // ── Process queue ─────────────────────────────────────────────────────────
 
   const processSingle = async (item: CvQueueItem): Promise<void> => {
     if (!user?.id) return;
 
     try {
-      // 1. Upload & extract CV text
       updateItem(item.id, { status: "uploading" });
       const uploadResult = await uploadMutation.mutateAsync({ data: { file: item.file } });
 
-      // 2. Create application
       updateItem(item.id, { status: "creating" });
       const app = await createMutation.mutateAsync({
         data: {
@@ -217,11 +461,20 @@ export default function BulkSession() {
         },
       });
 
-      // 3. Trigger analysis
       updateItem(item.id, { status: "analyzing", applicationId: app.id });
-      await analyzeApplication(app.id, {}, { credentials: "include" });
+      const result: AnalysisResult = await analyzeApplication(app.id, {}, { credentials: "include" });
 
       updateItem(item.id, { status: "done", applicationId: app.id });
+
+      addCompletedResult({
+        applicationId: app.id,
+        fileName: item.file.name,
+        score: Math.round(result.keywordMatchScore),
+        matchedCount: result.matchedKeywords.length,
+        missingCount: result.missingKeywords.length,
+        jobTitle: jobTitle.trim() || "Bulk Analysis",
+        company: company.trim() || "—",
+      });
     } catch (err: unknown) {
       const body = (err as any)?.response?.data as { error?: string } | undefined;
       updateItem(item.id, {
@@ -254,7 +507,29 @@ export default function BulkSession() {
 
     isRunningRef.current = false;
     setIsRunning(false);
-    toast({ title: "Batch complete", description: "All CVs have been processed." });
+
+    // Auto-switch to results view if anything completed
+    setCompletedResults((current) => {
+      if (current.length > 0) {
+        setView("results");
+      }
+      toast({ title: "Batch complete", description: `${current.length} CV${current.length !== 1 ? "s" : ""} analysed.` });
+      return current;
+    });
+  };
+
+  const startNewSession = () => {
+    setView("session");
+    setQueue([]);
+    setJobTitle("");
+    setCompany("");
+    setJobDescription("");
+    setCompletedResults([]);
+    try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+  };
+
+  const handleViewDetail = (applicationId: string) => {
+    navigate(`/applications/${applicationId}?from=bulk`);
   };
 
   const pendingCount = queue.filter((i) => i.status === "pending").length;
@@ -275,10 +550,25 @@ export default function BulkSession() {
             </div>
             <span className="text-sm font-semibold text-primary uppercase tracking-wider">Bulk Mode</span>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight mb-1">Batch CV analysis</h1>
-          <p className="text-sm text-muted-foreground">
-            Drop all candidate CVs at once. Each uses one slot and gets a full ATS analysis.
-          </p>
+          {view === "session" ? (
+            <>
+              <h1 className="text-2xl font-extrabold tracking-tight mb-1">Batch CV analysis</h1>
+              <p className="text-sm text-muted-foreground">
+                Drop all candidate CVs at once. Each uses one slot and gets a full ATS analysis.
+              </p>
+            </>
+          ) : (
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-extrabold tracking-tight">Batch CV analysis</h1>
+              <button
+                onClick={startNewSession}
+                className="inline-flex items-center gap-2 text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
+              >
+                <Play className="w-3.5 h-3.5" />
+                New batch
+              </button>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -302,6 +592,12 @@ export default function BulkSession() {
               View bulk pricing
             </button>
           </div>
+        ) : view === "results" ? (
+          <ResultsView
+            results={completedResults}
+            onBack={() => setView("session")}
+            onViewDetail={handleViewDetail}
+          />
         ) : (
           <div className="space-y-5">
             {/* Pro badge */}
@@ -314,6 +610,20 @@ export default function BulkSession() {
 
             {/* Slot progress */}
             {!status?.isPro && status?.activePass && <SlotProgress used={used} limit={limit} />}
+
+            {/* Previous results banner */}
+            {completedResults.length > 0 && (
+              <button
+                onClick={() => setView("results")}
+                className="w-full flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm hover:bg-primary/10 transition-colors"
+              >
+                <span className="flex items-center gap-2 font-semibold text-primary">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {completedResults.length} result{completedResults.length !== 1 ? "s" : ""} from previous batch
+                </span>
+                <ChevronRight className="w-4 h-4 text-primary" />
+              </button>
+            )}
 
             {/* Job details */}
             <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
@@ -413,15 +723,6 @@ export default function BulkSession() {
                         )}
                       </div>
                       <StatusBadge status={item.status} />
-                      {item.status === "done" && item.applicationId && (
-                        <button
-                          onClick={() => navigate(`/applications/${item.applicationId}`)}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline ml-1 flex-shrink-0"
-                        >
-                          View
-                          <ExternalLink className="w-3 h-3" />
-                        </button>
-                      )}
                       {(item.status === "pending" || item.status === "error") && !isRunning && (
                         <button
                           onClick={() => removeItem(item.id)}

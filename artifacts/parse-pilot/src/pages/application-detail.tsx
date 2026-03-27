@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "wouter";
+import { useParams, useSearch, useLocation } from "wouter";
 import {
   useGetApplication,
   useAnalyzeApplication,
@@ -29,6 +29,8 @@ import {
   AlertTriangle,
   Lock,
   BarChart2,
+  ArrowLeft,
+  Users,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -249,6 +251,9 @@ type TabId = "cv" | "keywords" | "missing" | "cover" | "suggestions";
 export default function ApplicationDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const fromBulk = new URLSearchParams(search).get("from") === "bulk";
 
   const [activeTab, setActiveTab] = useState<TabId>("cv");
   const [missingAnswers, setMissingAnswers] = useState<Record<string, string>>({});
@@ -423,6 +428,18 @@ export default function ApplicationDetail() {
 
   return (
     <AppLayout>
+      {/* ── Back to bulk results ─────────────────────────────────────────── */}
+      {fromBulk && (
+        <button
+          onClick={() => navigate("/bulk/session")}
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <Users className="w-3.5 h-3.5" />
+          Back to batch results
+        </button>
+      )}
+
       {/* ── Page Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-8">
         <div>
