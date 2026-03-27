@@ -7,6 +7,7 @@ import exportRouter from "./export.js";
 import billingRouter from "./billing.js";
 import bulkRouter from "./bulk.js";
 import contactRouter from "./contact.js";
+import adminSeedRouter from "./admin-seed.js";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(exportRouter);
 router.use(billingRouter);
 router.use(bulkRouter);
 router.use(contactRouter);
+router.use(adminSeedRouter);
 
 export default router;
