@@ -360,7 +360,7 @@ export default function BulkPricing() {
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid sm:grid-cols-3 gap-4 mb-10">
+          <div className="grid sm:grid-cols-3 gap-4 mb-10 pt-4">
             {tiers.map((tier) => {
               const isHighlighted = tier.badge === "Most Popular";
               const perCv = (tier.amountDollars / tier.cvLimit).toFixed(2);
