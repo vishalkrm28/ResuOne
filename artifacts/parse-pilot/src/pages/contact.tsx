@@ -209,11 +209,11 @@ export default function Contact() {
 
               {/* Direct email */}
               <a
-                href="mailto:help@parsepilot.com"
+                href="mailto:help@parsepilot.io"
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Mail className="w-3.5 h-3.5" />
-                help@parsepilot.com
+                help@parsepilot.io
               </a>
             </div>
           </form>
@@ -223,8 +223,8 @@ export default function Contact() {
         {status !== "success" && (
           <p className="mt-8 text-xs text-muted-foreground/70 text-center">
             Or email us directly at{" "}
-            <a href="mailto:help@parsepilot.com" className="underline underline-offset-2 hover:text-muted-foreground transition-colors">
-              help@parsepilot.com
+            <a href="mailto:help@parsepilot.io" className="underline underline-offset-2 hover:text-muted-foreground transition-colors">
+              help@parsepilot.io
             </a>
           </p>
         )}

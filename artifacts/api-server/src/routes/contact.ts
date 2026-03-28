@@ -42,8 +42,8 @@ router.post("/contact", async (req, res) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "ParsePilot <no-reply@parsepilot.com>",
-            to: ["help@parsepilot.com"],
+            from: "ParsePilot <no-reply@parsepilot.io>",
+            to: ["help@parsepilot.io"],
             subject: "New Contact Message – ParsePilot",
             text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
           }),
