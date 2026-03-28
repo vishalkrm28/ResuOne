@@ -51,7 +51,7 @@ export function Sidebar() {
     "User";
 
   return (
-    <aside className="w-64 min-h-screen flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+    <aside className="w-64 h-screen sticky top-0 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       {/* Brand */}
       <div className="px-5 py-5 border-b border-sidebar-border">
         <Link href="/">
@@ -67,7 +67,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/40">
           Menu
         </p>
