@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, usersTable, bulkPassesTable } from "@workspace/db";
+import { and, eq, desc, count, max, avg, sql } from "drizzle-orm";
+import { db, usersTable, bulkPassesTable, bulkSessionsTable, applicationsTable } from "@workspace/db";
 import { z } from "zod";
 import type Stripe from "stripe";
 import { getStripe } from "../lib/stripe.js";
@@ -212,6 +212,145 @@ router.get("/billing/bulk-tiers", (_req, res) => {
     label: config.label,
   }));
   res.json({ tiers });
+});
+
+// ─── POST /bulk-sessions ──────────────────────────────────────────────────────
+// Creates a new bulk session record and links the completed application IDs to it.
+
+const CreateBulkSessionBody = z.object({
+  jobTitle: z.string().optional(),
+  company: z.string().optional(),
+  jobDescription: z.string().optional(),
+  applicationIds: z.array(z.string()).min(1),
+});
+
+router.post("/bulk-sessions", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    return;
+  }
+
+  const parsed = CreateBulkSessionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "applicationIds array is required", code: "VALIDATION_ERROR" });
+    return;
+  }
+
+  const { jobTitle, company, jobDescription, applicationIds } = parsed.data;
+
+  try {
+    const [session] = await db
+      .insert(bulkSessionsTable)
+      .values({
+        userId: req.user.id,
+        jobTitle: jobTitle?.trim() || "Bulk Analysis",
+        company: company?.trim() || "—",
+        jobDescription: jobDescription?.trim() || "",
+      })
+      .returning();
+
+    // Link each application to this session
+    if (applicationIds.length > 0) {
+      await db
+        .update(applicationsTable)
+        .set({ bulkSessionId: session.id })
+        .where(
+          and(
+            eq(applicationsTable.userId, req.user.id),
+            sql`${applicationsTable.id}::text = ANY(${applicationIds})`
+          )
+        );
+    }
+
+    res.status(201).json({ sessionId: session.id });
+  } catch (err) {
+    logger.error({ err }, "Failed to create bulk session");
+    res.status(500).json({ error: "Failed to create session", code: "DB_ERROR" });
+  }
+});
+
+// ─── GET /bulk-sessions ───────────────────────────────────────────────────────
+// Lists all bulk sessions for the user, with aggregated stats.
+
+router.get("/bulk-sessions", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    return;
+  }
+
+  try {
+    const sessions = await db
+      .select({
+        id: bulkSessionsTable.id,
+        jobTitle: bulkSessionsTable.jobTitle,
+        company: bulkSessionsTable.company,
+        createdAt: bulkSessionsTable.createdAt,
+        cvCount: count(applicationsTable.id),
+        topScore: max(applicationsTable.keywordMatchScore),
+        avgScore: avg(applicationsTable.keywordMatchScore),
+      })
+      .from(bulkSessionsTable)
+      .leftJoin(
+        applicationsTable,
+        eq(applicationsTable.bulkSessionId, bulkSessionsTable.id)
+      )
+      .where(eq(bulkSessionsTable.userId, req.user.id))
+      .groupBy(bulkSessionsTable.id)
+      .orderBy(desc(bulkSessionsTable.createdAt));
+
+    res.json(sessions);
+  } catch (err) {
+    logger.error({ err }, "Failed to list bulk sessions");
+    res.status(500).json({ error: "Failed to list sessions", code: "DB_ERROR" });
+  }
+});
+
+// ─── GET /bulk-sessions/:id ───────────────────────────────────────────────────
+// Returns a single session with its full ranked applications list.
+
+router.get("/bulk-sessions/:id", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    return;
+  }
+
+  const { id } = req.params;
+
+  try {
+    const [session] = await db
+      .select()
+      .from(bulkSessionsTable)
+      .where(and(eq(bulkSessionsTable.id, id), eq(bulkSessionsTable.userId, req.user.id)));
+
+    if (!session) {
+      res.status(404).json({ error: "Session not found", code: "NOT_FOUND" });
+      return;
+    }
+
+    const applications = await db
+      .select({
+        id: applicationsTable.id,
+        keywordMatchScore: applicationsTable.keywordMatchScore,
+        parsedCvJson: applicationsTable.parsedCvJson,
+        matchedKeywords: applicationsTable.matchedKeywords,
+        missingKeywords: applicationsTable.missingKeywords,
+        status: applicationsTable.status,
+        createdAt: applicationsTable.createdAt,
+      })
+      .from(applicationsTable)
+      .where(
+        and(
+          eq(applicationsTable.bulkSessionId, id),
+          eq(applicationsTable.userId, req.user.id)
+        )
+      )
+      .orderBy(desc(applicationsTable.keywordMatchScore));
+
+    res.json({ session, applications });
+  } catch (err) {
+    logger.error({ err, id }, "Failed to get bulk session");
+    res.status(500).json({ error: "Failed to load session", code: "DB_ERROR" });
+  }
 });
 
 export default router;

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, real, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
 
 // ─── Bulk Passes ──────────────────────────────────────────────────────────────
@@ -42,3 +42,24 @@ export const bulkPassesTable = pgTable("bulk_passes", {
 
 export type BulkPass = typeof bulkPassesTable.$inferSelect;
 export type InsertBulkPass = typeof bulkPassesTable.$inferInsert;
+
+// ─── Bulk Sessions ─────────────────────────────────────────────────────────────
+// One row per batch analysis run. Multiple applications are linked to a session.
+// Created when the user starts a bulk analysis run; applications are linked after.
+
+export const bulkSessionsTable = pgTable("bulk_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+
+  jobTitle: text("job_title").notNull(),
+  company: text("company").notNull(),
+  jobDescription: text("job_description").notNull(),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type BulkSession = typeof bulkSessionsTable.$inferSelect;
+export type InsertBulkSession = typeof bulkSessionsTable.$inferInsert;

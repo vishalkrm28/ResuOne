@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/new", label: "New Application", icon: FilePlus2 },
-  { href: "/bulk", label: "Bulk Mode", icon: Users },
+  { href: "/bulk/history", label: "Bulk Mode", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings2 },
 ];
 
@@ -73,7 +73,9 @@ export function Sidebar() {
         </p>
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive =
-            location === href || (href === "/" && location === "/dashboard");
+            location === href ||
+            (href === "/" && location === "/dashboard") ||
+            (href === "/bulk/history" && location.startsWith("/bulk"));
           return (
             <Link key={href} href={href}>
               <div

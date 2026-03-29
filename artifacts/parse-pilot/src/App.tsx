@@ -21,6 +21,8 @@ import Contact from "@/pages/contact";
 import BulkPricing from "@/pages/bulk-pricing";
 import BulkSuccess from "@/pages/bulk-success";
 import BulkSession from "@/pages/bulk-session";
+import BulkHistory from "@/pages/bulk-history";
+import BulkSessionDetail from "@/pages/bulk-session-detail";
 import NotFound from "@/pages/not-found";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
@@ -79,6 +81,8 @@ function AppRouter() {
       <Route path="/bulk" component={BulkPricing} />
       <Route path="/bulk/success" component={BulkSuccess} />
       <Route path="/bulk/session" component={BulkSession} />
+      <Route path="/bulk/history" component={BulkHistory} />
+      <Route path="/bulk/sessions/:id" component={BulkSessionDetail} />
       <Route component={NotFound} />
     </Switch>
   );

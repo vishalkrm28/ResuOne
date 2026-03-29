@@ -521,6 +521,7 @@ export default function BulkSession() {
             title: "Batch complete",
             description: `${storedResults.length} CV${storedResults.length !== 1 ? "s" : ""} analysed — results ranked below.`,
           });
+          await saveSession(storedResults);
           return;
         }
       }
@@ -528,6 +529,24 @@ export default function BulkSession() {
       // ignore
     }
     toast({ title: "Batch complete", description: "Processing complete." });
+  };
+
+  const saveSession = async (results: CompletedResult[]) => {
+    if (results.length === 0) return;
+    try {
+      await authedFetch("/bulk-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobTitle: jobTitle.trim() || "Bulk Analysis",
+          company: company.trim() || "—",
+          jobDescription: jobDescription.trim(),
+          applicationIds: results.map((r) => r.applicationId),
+        }),
+      });
+    } catch {
+      // Non-critical — results are still visible in current view
+    }
   };
 
   const startNewSession = () => {
