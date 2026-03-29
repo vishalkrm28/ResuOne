@@ -354,4 +354,48 @@ router.get("/bulk-sessions/:id", async (req, res) => {
   }
 });
 
+// ─── DELETE /bulk-sessions/:id ────────────────────────────────────────────────
+// Deletes a bulk session and all its linked application records.
+
+router.delete("/bulk-sessions/:id", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    return;
+  }
+
+  const { id } = req.params;
+
+  try {
+    // Verify ownership
+    const [session] = await db
+      .select({ id: bulkSessionsTable.id })
+      .from(bulkSessionsTable)
+      .where(and(eq(bulkSessionsTable.id, id), eq(bulkSessionsTable.userId, req.user.id)));
+
+    if (!session) {
+      res.status(404).json({ error: "Session not found", code: "NOT_FOUND" });
+      return;
+    }
+
+    // Delete all applications belonging to this session, then delete the session itself
+    await db
+      .delete(applicationsTable)
+      .where(
+        and(
+          eq(applicationsTable.bulkSessionId, id),
+          eq(applicationsTable.userId, req.user.id)
+        )
+      );
+
+    await db
+      .delete(bulkSessionsTable)
+      .where(and(eq(bulkSessionsTable.id, id), eq(bulkSessionsTable.userId, req.user.id)));
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err, id }, "Failed to delete bulk session");
+    res.status(500).json({ error: "Failed to delete session", code: "DB_ERROR" });
+  }
+});
+
 export default router;
