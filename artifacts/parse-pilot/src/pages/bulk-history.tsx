@@ -15,6 +15,11 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+interface BulkStatus {
+  isPro?: boolean;
+  activePass?: { remaining: number } | null;
+}
+
 interface BulkSessionSummary {
   id: string;
   jobTitle: string;
@@ -46,12 +51,23 @@ export default function BulkHistory() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    authedFetch("/bulk-sessions")
-      .then((r) => r.json())
-      .then((data) => setSessions(data))
-      .catch(() => setError("Failed to load bulk sessions"))
+    authedFetch("/api/billing/bulk-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((status: BulkStatus | null) => {
+        const hasAccess =
+          status?.isPro || (status?.activePass && status.activePass.remaining > 0);
+        if (!hasAccess) {
+          navigate("/bulk");
+          return;
+        }
+        return authedFetch("/bulk-sessions")
+          .then((r) => r.json())
+          .then((data) => setSessions(data))
+          .catch(() => setError("Failed to load bulk sessions"));
+      })
+      .catch(() => navigate("/bulk"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [navigate]);
 
   return (
     <AppLayout>
