@@ -14,9 +14,11 @@ import {
   ShoppingCart,
   Crown,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface BulkStatus {
   isPro?: boolean;
@@ -49,10 +51,19 @@ function ScorePill({ score, label }: { score: number | null; label: string }) {
 
 export default function BulkHistory() {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [sessions, setSessions] = useState<BulkSessionSummary[]>([]);
   const [bulkStatus, setBulkStatus] = useState<BulkStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchSessions = () =>
+    authedFetch("/api/bulk-sessions")
+      .then((r) => r.json())
+      .then((data) => setSessions(Array.isArray(data) ? data : []))
+      .catch(() => setError("Failed to load bulk sessions"));
 
   useEffect(() => {
     authedFetch("/api/billing/bulk-status")
@@ -65,14 +76,38 @@ export default function BulkHistory() {
           return;
         }
         setBulkStatus(status);
-        return authedFetch("/api/bulk-sessions")
-          .then((r) => r.json())
-          .then((data) => setSessions(data))
-          .catch(() => setError("Failed to load bulk sessions"));
+        return fetchSessions();
       })
       .catch(() => navigate("/bulk"))
       .finally(() => setLoading(false));
   }, [navigate]);
+
+  const handleDeleteClick = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    if (confirmDeleteId === sessionId) {
+      setDeletingId(sessionId);
+      authedFetch(`/api/bulk-sessions/${sessionId}`, { method: "DELETE" })
+        .then((r) => {
+          if (r.ok) {
+            toast({ title: "Batch deleted" });
+            fetchSessions();
+          } else {
+            toast({ title: "Failed to delete batch", variant: "destructive" });
+          }
+        })
+        .catch(() => toast({ title: "Failed to delete batch", variant: "destructive" }))
+        .finally(() => {
+          setDeletingId(null);
+          setConfirmDeleteId(null);
+        });
+    } else {
+      setConfirmDeleteId(sessionId);
+      setTimeout(
+        () => setConfirmDeleteId((cur) => (cur === sessionId ? null : cur)),
+        4000,
+      );
+    }
+  };
 
   return (
     <AppLayout>
@@ -178,48 +213,105 @@ export default function BulkHistory() {
           </div>
         ) : (
           <div className="space-y-3">
-            {sessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => navigate(`/bulk/sessions/${session.id}`)}
-                className="w-full text-left rounded-2xl border border-border bg-card p-5 hover:border-primary/30 hover:bg-primary/[0.02] transition-colors group"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <h3 className="font-semibold text-base truncate">{session.jobTitle}</h3>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Building2 className="w-3.5 h-3.5" />
-                        {session.company}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {format(new Date(session.createdAt), "d MMM yyyy, HH:mm")}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" />
-                        {session.cvCount} CV{session.cvCount !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <div className="hidden sm:flex flex-col items-end gap-1">
-                      <div className="flex items-center gap-1.5">
-                        <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                        <ScorePill score={session.topScore} label="top" />
+            {sessions.map((session) => {
+              const isConfirming = confirmDeleteId === session.id;
+              const isDeleting = deletingId === session.id;
+
+              return (
+                <div
+                  key={session.id}
+                  className={cn(
+                    "group w-full text-left rounded-2xl border bg-card p-5 transition-colors",
+                    isConfirming
+                      ? "border-destructive/40 bg-destructive/5"
+                      : "border-border hover:border-primary/30 hover:bg-primary/[0.02]",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Clickable content area */}
+                    <button
+                      className="flex-1 min-w-0 text-left"
+                      onClick={() => !isConfirming && navigate(`/bulk/sessions/${session.id}`)}
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <h3 className="font-semibold text-base truncate">{session.jobTitle}</h3>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
-                        <ScorePill score={session.avgScore} label="avg" />
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5" />
+                          {session.company}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {format(new Date(session.createdAt), "d MMM yyyy, HH:mm")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5" />
+                          {session.cvCount} CV{session.cvCount !== 1 ? "s" : ""}
+                        </span>
                       </div>
+                    </button>
+
+                    {/* Right side: scores + delete/nav actions */}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      {/* Score pills — hidden while confirming delete */}
+                      {!isConfirming && (
+                        <div className="hidden sm:flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                            <ScorePill score={session.topScore} label="top" />
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <BarChart2 className="w-3.5 h-3.5 text-muted-foreground" />
+                            <ScorePill score={session.avgScore} label="avg" />
+                          </div>
+                        </div>
+                      )}
+
+                      {isConfirming ? (
+                        /* Two-step delete confirmation */
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-destructive font-medium flex items-center gap-1 whitespace-nowrap">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            Delete batch?
+                          </span>
+                          <button
+                            onClick={(e) => handleDeleteClick(e, session.id)}
+                            disabled={isDeleting}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                          >
+                            {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm"}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        /* Trash icon (hover) + chevron */
+                        <>
+                          <button
+                            onClick={(e) => handleDeleteClick(e, session.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Delete batch"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/bulk/sessions/${session.id}`)}
+                            className="p-1"
+                          >
+                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </button>
+                        </>
+                      )}
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
