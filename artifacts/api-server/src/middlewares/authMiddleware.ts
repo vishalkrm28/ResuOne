@@ -129,22 +129,40 @@ export async function authMiddleware(
           //  2. Insert a new users row with the new Clerk ID and real email
           //  3. Move all child table rows to the new ID
           //  4. Delete the old users row
+          // Capture stripe fields before we touch the old row
+          const [oldRow] = await db.execute(sql`
+            SELECT stripe_customer_id, stripe_subscription_id, subscription_status,
+                   subscription_price_id, current_period_end, created_at
+            FROM users WHERE id = ${oldId}
+          `);
+
+          // Release all unique constraints on old row before creating the new one
           await db.execute(sql`
             UPDATE users
-            SET email = 'migrating_' || id || '@tmp.parsepilot.internal'
+            SET email              = 'migrating_' || id || '@tmp.parsepilot.internal',
+                stripe_customer_id = NULL,
+                stripe_subscription_id = NULL
             WHERE id = ${oldId}
           `);
+
+          const oldFields = oldRow as Record<string, unknown>;
 
           await db.execute(sql`
             INSERT INTO users
               (id, email, first_name, last_name, profile_image_url,
                stripe_customer_id, stripe_subscription_id, subscription_status,
                subscription_price_id, current_period_end, created_at, updated_at)
-            SELECT
+            VALUES (
               ${userId}, ${email}, ${firstName}, ${lastName}, ${profileImageUrl},
-              stripe_customer_id, stripe_subscription_id, subscription_status,
-              subscription_price_id, current_period_end, created_at, NOW()
-            FROM users WHERE id = ${oldId}
+              ${oldFields["stripe_customer_id"] ?? null},
+              ${oldFields["stripe_subscription_id"] ?? null},
+              ${(oldFields["subscription_status"] as string) ?? null},
+              ${(oldFields["subscription_price_id"] as string) ?? null},
+              ${oldFields["current_period_end"] ?? null},
+              ${oldFields["created_at"] ?? null},
+              NOW()
+            )
+            ON CONFLICT (id) DO NOTHING
           `);
 
           // Move child rows
