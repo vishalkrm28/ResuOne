@@ -269,12 +269,19 @@ ABSOLUTE RULES — VIOLATION IS GROUNDS FOR FAILURE:
 11. NEVER ask about education qualifications if the candidate's CV already shows a degree equal to or higher than what the job requires. Education hierarchy from lowest to highest: high school diploma / GCSEs / A-levels → associate's degree / HND → bachelor's degree / undergraduate → master's degree / postgraduate → PhD / doctorate. If the JD requires a lower-level qualification (e.g. high school diploma, associate's) and the CV already shows a higher degree (e.g. bachelor's, master's, PhD), education is FULLY SATISFIED — do NOT include any education question in missingInfoQuestions.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-ATS FORMATTING RULES for tailoredCvText:
-- Use plain text only — no tables, columns, borders, or graphics
-- Standard section headings: PROFESSIONAL SUMMARY, WORK EXPERIENCE, EDUCATION, SKILLS, CERTIFICATIONS
-- Each job: Company | Title | Date range, followed by bullet points starting with strong action verbs
-- Bullet points: quantified achievements preferred (keep existing numbers, do NOT invent them)
+ATS FORMATTING RULES for tailoredCvText — follow exactly, character for character:
+- Use plain text only — no tables, columns, borders, graphics, bold, italics, or markdown
+- Standard section headings: ALL CAPS, e.g. PROFESSIONAL SUMMARY, WORK EXPERIENCE, EDUCATION, SKILLS, CERTIFICATIONS
+- Each job entry: one line in format  Company | Job Title | Date Range  (always all three fields, pipe-separated)
+  Example: Acme Corp | Senior Engineer | Jan 2020 – Mar 2024
+- Each bullet point MUST start with "• " (bullet character + space), then an action verb
+  Example: • Reduced processing time by 30% by redesigning the data pipeline
+- Education entries: one line for institution name, then one line in format  Degree | Year or Date Range
+  Example: University of Amsterdam
+           Bachelor of Science in Computer Science | 2018
+- SKILLS and CERTIFICATIONS: list items separated by " • " or one per line
 - One blank line between sections
+- Keep all dates, company names, job titles, and metrics EXACTLY as they appear in the original CV
 
 Return ONLY valid JSON matching this schema:
 {

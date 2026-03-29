@@ -30,12 +30,22 @@ type LineKind =
 // ─── Patterns ─────────────────────────────────────────────────────────────────
 
 const HEADING_RE = /^[A-Z][A-Z\s&\/\-]{2,}$/;
-const BULLET_RE  = /^[•\-\*]\s+(.+)$/;
+const BULLET_RE  = /^[•\-\*▸►▶–]\s+(.+)$/;   // accept common bullet chars incl. dash/em-dash
 const JOB_RE     = /^([A-Z0-9].{0,70}?)\s*\|\s*(.{2,})$/;
-// Matches a date at the END of an education line, with or without a preceding
-// space (PDF extractors often concatenate dates directly: "Management06/2018").
-// Captures: MM/YYYY, YYYY, or ranges like "2019-2022", "06/2018 - Present".
-const EDU_DATE_RE = /\s*(\d{1,2}\/\d{4}(?:\s*[-–]\s*(?:\d{1,2}\/\d{4}|[Pp]resent))?|\d{4}(?:\s*[-–]\s*(?:\d{4}|[Pp]resent))?)\s*$/;
+
+// Realistic date-range pattern (1900–2099). Used for education date extraction
+// and for detecting when a JOB_RE second segment is a date not a title.
+const YEAR    = "(?:19|20)\\d{2}";
+const MON_YR  = `(?:\\d{1,2}\\/${YEAR})`;  // MM/YYYY
+const DATE_PART = `(?:${MON_YR}|${YEAR})`;
+const DATE_RANGE_RE = new RegExp(
+  `^${DATE_PART}(?:\\s*[-–]\\s*(?:${DATE_PART}|[Pp]resent))?$`,
+);
+// Matches a date at the END of an education line (with or without preceding space).
+// Restricted to 1900–2099 to avoid false positives on large numbers.
+const EDU_DATE_RE = new RegExp(
+  `\\s*(${MON_YR}(?:\\s*[-–]\\s*(?:${MON_YR}|[Pp]resent))?|${YEAR}(?:\\s*[-–]\\s*(?:${YEAR}|[Pp]resent))?)\\s*$`,
+);
 const CONTACT_RE = /@|linkedin\.com|github\.com|\+\d{2}|\b\d{9,}\b|http/i;
 
 // Phone: +31 682349489  or  +1 (555) 123-4567  or  0612345678
@@ -44,22 +54,24 @@ const EMAIL_RE    = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LINKEDIN_RE = /linkedin\.com/i;
 const GITHUB_RE   = /github\.com/i;
 
-// Known section heading names — used to prevent all-caps skill abbreviations from
-// being misclassified as headings inside compact sections (SAP ERP, LEAN, RMA…).
+// Known section heading names — prevents all-caps skill abbreviations and entity
+// names from being misclassified as section headings inside non-compact sections.
 const KNOWN_SECTIONS = new Set([
   "PROFESSIONAL SUMMARY", "SUMMARY", "EXECUTIVE SUMMARY", "PROFILE",
   "OBJECTIVE", "CAREER OBJECTIVE", "PROFESSIONAL OBJECTIVE", "ABOUT",
   "WORK EXPERIENCE", "EXPERIENCE", "PROFESSIONAL EXPERIENCE",
   "EMPLOYMENT HISTORY", "CAREER HISTORY", "WORK HISTORY",
   "EDUCATION", "ACADEMIC BACKGROUND", "ACADEMIC QUALIFICATIONS",
-  "QUALIFICATIONS", "ACADEMIC HISTORY",
+  "QUALIFICATIONS", "ACADEMIC HISTORY", "TRAINING", "TRAINING & DEVELOPMENT",
+  "PROFESSIONAL DEVELOPMENT", "COURSES", "ONLINE COURSES",
   "SKILLS", "TECHNICAL SKILLS", "KEY SKILLS", "CORE SKILLS", "HARD SKILLS", "SOFT SKILLS",
   "CORE COMPETENCIES", "COMPETENCIES", "AREAS OF EXPERTISE", "EXPERTISE",
   "CERTIFICATIONS", "CERTIFICATION", "LICENCES", "LICENSES", "CERTIFICATES",
   "AWARDS", "HONOURS", "HONORS", "ACHIEVEMENTS",
   "LANGUAGES",
   "INTERESTS", "HOBBIES", "VOLUNTEER EXPERIENCE", "VOLUNTEERING",
-  "PROJECTS", "SIDE PROJECTS", "PUBLICATIONS", "REFERENCES",
+  "PROJECTS", "SIDE PROJECTS", "PERSONAL PROJECTS", "KEY PROJECTS",
+  "PUBLICATIONS", "REFERENCES", "EXTRA-CURRICULAR ACTIVITIES",
   "ADDITIONAL INFORMATION", "ADDITIONAL", "PROFESSIONAL AFFILIATIONS",
 ]);
 
@@ -71,16 +83,26 @@ const COMPACT_SECTIONS = new Set([
   "LANGUAGES", "INTERESTS", "HOBBIES", "AWARDS", "HONOURS", "HONORS", "ACHIEVEMENTS",
 ]);
 
-// Sections where job-line detection is suppressed
+// Sections where job-line (JOB_RE pipe-format) detection is suppressed
 const NON_JOB_SECTIONS = new Set([
   "PROFESSIONAL SUMMARY", "SUMMARY", "EXECUTIVE SUMMARY", "PROFILE",
   "OBJECTIVE", "CAREER OBJECTIVE", "PROFESSIONAL OBJECTIVE", "ABOUT",
 ]);
 
-// Sections where all-caps sub-lines should NOT be treated as headings.
-// Institution names (e.g. "ANTWERP MANAGEMENT SCHOOL") are all-caps but are
-// NOT section headings — they must not get the gold-rule heading treatment.
+// Sections where all-caps sub-lines must NOT become headings.
+// Applies to any section where entity names (institutions, companies, project names)
+// might appear in ALL CAPS but are content, not section headings.
 const SUPPRESS_SUBHEADING_SECTIONS = new Set([
+  "EDUCATION", "ACADEMIC BACKGROUND", "ACADEMIC QUALIFICATIONS",
+  "QUALIFICATIONS", "ACADEMIC HISTORY", "TRAINING", "TRAINING & DEVELOPMENT",
+  "PROFESSIONAL DEVELOPMENT", "COURSES", "ONLINE COURSES",
+  "PROJECTS", "SIDE PROJECTS", "PERSONAL PROJECTS", "KEY PROJECTS",
+  "PUBLICATIONS", "EXTRA-CURRICULAR ACTIVITIES",
+]);
+
+// Education-type sections — within these, plain lines get the "edu" line type
+// (date extraction + institution/degree formatting). Subset of SUPPRESS_SUBHEADING_SECTIONS.
+const EDU_SECTIONS = new Set([
   "EDUCATION", "ACADEMIC BACKGROUND", "ACADEMIC QUALIFICATIONS",
   "QUALIFICATIONS", "ACADEMIC HISTORY",
 ]);
@@ -300,10 +322,10 @@ function parseLines(text: string): LineKind[] {
   }
 
   // ── Body: from first heading onwards ──────────────────────────────────────
-  let currentSection = "";
-  let isCompact = false;
-  let isJobSection = true;
-  let isSuppressSubheading = false; // true inside EDUCATION-type sections
+  let isCompact            = false;
+  let isJobSection         = true;
+  let isSuppressSubheading = false; // true inside EDUCATION/PROJECTS/etc. — prevents all-caps heading false positives
+  let isEduSection         = false; // true only inside EDUCATION-type sections — triggers edu line type
 
   for (let i = headerEnd; i < raw.length; i++) {
     const trimmed = raw[i];
@@ -313,7 +335,7 @@ function parseLines(text: string): LineKind[] {
       continue;
     }
 
-    // Section heading
+    // Section heading detection
     const looksLikeHeading =
       trimmed.length >= 4 &&
       trimmed.length <= 60 &&
@@ -322,49 +344,44 @@ function parseLines(text: string): LineKind[] {
 
     // Promote to heading only when:
     //   • it's a known section name (always safe), OR
-    //   • we're NOT in a compact section AND NOT in a suppress-subheading
-    //     section (e.g. EDUCATION). Without the latter guard, institution
-    //     names written in ALL CAPS ("ANTWERP MANAGEMENT SCHOOL") would be
-    //     wrongly rendered as section headings.
+    //   • we're NOT in a compact section AND NOT in a suppress-subheading section.
+    // Without the latter guard, institution names like "ANTWERP MANAGEMENT SCHOOL"
+    // and project names in ALL CAPS would be wrongly treated as section headings.
     if (looksLikeHeading && (isKnownSection || (!isCompact && !isSuppressSubheading))) {
-      currentSection        = trimmed;
-      isCompact             = COMPACT_SECTIONS.has(trimmed);
-      isJobSection          = !NON_JOB_SECTIONS.has(trimmed);
-      isSuppressSubheading  = SUPPRESS_SUBHEADING_SECTIONS.has(trimmed);
+      isCompact            = COMPACT_SECTIONS.has(trimmed);
+      isJobSection         = !NON_JOB_SECTIONS.has(trimmed);
+      isSuppressSubheading = SUPPRESS_SUBHEADING_SECTIONS.has(trimmed);
+      isEduSection         = EDU_SECTIONS.has(trimmed);
       result.push({ type: "heading", text: trimmed, compact: isCompact });
       continue;
     }
 
-    // Bullet (with explicit prefix: •, -, *)
+    // Bullet (explicit prefix: •, -, *, ▸, ►, ▶, –)
     const bm = BULLET_RE.exec(trimmed);
     if (bm) {
-      result.push({ type: "bullet", text: bm[1], compact: isCompact });
+      result.push({ type: "bullet", text: bm[1].trim(), compact: isCompact });
       continue;
     }
 
-    // Job line (only outside summary-type sections)
-    if (isJobSection && trimmed.length <= 150) {
-      const jm = JOB_RE.exec(trimmed);
-      if (jm) {
-        const parts = jm[2].split(/\s*\|\s*/);
-        result.push({
-          type: "job",
-          company: jm[1].trim(),
-          jobTitle: parts[0].trim(),
-          dates: parts.slice(1).join(" – ").trim(),
-        });
-        continue;
-      }
-    }
-
-    // Plain line inside a compact section (AI often emits skills with no bullet char)
+    // Plain line inside a compact section (AI often emits skills without bullet char)
     if (isCompact) {
       result.push({ type: "bullet", text: trimmed, compact: true });
       continue;
     }
 
-    // Education entry — split out trailing date (may be concatenated with no space)
-    if (isSuppressSubheading) {
+    // ── Education entries — checked BEFORE JOB_RE so pipe-format degree lines
+    //    ("Bachelor of Science | 2018") don't get misclassified as job entries. ──
+    if (isEduSection) {
+      // 1. "Degree | Year" or "Degree | Date Range" — explicit pipe separator
+      const pipeIdx = trimmed.lastIndexOf(" | ");
+      if (pipeIdx >= 0) {
+        const afterPipe = trimmed.slice(pipeIdx + 3).trim();
+        if (DATE_RANGE_RE.test(afterPipe)) {
+          result.push({ type: "edu", text: trimmed.slice(0, pipeIdx).trim(), date: afterPipe });
+          continue;
+        }
+      }
+      // 2. End-of-line date — handles concatenated formats like "Management06/2018"
       const dm = EDU_DATE_RE.exec(trimmed);
       if (dm) {
         const date = dm[1].trim();
@@ -376,6 +393,31 @@ function parseLines(text: string): LineKind[] {
       continue;
     }
 
+    // Job line (pipe-separated: "Company | Title | Date range")
+    // Only applies outside summary-type and compact sections.
+    if (isJobSection && trimmed.length <= 150) {
+      const jm = JOB_RE.exec(trimmed);
+      if (jm) {
+        const parts = jm[2].split(/\s*\|\s*/);
+        let jobTitle = "";
+        let dates = "";
+        if (parts.length >= 2) {
+          // Standard 3-part format: Title | Date range
+          jobTitle = parts[0].trim();
+          dates    = parts.slice(1).join(" – ").trim();
+        } else if (DATE_RANGE_RE.test(parts[0])) {
+          // Second segment is a date range (no separate title field)
+          dates = parts[0].trim();
+        } else {
+          // Single second field — treat as title, no date on this line
+          jobTitle = parts[0].trim();
+        }
+        result.push({ type: "job", company: jm[1].trim(), jobTitle, dates });
+        continue;
+      }
+    }
+
+    // All other sections (PROJECTS, PUBLICATIONS, etc.) — use body type
     result.push({ type: "body", text: trimmed });
   }
 
@@ -580,14 +622,19 @@ export async function buildDocxBuffer(
         }));
         break;
 
-      case "job":
+      case "job": {
+        const datesText = (line.dates ?? "").trim();
         children.push(new Paragraph({
           children: [
             new TextRun({ text: line.company, bold: true, size: 22, color: CL_NEAR_BLACK, font: CL_FONT }),
-            new TextRun({ text: "\t", size: 22 }),
-            new TextRun({ text: line.dates, size: 19, color: CL_GREY, italics: true, font: CL_FONT }),
+            ...(datesText
+              ? [
+                  new TextRun({ text: "\t", size: 22 }),
+                  new TextRun({ text: datesText, size: 19, color: CL_GREY, italics: true, font: CL_FONT }),
+                ]
+              : []),
           ],
-          tabStops: [{ type: TabStopType.RIGHT, position: 9360 }],
+          tabStops: datesText ? [{ type: TabStopType.RIGHT, position: 9360 }] : [],
           spacing: { before: 120, after: 20 },
         }));
         if (line.jobTitle) {
@@ -597,6 +644,7 @@ export async function buildDocxBuffer(
           }));
         }
         break;
+      }
 
       case "bullet":
         if (line.compact) compactBuf.push(line.text);
@@ -935,6 +983,8 @@ body{font-family:Georgia,"Times New Roman",serif;font-size:11pt;
 
 /* ── Education entry ── */
 .cv-edu-institution{font-weight:700;font-size:10pt;color:#1A1A1A;margin-top:10px;margin-bottom:1px}
+/* When a degree row immediately follows an institution name, tighten the gap */
+.cv-edu-institution + .cv-job-header{margin-top:2px!important}
 .cv-edu-text{font-size:9.5pt;color:#2C2C2C}
 
 /* ── Regular bullets ── */
@@ -1076,8 +1126,9 @@ body{font-family:Georgia,"Times New Roman",serif;font-size:11pt;
   .banner{display:none!important}
   .doc{margin:0;padding:0;box-shadow:none;border-radius:0;width:100%;max-width:100%}
   .cv-ci a{color:#555!important}
-  .cv-section{break-after:avoid}
-  .cv-job-header{break-after:avoid}
+  .cv-section{break-after:avoid;page-break-after:avoid}
+  .cv-job-header{break-after:avoid;page-break-after:avoid}
+  .cv-edu-institution{break-after:avoid;page-break-after:avoid}
   .cl-para{text-align:justify}
   .cv-body{text-align:justify}
   .cv-bullets li{text-align:left}   /* bullet text stays left-aligned */
@@ -1185,15 +1236,17 @@ function renderCv(lines: LineKind[]): string {
       case "heading":
         out.push(`<div class="cv-section"><span>${esc(line.text)}</span></div>`);
         break;
-      case "job":
+      case "job": {
+        const datePart = line.dates ? `<span class="cv-dates">${esc(line.dates)}</span>` : "";
         out.push(
           `<div class="cv-job-header">` +
           `<span class="cv-company">${esc(line.company)}</span>` +
-          `<span class="cv-dates">${esc(line.dates)}</span>` +
+          datePart +
           `</div>` +
           (line.jobTitle ? `<div class="cv-role">${esc(line.jobTitle)}</div>` : ""),
         );
         break;
+      }
       case "edu":
         if (line.date) {
           // Degree line: text left, date right-aligned — same layout as job header
