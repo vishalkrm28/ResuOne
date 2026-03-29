@@ -22,7 +22,7 @@ interface UnlockButtonProps {
 export function UnlockButton({
   applicationId,
   className,
-  label = "Unlock this result — $6.99",
+  label = "Unlock this result — £6.99",
 }: UnlockButtonProps) {
   const [loading, setLoading] = useState(false);
   const [alreadyUnlocked, setAlreadyUnlocked] = useState(false);

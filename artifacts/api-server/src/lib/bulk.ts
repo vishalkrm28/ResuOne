@@ -8,7 +8,7 @@ export const BULK_TIERS = {
   "10": {
     label: "10 CVs",
     cvLimit: 10,
-    amountCents: 1900,
+    amountCents: 1999,
     stripePriceEnvKey: "STRIPE_PRICE_PARSEPILOT_BULK_10",
     badge: null,
     tagline: "Quick shortlist for small batches",
@@ -16,7 +16,7 @@ export const BULK_TIERS = {
   "25": {
     label: "25 CVs",
     cvLimit: 25,
-    amountCents: 2900,
+    amountCents: 2999,
     stripePriceEnvKey: "STRIPE_PRICE_PARSEPILOT_BULK_25",
     badge: "Most Popular",
     tagline: "Best balance of speed and value",
@@ -24,7 +24,7 @@ export const BULK_TIERS = {
   "50": {
     label: "50 CVs",
     cvLimit: 50,
-    amountCents: 3900,
+    amountCents: 3999,
     stripePriceEnvKey: "STRIPE_PRICE_PARSEPILOT_BULK_50",
     badge: "Best Value",
     tagline: "Process large batches efficiently",

@@ -166,7 +166,7 @@ function LockedCoverLetterSection() {
         <UpgradeCTACard
           headline="Generate a cover letter"
           variant="cover"
-          ctaLabel="Get Pro — $14.99/mo"
+          ctaLabel="Get Pro — £14.99/mo"
         />
       </div>
 
@@ -682,7 +682,7 @@ export default function ApplicationDetail() {
                         <p className="text-muted-foreground max-w-md">{analyzeError}</p>
                       </div>
                       {analyzeErrorCode === "CREDITS_EXHAUSTED" ? (
-                        <UpgradeButton label="Get Pro — $14.99/mo" />
+                        <UpgradeButton label="Get Pro — £14.99/mo" />
                       ) : (
                         <Button onClick={() => handleAnalyze()} className="gap-2">
                           <RotateCcw className="w-4 h-4" />
@@ -1115,7 +1115,7 @@ export default function ApplicationDetail() {
                               Regenerating cover letters with different tones requires Pro.
                             </p>
                           </div>
-                          <UpgradeButton label="Get Pro — $14.99/mo" className="w-full" />
+                          <UpgradeButton label="Get Pro — £14.99/mo" className="w-full" />
                           <p className="text-center text-[11px] text-muted-foreground">
                             Cancel anytime · No long-term commitment
                           </p>

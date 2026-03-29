@@ -118,7 +118,7 @@ export function SubscriptionCard() {
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                 Free
               </p>
-              <p className="text-3xl font-bold">$0</p>
+              <p className="text-3xl font-bold">£0</p>
               <p className="text-sm text-muted-foreground mt-0.5">forever</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
@@ -156,7 +156,7 @@ export function SubscriptionCard() {
               <p className="text-xs font-semibold uppercase tracking-wider text-violet-500 mb-1">
                 Pro
               </p>
-              <p className="text-3xl font-bold">$14.99</p>
+              <p className="text-3xl font-bold">£14.99</p>
               <p className="text-sm text-muted-foreground mt-0.5">per month</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-500/10 flex items-center justify-center">

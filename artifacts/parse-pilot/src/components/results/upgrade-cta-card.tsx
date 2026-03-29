@@ -46,7 +46,7 @@ export function UpgradeCTACard({
   headline = "See the complete rewrite",
   description,
   variant = "cv",
-  ctaLabel = "Get Pro — $14.99/mo",
+  ctaLabel = "Get Pro — £14.99/mo",
   dark = false,
   applicationId,
   className,
@@ -91,7 +91,7 @@ export function UpgradeCTACard({
             </p>
             <UnlockButton
               applicationId={applicationId}
-              label="Unlock this result for $6.99"
+              label="Unlock this result for £6.99"
               className="h-9 px-5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/25 shadow-none"
             />
           </div>

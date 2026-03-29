@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 interface BulkTier {
   id: string;
   cvLimit: number;
-  amountDollars: number;
+  amountPounds: number;
   badge: string | null;
   tagline: string;
   label: string;
@@ -35,15 +35,15 @@ interface BulkStatus {
 
 // ─── Tier upsell config ───────────────────────────────────────────────────────
 
-const UPSELL_FROM: Record<string, { targetId: string; savingDollars: number; message: string }> = {
+const UPSELL_FROM: Record<string, { targetId: string; savingPounds: number; message: string }> = {
   "10": {
     targetId: "25",
-    savingDollars: 10,
-    message: "You're analyzing multiple candidates. For just $10 more, you can analyze 25 CVs instead of 10.",
+    savingPounds: 10,
+    message: "You're analyzing multiple candidates. For just £10 more, you can analyze 25 CVs instead of 10.",
   },
   "25": {
     targetId: "50",
-    savingDollars: 10,
+    savingPounds: 10,
     message: "Planning to analyze more profiles? Upgrade to 50 CVs for full flexibility.",
   },
 };
@@ -90,7 +90,7 @@ function UpsellModal({
           <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">You selected</p>
             <p className="text-xl font-bold">{fromTier.cvLimit} CVs</p>
-            <p className="text-sm font-semibold text-primary">${fromTier.amountDollars}</p>
+            <p className="text-sm font-semibold text-primary">£{fromTier.amountPounds}</p>
           </div>
           <div className="rounded-xl border-2 border-primary bg-primary/5 p-4 text-center relative">
             <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap">
@@ -98,7 +98,7 @@ function UpsellModal({
             </span>
             <p className="text-xs text-muted-foreground mb-1">Upgrade to</p>
             <p className="text-xl font-bold">{toTier.cvLimit} CVs</p>
-            <p className="text-sm font-semibold text-primary">${toTier.amountDollars}</p>
+            <p className="text-sm font-semibold text-primary">£{toTier.amountPounds}</p>
           </div>
         </div>
 
@@ -109,7 +109,7 @@ function UpsellModal({
             className="flex items-center justify-center gap-2 w-full px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            Upgrade to {toTier.cvLimit} CVs — ${toTier.amountDollars}
+            Upgrade to {toTier.cvLimit} CVs — £{toTier.amountPounds}
           </button>
           <button
             onClick={onContinue}
@@ -135,7 +135,7 @@ function ProUpsellBanner({ onUpgrade }: { onUpgrade: () => void }) {
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm mb-0.5">Analyzing your own CV for multiple roles? Try Pro</p>
         <p className="text-sm text-muted-foreground">
-          Pro is designed for job seekers — $14.99/month, 100 analyses of your own CV across many roles.
+          Pro is designed for job seekers — £14.99/month, 100 analyses of your own CV across many roles.
         </p>
       </div>
       <button
@@ -363,8 +363,8 @@ export default function BulkPricing() {
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-6 p-3 rounded-lg bg-muted/30 border border-border/50">
           <Info className="w-3.5 h-3.5 flex-shrink-0" />
           <span>
-            <strong className="text-foreground">Single CV analysis:</strong> $6.99 per unlock ·{" "}
-            <strong className="text-foreground">Bulk starts at:</strong> $19 for 10 CVs — better
+            <strong className="text-foreground">Single CV analysis:</strong> £6.99 per unlock ·{" "}
+            <strong className="text-foreground">Bulk starts at:</strong> £19.99 for 10 CVs — better
             value the more you analyze
           </span>
         </div>
@@ -399,7 +399,7 @@ export default function BulkPricing() {
           <div className="grid sm:grid-cols-3 gap-4 mb-10">
             {tiers.map((tier) => {
               const isHighlighted = tier.badge === "Most Popular";
-              const perCv = (tier.amountDollars / tier.cvLimit).toFixed(2);
+              const perCv = (tier.amountPounds / tier.cvLimit).toFixed(2);
               const isCurrentTier = status?.activePass?.tier === tier.id;
               const hasExistingPass = !!status?.activePass;
 
@@ -444,13 +444,13 @@ export default function BulkPricing() {
                   {/* Price */}
                   <div className="mb-3">
                     <p className="text-3xl font-extrabold">
-                      ${tier.amountDollars}
+                      ${tier.amountPounds}
                       <span className="text-sm font-normal text-muted-foreground ml-1">
                         one-time
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      ${perCv} per CV
+                      £{perCv} per CV
                     </p>
                   </div>
 
@@ -518,7 +518,7 @@ export default function BulkPricing() {
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       You're a recruiter or hiring manager reviewing different people's CVs for one or more roles.
                     </p>
-                    <p className="text-xs font-semibold text-primary mt-2">From $19 one-time</p>
+                    <p className="text-xs font-semibold text-primary mt-2">From £19.99 one-time</p>
                   </div>
                   <div className="rounded-xl bg-violet-500/5 border border-violet-500/20 p-4">
                     <p className="text-xs font-bold uppercase tracking-wider text-violet-500 mb-2">Pro Plan</p>
@@ -526,7 +526,7 @@ export default function BulkPricing() {
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       You're a job seeker tailoring your own CV for many different roles over time.
                     </p>
-                    <p className="text-xs font-semibold text-violet-600 mt-2">$14.99/month · 100 analyses</p>
+                    <p className="text-xs font-semibold text-violet-600 mt-2">£14.99/month · 100 analyses</p>
                   </div>
                 </div>
                 <button

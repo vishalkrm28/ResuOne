@@ -284,7 +284,7 @@ export function FreeResultsView({
         <div className="flex gap-2 shrink-0">
           <UnlockButton
             applicationId={applicationId}
-            label="Unlock — $6.99"
+            label="Unlock — £6.99"
             className="h-9 px-4 text-xs font-semibold"
           />
         </div>
@@ -362,7 +362,7 @@ export function FreeResultsView({
                   </p>
                   <UnlockButton
                     applicationId={applicationId}
-                    label={`Unlock all ${missing.length} keywords — $6.99`}
+                    label={`Unlock all ${missing.length} keywords — £6.99`}
                     className="shrink-0 h-8 px-4 text-xs font-semibold whitespace-nowrap"
                   />
                 </div>
@@ -431,13 +431,13 @@ export function FreeResultsView({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Your optimized resume is ready</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Unlock this result for $6.99 — no subscription required
+            Unlock this result for £6.99 — no subscription required
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <UnlockButton
             applicationId={applicationId}
-            label="Unlock — $6.99"
+            label="Unlock — £6.99"
             className="h-8 px-4 text-xs font-semibold"
           />
           <UpgradeButton
@@ -560,7 +560,7 @@ export function FreeResultsView({
           <div className="flex items-baseline justify-between mb-3">
             <span className="text-sm font-bold text-foreground">Unlock this result</span>
             <span className="text-xl font-bold text-foreground">
-              $6.99{" "}
+              £6.99{" "}
               <span className="text-xs font-normal text-muted-foreground">one-time</span>
             </span>
           </div>
@@ -576,7 +576,7 @@ export function FreeResultsView({
 
           <UnlockButton
             applicationId={applicationId}
-            label="Unlock now — $6.99"
+            label="Unlock now — £6.99"
             className="w-full h-11 text-sm font-semibold"
           />
 
@@ -599,7 +599,7 @@ export function FreeResultsView({
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold text-foreground">
-                ParsePilot Pro — $14.99/mo
+                ParsePilot Pro — £14.99/mo
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 Unlimited results · Cover letters · Better for multiple applications
@@ -620,9 +620,9 @@ export function FreeResultsView({
       <UpgradeCTACard
         dark
         headline="Your tailored resume is ready to use"
-        description="Start Pro for unlimited results and cover letters — or unlock just this one for $6.99."
+        description="Start Pro for unlimited results and cover letters — or unlock just this one for £6.99."
         variant="bottom"
-        ctaLabel="Get Pro — $14.99/mo"
+        ctaLabel="Get Pro — £14.99/mo"
         applicationId={applicationId}
       />
 

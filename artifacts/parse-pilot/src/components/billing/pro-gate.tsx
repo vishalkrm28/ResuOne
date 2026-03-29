@@ -58,7 +58,7 @@ export function ProGate({ isPro, feature, compact = false, children, className }
       <Link href="/settings">
         <Button className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-md">
           <Sparkles className="w-4 h-4" />
-          Get Pro — $14.99/mo
+          Get Pro — £14.99/mo
         </Button>
       </Link>
     </div>

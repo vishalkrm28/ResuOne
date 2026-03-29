@@ -34,8 +34,8 @@ const faqs: { q: string; a: string }[] = [
     a: "Match score, missing keyword list, and a partial preview of the optimised result — all before you pay anything. You only pay when you want the complete output.",
   },
   {
-    q: "How does the $6.99 unlock work?",
-    a: "After analysis you see a preview. Pay $6.99 once for that result and the full optimised CV, cover letter option, and export unlock immediately. No subscription. No recurring charge.",
+    q: "How does the £6.99 unlock work?",
+    a: "After analysis you see a preview. Pay £6.99 once for that result and the full optimised CV, cover letter option, and export unlock immediately. No subscription. No recurring charge.",
   },
   {
     q: "Can I cancel my Pro subscription?",
@@ -172,7 +172,7 @@ function HeroMockPanel() {
             </div>
             <div className="flex items-center gap-1 text-xs font-semibold text-violet-600 border border-violet-500/30 bg-violet-500/5 px-2 py-1 rounded-lg whitespace-nowrap">
               <Lock className="w-3 h-3" />
-              $6.99
+              £6.99
             </div>
           </div>
         </div>
@@ -252,7 +252,7 @@ export default function Landing() {
             </h1>
 
             <p className="text-base md:text-lg text-muted-foreground leading-relaxed mb-2 max-w-lg mx-auto lg:mx-0">
-              Upload your CV, paste a job description. Get a real ATS match score and the exact keywords you're missing — free. Unlock the full rewritten CV for $6.99.
+              Upload your CV, paste a job description. Get a real ATS match score and the exact keywords you're missing — free. Unlock the full rewritten CV for £6.99.
             </p>
 
             {/* Differentiation line */}
@@ -266,7 +266,7 @@ export default function Landing() {
                 <BarChart3 className="w-3 h-3" />
                 72% match score
               </span>
-              {["SAP missing", "KPI reporting missing", "Full CV — $6.99 unlock"].map((t, i) => (
+              {["SAP missing", "KPI reporting missing", "Full CV — £6.99 unlock"].map((t, i) => (
                 <span
                   key={t}
                   className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${
@@ -459,7 +459,7 @@ export default function Landing() {
               num: "3",
               icon: <Zap className="w-5 h-5" />,
               title: "See your score. Unlock what you need.",
-              body: "Match score and keyword gaps are free. Pay $6.99 to unlock the complete optimised CV and export.",
+              body: "Match score and keyword gaps are free. Pay £6.99 to unlock the complete optimised CV and export.",
             },
           ].map((s) => (
             <div key={s.num} className="flex gap-5">
@@ -512,12 +512,12 @@ export default function Landing() {
                 {
                   icon: <Eye className="w-4 h-4 text-foreground" />,
                   statement: "See your match score and missing keywords before paying anything",
-                  detail: "Analysis is always free. You decide whether the result is worth $6.99 before you commit.",
+                  detail: "Analysis is always free. You decide whether the result is worth £6.99 before you commit.",
                 },
                 {
                   icon: <Lock className="w-4 h-4 text-foreground" />,
                   statement: "No subscription required to get a result",
-                  detail: "Pay $6.99 per result if you want the full output. Pro is for people who apply frequently.",
+                  detail: "Pay £6.99 per result if you want the full output. Pro is for people who apply frequently.",
                 },
                 {
                   icon: <PenLine className="w-4 h-4 text-foreground" />,
@@ -634,7 +634,7 @@ export default function Landing() {
                     <div className="absolute inset-0 flex items-center justify-center bg-card/60">
                       <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 border border-border/60 bg-card px-2 py-1 rounded-full">
                         <Lock className="w-2.5 h-2.5" />
-                        2 more bullets — unlock for $6.99
+                        2 more bullets — unlock for £6.99
                       </span>
                     </div>
                   </div>
@@ -754,7 +754,7 @@ export default function Landing() {
               <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 mb-1">
                 Start here — Free
               </p>
-              <p className="text-4xl font-bold mb-1">$0</p>
+              <p className="text-4xl font-bold mb-1">£0</p>
               <p className="text-sm text-muted-foreground mb-6">
                 No card. No commitment.
               </p>
@@ -786,7 +786,7 @@ export default function Landing() {
                 Unlock
               </p>
               <p className="text-4xl font-bold mb-1">
-                $6.99<span className="text-lg font-normal text-muted-foreground"> per result</span>
+                £6.99<span className="text-lg font-normal text-muted-foreground"> per result</span>
               </p>
               <p className="text-sm text-muted-foreground mb-6">
                 No subscription. Instant access.
@@ -826,7 +826,7 @@ export default function Landing() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-violet-600">Pro</p>
               </div>
               <p className="text-4xl font-bold mb-1">
-                $14.99<span className="text-lg font-normal text-muted-foreground">/mo</span>
+                £14.99<span className="text-lg font-normal text-muted-foreground">/mo</span>
               </p>
               <p className="text-sm text-muted-foreground mb-6">Cancel any time.</p>
               <ul className="space-y-2.5 text-sm flex-1 mb-7">
@@ -848,7 +848,7 @@ export default function Landing() {
                 onClick={login}
                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-sm font-semibold transition-all shadow-md"
               >
-                Get Pro — $14.99/mo
+                Get Pro — £14.99/mo
               </button>
               <p className="text-center text-xs text-muted-foreground mt-3">
                 Cancel any time. No long-term commitment.
