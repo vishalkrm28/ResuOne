@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { db, bulkPassesTable, usersTable } from "@workspace/db";
+import { db, bulkPassesTable, usersTable, usageBalancesTable, usageEventsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
+import Stripe from "stripe";
 import { logger } from "../lib/logger.js";
 
 const router = Router();
@@ -135,6 +136,106 @@ router.post("/_admin/fix-user-migration", async (req, res) => {
     res.json({ success: true, report });
   } catch (err: any) {
     logger.error({ err }, "Admin fix-user-migration failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /_admin/seed-credits  { userId, credits }
+// Sets the user's available credit balance directly (upsert).
+router.post("/_admin/seed-credits", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const { userId, credits } = req.body as { userId?: string; credits?: number };
+  if (!userId || credits === undefined) {
+    res.status(400).json({ error: "userId and credits required" });
+    return;
+  }
+
+  try {
+    const existing = await db.select().from(usageBalancesTable)
+      .where(eq(usageBalancesTable.userId, userId)).limit(1);
+
+    if (existing.length > 0) {
+      await db.update(usageBalancesTable)
+        .set({ availableCredits: credits })
+        .where(eq(usageBalancesTable.userId, userId));
+    } else {
+      await db.insert(usageBalancesTable).values({ userId, availableCredits: credits });
+    }
+
+    await db.insert(usageEventsTable).values({
+      userId,
+      type: "admin_credit_grant",
+      creditsDelta: credits,
+      metadata: { reason: "admin seed", grantedAt: new Date().toISOString() },
+    });
+
+    logger.info({ userId, credits }, "Admin seeded credits");
+    res.json({ success: true, message: `Set ${credits} credits for ${userId}` });
+  } catch (err: any) {
+    logger.error({ err }, "Admin seed-credits failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /_admin/sync-stripe  { userId }
+// Looks up the user's Stripe customer, finds their active subscription,
+// and writes subscription_status + price + period into the DB.
+router.post("/_admin/sync-stripe", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const { userId } = req.body as { userId?: string };
+  if (!userId) { res.status(400).json({ error: "userId required" }); return; }
+
+  const stripeKey = process.env["STRIPE_SECRET_KEY"];
+  if (!stripeKey) { res.status(500).json({ error: "STRIPE_SECRET_KEY not set" }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    if (!user.stripeCustomerId) { res.status(400).json({ error: "User has no stripeCustomerId" }); return; }
+
+    const stripe = new Stripe(stripeKey);
+    const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, limit: 5 });
+    const active = subs.data.find(s => s.status === "active") ?? subs.data[0];
+
+    if (!active) {
+      res.json({ success: true, message: "No subscriptions found for this customer", subs: subs.data.map(s => ({ id: s.id, status: s.status })) });
+      return;
+    }
+
+    const priceId = active.items.data[0]?.price?.id ?? null;
+    const periodEnd = active.current_period_end ? new Date(active.current_period_end * 1000) : null;
+
+    await db.update(usersTable).set({
+      stripeSubscriptionId: active.id,
+      subscriptionStatus: active.status,
+      subscriptionPriceId: priceId,
+      currentPeriodEnd: periodEnd,
+    }).where(eq(usersTable.id, userId));
+
+    logger.info({ userId, subId: active.id, status: active.status }, "Admin synced Stripe subscription");
+    res.json({ success: true, subscription: { id: active.id, status: active.status, priceId, periodEnd } });
+  } catch (err: any) {
+    logger.error({ err }, "Admin sync-stripe failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /_admin/check-user/:userId  — show the user's current DB state
+router.get("/_admin/check-user/:userId", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const { userId } = req.params;
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    const [balance] = await db.select().from(usageBalancesTable).where(eq(usageBalancesTable.userId, userId)).limit(1);
+    const passes = await db.select().from(bulkPassesTable).where(eq(bulkPassesTable.userId, userId));
+    res.json({ user: user ?? null, balance: balance ?? null, bulkPasses: passes });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
