@@ -260,6 +260,9 @@ ABSOLUTE RULES — VIOLATION IS GROUNDS FOR FAILURE:
 6. ONLY rewrite, reorder, and rephrase existing content to better match the job description's language
 7. Candidate-confirmed answers (labeled "CANDIDATE-CONFIRMED INFORMATION") are VERIFIED FACTS — place each answer in the correct CV section: work achievements → WORK EXPERIENCE bullets under the relevant role; skills/tools → SKILLS; certifications → CERTIFICATIONS; education details → EDUCATION; only summary-level info → PROFESSIONAL SUMMARY. Never dump all answers into PROFESSIONAL SUMMARY.
 8. For topics where the candidate LEFT THE FIELD BLANK → add a question to missingInfoQuestions. For topics already answered in CANDIDATE-CONFIRMED INFORMATION → do NOT re-ask them.
+9. NEVER remove any existing section from the original CV. Preserve ALL sections exactly as-is including academic projects, personal projects, dissertations, volunteer work, extracurricular activities, publications, awards, and any other section present in the original — even if that section seems unrelated to the job. Only reword content within sections; never delete entire sections.
+10. NEVER ask in missingInfoQuestions about content that is already present in the original CV. Only ask for information that the job genuinely requires and is completely absent from the CV.
+11. NEVER ask about education qualifications if the candidate's CV already shows a degree equal to or higher than what the job requires. Education hierarchy from lowest to highest: high school diploma / GCSEs / A-levels → associate's degree / HND → bachelor's degree / undergraduate → master's degree / postgraduate → PhD / doctorate. If the JD requires a lower-level qualification (e.g. high school diploma, associate's) and the CV already shows a higher degree (e.g. bachelor's, master's, PhD), education is FULLY SATISFIED — do NOT include any education question in missingInfoQuestions.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ATS FORMATTING RULES for tailoredCvText:
@@ -317,18 +320,36 @@ Analyze the CV against the job description. Return JSON.`;
     return qTokens.length > 0 && matches / qTokens.length >= 0.4;
   }
 
+  // Post-processing: filter out education questions if the CV already contains a
+  // degree that is equal to or higher than common minimum requirements.
+  const cvLower = input.originalCvText.toLowerCase();
+  const cvHasDegree =
+    /\b(bachelor|b\.?s\.?|b\.?a\.?|b\.?eng|bsc|ba\b|master|m\.?s\.?|m\.?a\.?|m\.?eng|msc|mba|phd|ph\.?d|doctorate|postgraduate|graduate degree|university degree|honours degree|hons)\b/.test(cvLower);
+
+  const educationQuestionPattern =
+    /\b(education|degree|qualification|diploma|certificate|undergraduate|bachelor|master|phd|school|college|university|academic credential|educational background|highest.*level.*education|level of education)\b/i;
+
+  function isRedundantEducationQuestion(question: string): boolean {
+    if (!cvHasDegree) return false;
+    return educationQuestionPattern.test(question);
+  }
+
+  function shouldFilterQuestion(q: string): boolean {
+    return isAlreadyAnswered(q) || isRedundantEducationQuestion(q);
+  }
+
   if (!result.success) {
     const r = raw as Record<string, unknown>;
     const questions = Array.isArray(r.missingInfoQuestions) ? (r.missingInfoQuestions as string[]) : [];
     return {
       tailoredCvText: (r.tailoredCvText as string) ?? "",
-      missingInfoQuestions: questions.filter(q => !isAlreadyAnswered(q)),
+      missingInfoQuestions: questions.filter(q => !shouldFilterQuestion(q)),
       sectionSuggestions: Array.isArray(r.sectionSuggestions) ? (r.sectionSuggestions as string[]) : [],
     };
   }
   return {
     ...result.data,
-    missingInfoQuestions: result.data.missingInfoQuestions.filter(q => !isAlreadyAnswered(q)),
+    missingInfoQuestions: result.data.missingInfoQuestions.filter(q => !shouldFilterQuestion(q)),
   };
 }
 

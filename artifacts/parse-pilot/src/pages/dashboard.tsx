@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useListApplications, useDeleteApplication } from "@workspace/api-client-react";
+import { useListApplications, useDeleteApplication, getListApplicationsQueryKey } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -35,6 +36,7 @@ const statusConfig = {
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { status: billingStatus } = useBillingStatus();
   const isPro = billingStatus?.isPro ?? false;
@@ -52,6 +54,9 @@ export default function Dashboard() {
       onSuccess: () => {
         toast({ title: "Application deleted" });
         setConfirmDeleteId(null);
+        queryClient.invalidateQueries({
+          queryKey: getListApplicationsQueryKey({ userId: user?.id ?? "" }),
+        });
       },
       onError: () => {
         toast({ title: "Failed to delete", variant: "destructive" });
