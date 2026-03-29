@@ -23,6 +23,7 @@ type LineKind =
   | { type: "heading"; text: string; compact: boolean }
   | { type: "bullet"; text: string; compact: boolean }
   | { type: "job"; company: string; jobTitle: string; dates: string }
+  | { type: "edu"; text: string; date?: string }   // education entry (institution or degree+date)
   | { type: "body"; text: string }
   | { type: "blank" };
 
@@ -31,6 +32,10 @@ type LineKind =
 const HEADING_RE = /^[A-Z][A-Z\s&\/\-]{2,}$/;
 const BULLET_RE  = /^[•\-\*]\s+(.+)$/;
 const JOB_RE     = /^([A-Z0-9].{0,70}?)\s*\|\s*(.{2,})$/;
+// Matches a date at the END of an education line, with or without a preceding
+// space (PDF extractors often concatenate dates directly: "Management06/2018").
+// Captures: MM/YYYY, YYYY, or ranges like "2019-2022", "06/2018 - Present".
+const EDU_DATE_RE = /\s*(\d{1,2}\/\d{4}(?:\s*[-–]\s*(?:\d{1,2}\/\d{4}|[Pp]resent))?|\d{4}(?:\s*[-–]\s*(?:\d{4}|[Pp]resent))?)\s*$/;
 const CONTACT_RE = /@|linkedin\.com|github\.com|\+\d{2}|\b\d{9,}\b|http/i;
 
 // Phone: +31 682349489  or  +1 (555) 123-4567  or  0612345678
@@ -358,6 +363,19 @@ function parseLines(text: string): LineKind[] {
       continue;
     }
 
+    // Education entry — split out trailing date (may be concatenated with no space)
+    if (isSuppressSubheading) {
+      const dm = EDU_DATE_RE.exec(trimmed);
+      if (dm) {
+        const date = dm[1].trim();
+        const text = trimmed.slice(0, trimmed.length - dm[0].length).trim();
+        result.push({ type: "edu", text, date });
+      } else {
+        result.push({ type: "edu", text: trimmed });
+      }
+      continue;
+    }
+
     result.push({ type: "body", text: trimmed });
   }
 
@@ -583,6 +601,29 @@ export async function buildDocxBuffer(
       case "bullet":
         if (line.compact) compactBuf.push(line.text);
         else regularBuf.push(line.text);
+        break;
+
+      case "edu":
+        flushCompact();
+        flushRegular();
+        if (line.date) {
+          // Degree line: text left, date right-aligned via tab stop
+          children.push(new Paragraph({
+            children: [
+              new TextRun({ text: line.text, size: 20, font: CL_FONT, color: CL_CHARCOAL }),
+              new TextRun({ text: "\t", size: 19 }),
+              new TextRun({ text: line.date, size: 19, color: CL_GREY, italics: true, font: CL_FONT }),
+            ],
+            tabStops: [{ type: TabStopType.RIGHT, position: 9360 }],
+            spacing: { before: 20, after: 40 },
+          }));
+        } else {
+          // Institution name: bold like a company name
+          children.push(new Paragraph({
+            children: [new TextRun({ text: line.text, bold: true, size: 22, color: CL_NEAR_BLACK, font: CL_FONT })],
+            spacing: { before: 120, after: 20 },
+          }));
+        }
         break;
 
       case "body":
@@ -892,6 +933,10 @@ body{font-family:Georgia,"Times New Roman",serif;font-size:11pt;
 .cv-dates{font-size:8.5pt;color:#888;white-space:nowrap;font-style:italic;flex-shrink:0}
 .cv-role{font-size:9.5pt;color:#B8975A;font-style:italic;margin-bottom:4px}
 
+/* ── Education entry ── */
+.cv-edu-institution{font-weight:700;font-size:10pt;color:#1A1A1A;margin-top:10px;margin-bottom:1px}
+.cv-edu-text{font-size:9.5pt;color:#2C2C2C}
+
 /* ── Regular bullets ── */
 .cv-bullets{margin:3px 0 4px 18px}
 .cv-bullets li{font-size:9.5pt;margin-bottom:2px;line-height:1.5;list-style-type:disc;color:#2C2C2C}
@@ -1148,6 +1193,20 @@ function renderCv(lines: LineKind[]): string {
           `</div>` +
           (line.jobTitle ? `<div class="cv-role">${esc(line.jobTitle)}</div>` : ""),
         );
+        break;
+      case "edu":
+        if (line.date) {
+          // Degree line: text left, date right-aligned — same layout as job header
+          out.push(
+            `<div class="cv-job-header">` +
+            `<span class="cv-edu-text">${esc(line.text)}</span>` +
+            `<span class="cv-dates">${esc(line.date)}</span>` +
+            `</div>`,
+          );
+        } else {
+          // Institution name: bold, like a company name
+          out.push(`<div class="cv-edu-institution">${esc(line.text)}</div>`);
+        }
         break;
       case "bullet":
         if (line.compact) compactBullets.push(line.text);
