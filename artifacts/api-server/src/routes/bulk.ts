@@ -296,6 +296,7 @@ router.get("/bulk-sessions", async (req, res) => {
       )
       .where(eq(bulkSessionsTable.userId, req.user.id))
       .groupBy(bulkSessionsTable.id)
+      .having(sql`count(${applicationsTable.id}) > 0`)
       .orderBy(desc(bulkSessionsTable.createdAt));
 
     res.json(sessions);
