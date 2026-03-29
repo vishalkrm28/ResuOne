@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, desc, count, max, avg, sql } from "drizzle-orm";
+import { and, eq, desc, count, max, avg, sql, inArray } from "drizzle-orm";
 import { db, usersTable, bulkPassesTable, bulkSessionsTable, applicationsTable } from "@workspace/db";
 import { z } from "zod";
 import type Stripe from "stripe";
@@ -257,7 +257,7 @@ router.post("/bulk-sessions", async (req, res) => {
         .where(
           and(
             eq(applicationsTable.userId, req.user.id),
-            sql`${applicationsTable.id}::text = ANY(${applicationIds})`
+            inArray(applicationsTable.id, applicationIds)
           )
         );
     }
