@@ -184,6 +184,40 @@ function parseContactItems(rawLines: string[]): ContactItem[] {
   return items;
 }
 
+/**
+ * Build a structured ContactItem[] from AI-extracted parsedCvJson.
+ * This is the preferred source — avoids all PDF text-extraction fragility.
+ * Returns null when parsedCvJson lacks sufficient contact data.
+ */
+function contactItemsFromParsedCv(
+  parsedCv: Record<string, unknown>,
+): ContactItem[] | null {
+  const items: ContactItem[] = [];
+
+  const loc = typeof parsedCv.location === "string" ? parsedCv.location.trim() : null;
+  if (loc) items.push({ kind: "location", display: loc });
+
+  const phone = typeof parsedCv.phone === "string" ? parsedCv.phone.trim() : null;
+  if (phone) items.push({ kind: "phone", display: phone });
+
+  const email = typeof parsedCv.email === "string" ? parsedCv.email.trim().toLowerCase() : null;
+  if (email) items.push({ kind: "email", display: email, href: `mailto:${email}` });
+
+  const linkedin = typeof parsedCv.linkedin === "string" ? parsedCv.linkedin.trim() : null;
+  if (linkedin) {
+    const url = /^https?:\/\//i.test(linkedin) ? linkedin : `https://${linkedin}`;
+    items.push({ kind: "linkedin", display: linkedin.replace(/^https?:\/\//i, ""), href: url });
+  }
+
+  const github = typeof parsedCv.github === "string" ? parsedCv.github.trim() : null;
+  if (github) {
+    const url = /^https?:\/\//i.test(github) ? github : `https://${github}`;
+    items.push({ kind: "github", display: github.replace(/^https?:\/\//i, ""), href: url });
+  }
+
+  return items.length > 0 ? items : null;
+}
+
 // ─── CV line parser ───────────────────────────────────────────────────────────
 
 function parseLines(text: string): LineKind[] {
@@ -379,12 +413,25 @@ export async function buildDocxBuffer(
   _jobTitle: string,
   _company: string,
   coverLetterText?: string,
+  parsedCvJson?: Record<string, unknown>,
 ): Promise<Buffer> {
   // ── Cover letter DOCX ──────────────────────────────────────────────────────
   if (coverLetterText !== undefined) {
     return buildCoverDocx(coverLetterText, cvText, _company);
   }
   const lines = parseLines(cvText);
+  // Override contact section with AI-extracted structured data when available
+  if (parsedCvJson) {
+    const structuredContact = contactItemsFromParsedCv(parsedCvJson);
+    if (structuredContact) {
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].type === "contact") {
+          lines[i] = { type: "contact", items: structuredContact };
+          break;
+        }
+      }
+    }
+  }
   const children: Paragraph[] = [];
 
   let compactBuf: string[] = [];
@@ -680,17 +727,34 @@ export function buildPrintHtml(
   jobTitleParam: string,
   companyParam: string,
   docType: "cv" | "cover",
-  cvText?: string,            // for cover letters: source CV to extract name/contact
+  cvText?: string,                        // for cover letters: source CV
+  parsedCvJson?: Record<string, unknown>, // structured CV data — preferred contact source
 ): string {
   const pageTitle =
     docType === "cover"
       ? `Cover Letter — ${companyParam}`
       : `CV — ${jobTitleParam} at ${companyParam}`;
 
-  const body =
-    docType === "cover"
-      ? renderCoverLetter(text, cvText ?? "", companyParam)
-      : renderCv(parseLines(text));
+  let body: string;
+  if (docType === "cover") {
+    body = renderCoverLetter(text, cvText ?? "", companyParam);
+  } else {
+    const lines = parseLines(text);
+    // Override the contact section with AI-extracted structured data when available —
+    // this avoids all PDF text-extraction fragility.
+    if (parsedCvJson) {
+      const structuredContact = contactItemsFromParsedCv(parsedCvJson);
+      if (structuredContact) {
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].type === "contact") {
+            lines[i] = { type: "contact", items: structuredContact };
+            break;
+          }
+        }
+      }
+    }
+    body = renderCv(lines);
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">

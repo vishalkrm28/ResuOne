@@ -55,10 +55,11 @@ router.get("/export/application/:id/docx", async (req, res) => {
     }
 
     const cvSourceText = app.tailoredCvText ?? app.originalCvText ?? "";
+    const parsedCv = (app.parsedCvJson as Record<string, unknown> | null) ?? undefined;
     const buffer =
       cvType === "cover"
-        ? await buildDocxBuffer(cvSourceText, app.jobTitle, app.company, text)
-        : await buildDocxBuffer(text, app.jobTitle, app.company);
+        ? await buildDocxBuffer(cvSourceText, app.jobTitle, app.company, text, parsedCv)
+        : await buildDocxBuffer(text, app.jobTitle, app.company, undefined, parsedCv);
     const safeCompany = app.company.replace(/[^a-z0-9]/gi, "_").toLowerCase();
     const filename =
       cvType === "cover"
@@ -140,7 +141,8 @@ router.get("/export/application/:id/pdf", async (req, res) => {
     }
 
     const cvSourceText = app.tailoredCvText ?? app.originalCvText ?? "";
-    const html = buildPrintHtml(text, app.jobTitle, app.company, cvType, cvSourceText);
+    const parsedCvForHtml = (app.parsedCvJson as Record<string, unknown> | null) ?? undefined;
+    const html = buildPrintHtml(text, app.jobTitle, app.company, cvType, cvSourceText, parsedCvForHtml);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (err) {

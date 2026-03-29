@@ -8,6 +8,8 @@ const LocalParsedCvSchema = z.object({
   name: z.string().nullable().catch(null),
   email: z.string().nullable().catch(null),
   phone: z.string().nullable().catch(null),
+  linkedin: z.string().nullable().catch(null),
+  github: z.string().nullable().catch(null),
   location: z.string().nullable().catch(null),
   summary: z.string().nullable().catch(null),
   work_experience: z
@@ -86,7 +88,9 @@ Return JSON matching this exact schema:
   "name": "string or null",
   "email": "string or null",
   "phone": "string or null",
-  "location": "string or null",
+  "linkedin": "full LinkedIn URL or null (e.g. https://linkedin.com/in/username)",
+  "github": "full GitHub URL or null (e.g. https://github.com/username)",
+  "location": "city/country or null",
   "summary": "string or null",
   "work_experience": [{"company":"string","title":"string","start_date":"string","end_date":"string|null","bullets":["string"]}],
   "education": [{"institution":"string","degree":"string","field":"string|null","start_date":"string|null","end_date":"string|null"}],
@@ -118,7 +122,7 @@ export async function parseCv(rawText: string): Promise<ParsedCv> {
 
   if (!result.success) {
     return {
-      name: null, email: null, phone: null, location: null, summary: null,
+      name: null, email: null, phone: null, linkedin: null, github: null, location: null, summary: null,
       work_experience: [], education: [], skills: [], certifications: [], languages: [],
       ...((raw as Record<string, unknown>) ?? {}),
     } as ParsedCv;

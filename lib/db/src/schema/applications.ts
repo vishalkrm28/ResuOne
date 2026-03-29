@@ -24,6 +24,8 @@ export const ParsedCvSchema = z.object({
   name: z.string().nullable(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
+  linkedin: z.string().nullable().optional(),
+  github: z.string().nullable().optional(),
   location: z.string().nullable(),
   summary: z.string().nullable(),
   work_experience: z.array(ParsedWorkExperienceSchema),
