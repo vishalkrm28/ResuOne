@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/authed-fetch";
-import { Sparkles, Crown, Calendar, Loader2, CheckCircle2, Circle } from "lucide-react";
+import { Sparkles, Crown, Calendar, Loader2, CheckCircle2, Circle, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { UpgradeButton } from "./upgrade-button";
 import { ManageBillingButton } from "./manage-billing-button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface BillingStatus {
   isPro: boolean;
@@ -50,6 +51,9 @@ export function SubscriptionCard() {
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     authedFetch("/api/billing/status")
@@ -61,6 +65,22 @@ export function SubscriptionCard() {
       .catch((err) => setError(err instanceof Error ? err.message : "Unknown error"))
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleCancelSubscription() {
+    setCancelling(true);
+    try {
+      const res = await authedFetch("/api/billing/cancel-subscription", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to cancel");
+      setStatus((s) => s ? { ...s, subscriptionStatus: "canceled" } : s);
+      setCancelConfirm(false);
+      toast({ title: "Subscription cancelled", description: "You'll keep Pro access until your billing period ends." });
+    } catch (err) {
+      toast({ title: "Could not cancel", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" });
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -209,9 +229,49 @@ export function SubscriptionCard() {
             </div>
           )}
 
-          <div className="mt-auto pt-2">
+          <div className="mt-auto pt-2 space-y-2">
             {isPro ? (
-              <ManageBillingButton className="w-full" />
+              <>
+                <ManageBillingButton className="w-full" />
+                {subscriptionStatus !== "canceled" && (
+                  <>
+                    {!cancelConfirm ? (
+                      <button
+                        onClick={() => setCancelConfirm(true)}
+                        className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors py-1.5 underline-offset-2 hover:underline"
+                      >
+                        Cancel subscription
+                      </button>
+                    ) : (
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-foreground leading-snug">
+                            You'll keep Pro access until your billing period ends. This cannot be undone.
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setCancelConfirm(false)}
+                            disabled={cancelling}
+                            className="flex-1 text-xs py-1.5 px-3 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+                          >
+                            Keep plan
+                          </button>
+                          <button
+                            onClick={handleCancelSubscription}
+                            disabled={cancelling}
+                            className="flex-1 text-xs py-1.5 px-3 rounded-md bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-1"
+                          >
+                            {cancelling ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                            {cancelling ? "Cancelling…" : "Yes, cancel"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
             ) : (
               <UpgradeButton className="w-full" />
             )}

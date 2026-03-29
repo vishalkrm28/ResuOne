@@ -359,4 +359,53 @@ router.post("/billing/portal", async (req, res) => {
   }
 });
 
+// ─── POST /billing/cancel-subscription ───────────────────────────────────────
+// Cancels the user's Pro subscription at period end (they keep access until
+// the period they already paid for runs out).
+
+router.post("/billing/cancel-subscription", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    return;
+  }
+
+  try {
+    const [dbUser] = await db
+      .select({
+        stripeSubscriptionId: usersTable.stripeSubscriptionId,
+        subscriptionStatus: usersTable.subscriptionStatus,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user.id))
+      .limit(1);
+
+    if (!dbUser?.stripeSubscriptionId) {
+      res.status(400).json({ error: "No active subscription found.", code: "NO_SUBSCRIPTION" });
+      return;
+    }
+
+    if (dbUser.subscriptionStatus === "canceled") {
+      res.status(400).json({ error: "Subscription is already cancelled.", code: "ALREADY_CANCELED" });
+      return;
+    }
+
+    // Cancel at period end — user keeps access until the period they paid for ends
+    await getStripe().subscriptions.update(dbUser.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    // Reflect immediately in DB so UI updates without waiting for webhook
+    await db
+      .update(usersTable)
+      .set({ subscriptionStatus: "canceled", updatedAt: new Date() })
+      .where(eq(usersTable.id, req.user.id));
+
+    logger.info({ userId: req.user.id, subscriptionId: dbUser.stripeSubscriptionId }, "Subscription cancelled at period end");
+    res.json({ success: true, message: "Subscription cancelled. You'll retain Pro access until the end of your current billing period." });
+  } catch (err) {
+    logger.error(stripeErrContext(err), "Failed to cancel subscription");
+    res.status(500).json({ error: "Could not cancel subscription. Please try again.", code: "CANCEL_ERROR" });
+  }
+});
+
 export default router;
