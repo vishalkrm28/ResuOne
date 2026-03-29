@@ -159,29 +159,52 @@ function ActivePassBanner({
   onGoToSession: () => void;
 }) {
   const pct = Math.round((pass.cvsUsed / pass.cvLimit) * 100);
+  const isAlmostFull = pass.remaining <= Math.ceil(pass.cvLimit * 0.2);
+  const isEmpty = pass.remaining === 0;
   return (
-    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+    <div className={cn(
+      "rounded-2xl border p-5",
+      isEmpty
+        ? "border-red-300/40 bg-red-500/5 dark:border-red-900/40"
+        : isAlmostFull
+        ? "border-amber-400/40 bg-amber-500/5"
+        : "border-emerald-500/30 bg-emerald-500/5"
+    )}>
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <p className="font-semibold text-sm text-emerald-700">Active bulk pass</p>
+          <p className={cn("font-semibold text-sm", isEmpty ? "text-red-600" : isAlmostFull ? "text-amber-700" : "text-emerald-700")}>
+            {isEmpty ? "Pass fully used — buy more below ↓" : "Active bulk pass"}
+          </p>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {pass.remaining} of {pass.cvLimit} CV slots remaining
+            {isEmpty
+              ? `All ${pass.cvLimit} CV slots have been used.`
+              : `${pass.remaining} of ${pass.cvLimit} CV slots remaining`}
           </p>
         </div>
-        <button
-          onClick={onGoToSession}
-          className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors whitespace-nowrap"
-        >
-          Start analyzing
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        {!isEmpty && (
+          <button
+            onClick={onGoToSession}
+            className={cn(
+              "flex items-center gap-1.5 text-sm font-semibold transition-colors whitespace-nowrap",
+              isAlmostFull ? "text-amber-700 hover:text-amber-800" : "text-emerald-700 hover:text-emerald-800"
+            )}
+          >
+            Start analyzing
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
-      <div className="w-full h-1.5 bg-emerald-500/20 rounded-full overflow-hidden">
+      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
         <div
-          className="h-full bg-emerald-500 rounded-full transition-all"
+          className={cn("h-full rounded-full transition-all", isEmpty ? "bg-red-500" : isAlmostFull ? "bg-amber-500" : "bg-emerald-500")}
           style={{ width: `${pct}%` }}
         />
       </div>
+      {isAlmostFull && !isEmpty && (
+        <p className="text-xs text-amber-700 mt-2 font-medium">
+          Running low — top up your slot balance below to avoid running out mid-batch.
+        </p>
+      )}
     </div>
   );
 }
@@ -354,6 +377,20 @@ export default function BulkPricing() {
         )}
 
         {/* Pricing tiers */}
+        {/* Section header when user has an existing pass */}
+        {status?.activePass && (
+          <div className="mb-4">
+            <p className="text-sm font-bold text-foreground">
+              {status.activePass.remaining === 0
+                ? "Top up — buy a new pass"
+                : "Need more capacity? Add another pass"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Additional passes stack — slots are consumed from the most recently purchased pass first.
+            </p>
+          </div>
+        )}
+
         {loadingStatus ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -363,6 +400,8 @@ export default function BulkPricing() {
             {tiers.map((tier) => {
               const isHighlighted = tier.badge === "Most Popular";
               const perCv = (tier.amountDollars / tier.cvLimit).toFixed(2);
+              const isCurrentTier = status?.activePass?.tier === tier.id;
+              const hasExistingPass = !!status?.activePass;
 
               return (
                 <div
@@ -374,28 +413,33 @@ export default function BulkPricing() {
                       : "border-border",
                   )}
                 >
-                  {/* Badge */}
-                  {tier.badge ? (
-                    <span
-                      className={cn(
-                        "self-start text-xs font-bold px-2.5 py-0.5 rounded-full mb-3 whitespace-nowrap",
-                        tier.badge === "Most Popular"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-amber-500 text-white",
-                      )}
-                    >
-                      {tier.badge === "Most Popular" ? (
-                        <span className="flex items-center gap-1">
-                          <Star className="w-3 h-3" />
-                          {tier.badge}
-                        </span>
-                      ) : (
-                        tier.badge
-                      )}
-                    </span>
-                  ) : (
-                    <div className="mb-3 h-5" />
-                  )}
+                  {/* Badge row */}
+                  <div className="flex items-center gap-2 mb-3 min-h-[20px]">
+                    {tier.badge && (
+                      <span
+                        className={cn(
+                          "text-xs font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap",
+                          tier.badge === "Most Popular"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-amber-500 text-white",
+                        )}
+                      >
+                        {tier.badge === "Most Popular" ? (
+                          <span className="flex items-center gap-1">
+                            <Star className="w-3 h-3" />
+                            {tier.badge}
+                          </span>
+                        ) : (
+                          tier.badge
+                        )}
+                      </span>
+                    )}
+                    {isCurrentTier && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 whitespace-nowrap">
+                        Current pass
+                      </span>
+                    )}
+                  </div>
 
                   {/* Price */}
                   <div className="mb-3">
@@ -412,7 +456,7 @@ export default function BulkPricing() {
 
                   {/* CV limit */}
                   <p className="text-base font-bold mb-1">
-                    Analyze up to {tier.cvLimit} CVs
+                    {tier.cvLimit} CV slots
                   </p>
                   <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
                     {tier.tagline}
@@ -447,7 +491,7 @@ export default function BulkPricing() {
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
-                        Get {tier.cvLimit} CV slots
+                        {hasExistingPass ? `Buy ${tier.cvLimit} more slots` : `Get ${tier.cvLimit} CV slots`}
                         <ArrowRight className="w-3.5 h-3.5" />
                       </>
                     )}

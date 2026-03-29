@@ -402,16 +402,33 @@ export default function BulkSession() {
   // ── Dropzone (multiple files) ─────────────────────────────────────────────
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newItems: CvQueueItem[] = acceptedFiles.map((file) => ({
+    // Strict limit: cap additions to remaining slots (non-Pro only)
+    const slotsLeft = status?.isPro ? Infinity : (remaining - queue.filter(i => i.status !== "done").length);
+    const allowed = acceptedFiles.slice(0, Math.max(0, slotsLeft));
+    const rejected = acceptedFiles.length - allowed.length;
+    if (rejected > 0) {
+      toast({
+        title: "Slot limit reached",
+        description: `Your pass has ${remaining} CV slot${remaining !== 1 ? "s" : ""} remaining — only the first ${allowed.length > 0 ? allowed.length : "no"} file${allowed.length !== 1 ? "s" : ""} ${allowed.length > 0 ? "were" : "could be"} added. Buy more slots to analyze more CVs.`,
+        variant: "destructive",
+      });
+    }
+    if (allowed.length === 0) return;
+    const newItems: CvQueueItem[] = allowed.map((file) => ({
       id: `${file.name}-${Date.now()}-${Math.random()}`,
       file,
       status: "pending",
     }));
     setQueue((prev) => [...prev, ...newItems]);
-  }, []);
+  }, [status?.isPro, remaining, queue]);
+
+  const activeQueuedCount = queue.filter(i => i.status !== "done").length;
+  const slotsAvailable = status?.isPro ? 999 : Math.max(0, remaining - activeQueuedCount);
+  const dropsDisabled = !status?.isPro && slotsAvailable === 0;
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    disabled: dropsDisabled,
     accept: {
       "application/pdf": [".pdf"],
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
@@ -696,26 +713,48 @@ export default function BulkSession() {
             </div>
 
             {/* Multi-file dropzone */}
-            <div
-              {...getRootProps()}
-              className={cn(
-                "rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors",
-                isDragActive
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/30",
-              )}
-            >
-              <input {...getInputProps()} />
-              <UploadCloud className={cn("w-8 h-8 mx-auto mb-3", isDragActive ? "text-primary" : "text-muted-foreground")} />
-              {isDragActive ? (
-                <p className="text-sm font-semibold text-primary">Drop the CVs here…</p>
-              ) : (
-                <>
-                  <p className="text-sm font-semibold text-foreground mb-1">Drop all candidate CVs here</p>
-                  <p className="text-xs text-muted-foreground">PDF, DOCX, DOC or TXT — select multiple files at once</p>
-                </>
-              )}
-            </div>
+            {dropsDisabled ? (
+              <div className="rounded-2xl border-2 border-dashed border-red-200 dark:border-red-900/50 bg-red-500/5 p-8 text-center">
+                <Lock className="w-8 h-8 mx-auto mb-3 text-red-400" />
+                <p className="text-sm font-semibold text-red-600 mb-1">All {limit} CV slots used</p>
+                <p className="text-xs text-muted-foreground mb-3">Your current pass is fully consumed.</p>
+                <button
+                  onClick={() => navigate("/bulk")}
+                  className="inline-flex items-center gap-2 text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
+                >
+                  <Users className="w-4 h-4" />
+                  Buy more CV slots
+                </button>
+              </div>
+            ) : (
+              <div
+                {...getRootProps()}
+                className={cn(
+                  "rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors",
+                  isDragActive
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50 hover:bg-muted/30",
+                )}
+              >
+                <input {...getInputProps()} />
+                <UploadCloud className={cn("w-8 h-8 mx-auto mb-3", isDragActive ? "text-primary" : "text-muted-foreground")} />
+                {isDragActive ? (
+                  <p className="text-sm font-semibold text-primary">Drop the CVs here…</p>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-foreground mb-1">Drop all candidate CVs here</p>
+                    <p className="text-xs text-muted-foreground">
+                      PDF, DOCX, DOC or TXT — select multiple files at once
+                      {!status?.isPro && slotsAvailable < 999 && (
+                        <span className="block mt-1 font-medium text-amber-600">
+                          {slotsAvailable} slot{slotsAvailable !== 1 ? "s" : ""} remaining in this pass
+                        </span>
+                      )}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* CV queue */}
             {queue.length > 0 && (
