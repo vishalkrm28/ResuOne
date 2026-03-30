@@ -558,7 +558,7 @@ function UserRow({
                         <FileText className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-zinc-300 truncate">{app.jobTitle} @ {app.company}</p>
-                          <p className="text-xs text-zinc-500">{new Date(app.createdAt).toLocaleDateString()}{app.keywordMatchScore != null ? ` · ${Math.round(app.keywordMatchScore * 100)}% match` : ""}</p>
+                          <p className="text-xs text-zinc-500">{new Date(app.createdAt).toLocaleDateString()}{app.keywordMatchScore != null ? ` · ${Math.round(app.keywordMatchScore)}% match` : ""}</p>
                         </div>
                         <button
                           onClick={() => deleteApp(app.id, `${app.jobTitle} @ ${app.company}`)}
