@@ -90,7 +90,11 @@ function AppRouter() {
 
 function App() {
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      afterSignInUrl="/"
+      afterSignUpUrl="/"
+    >
       <ClerkTokenSync />
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>

@@ -17,7 +17,10 @@ export function useAuth(): AuthState {
   const { openSignIn, signOut } = useClerk();
 
   const login = useCallback(() => {
-    openSignIn();
+    openSignIn({
+      afterSignInUrl: "/",
+      afterSignUpUrl: "/",
+    });
   }, [openSignIn]);
 
   const logout = useCallback(() => {
