@@ -130,11 +130,12 @@ export async function authMiddleware(
           //  3. Move all child table rows to the new ID
           //  4. Delete the old users row
           // Capture stripe fields before we touch the old row
-          const [oldRow] = await db.execute(sql`
+          const oldRowResult = await db.execute(sql`
             SELECT stripe_customer_id, stripe_subscription_id, subscription_status,
                    subscription_price_id, current_period_end, created_at
             FROM users WHERE id = ${oldId}
           `);
+          const oldRow = oldRowResult.rows[0];
 
           // Release all unique constraints on old row before creating the new one
           await db.execute(sql`
