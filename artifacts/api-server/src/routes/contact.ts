@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import nodemailer from "nodemailer";
 import { db, contactMessagesTable } from "@workspace/db";
 import { logger } from "../lib/logger.js";
 
@@ -30,27 +31,48 @@ router.post("/contact", async (req, res) => {
   try {
     await db.insert(contactMessagesTable).values({ name, email, message, userId });
 
-    // ── Optional email notification ──────────────────────────────────────────
-    // Fires only when RESEND_API_KEY is configured. Gracefully skipped otherwise.
-    const resendKey = process.env["RESEND_API_KEY"];
-    if (resendKey) {
+    // ── Zoho SMTP email notification ─────────────────────────────────────────
+    const smtpUser = process.env["SMTP_USER"];
+    const smtpPass = process.env["SMTP_PASS"];
+
+    if (smtpUser && smtpPass) {
       try {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
+        const transporter = nodemailer.createTransport({
+          host: "smtppro.zoho.eu",
+          port: 465,
+          secure: true,
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
           },
-          body: JSON.stringify({
-            from: "ParsePilot <no-reply@parsepilot.io>",
-            to: ["help@parsepilot.io"],
-            subject: "New Contact Message – ParsePilot",
-            text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
-          }),
         });
+
+        await transporter.sendMail({
+          from: `"ParsePilot" <${smtpUser}>`,
+          to: smtpUser,
+          replyTo: email,
+          subject: `New Contact Message from ${name} – ParsePilot`,
+          text: [
+            `Name:    ${name}`,
+            `Email:   ${email}`,
+            ``,
+            `Message:`,
+            message,
+          ].join("\n"),
+          html: `
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
+            <hr/>
+            <p>${message.replace(/\n/g, "<br/>")}</p>
+          `,
+        });
+
+        logger.info({ name, email }, "Contact email sent via Zoho SMTP");
       } catch (emailErr) {
         logger.warn({ emailErr }, "Contact email notification failed — message still saved");
       }
+    } else {
+      logger.warn("SMTP_USER / SMTP_PASS not configured — contact email skipped");
     }
 
     logger.info({ name, email, userId }, "Contact message received");
