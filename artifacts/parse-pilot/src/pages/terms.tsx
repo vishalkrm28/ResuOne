@@ -106,9 +106,11 @@ const sections: { title: string; content: React.ReactNode }[] = [
         <div className="mb-5">
           <p className="font-semibold text-foreground mb-2">Pro Plan — $14.99/month</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>30 AI analyses per month.</li>
+            <li>100 AI analyses per month.</li>
             <li>All results fully unlocked — no per-result fees.</li>
             <li>Full access to ATS-optimised CV output, keyword analysis, cover letter generation, and section suggestions.</li>
+            <li>Pro is intended for personal use — you may re-analyse your own CV against different job descriptions as many times as you like within your monthly credit allowance.</li>
+            <li>Analysing CVs belonging to other individuals is not permitted under the Pro plan. Use Bulk Mode for multi-candidate analysis.</li>
             <li>Unused monthly credits expire at the end of each billing cycle and do not carry over.</li>
             <li>Pro subscription renews automatically each month until cancelled.</li>
             <li>You may cancel at any time; access continues until the end of the current billing period.</li>
