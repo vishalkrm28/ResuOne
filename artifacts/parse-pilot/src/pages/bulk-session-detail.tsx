@@ -15,6 +15,7 @@ import {
   TrendingUp,
   TrendingDown,
   Crown,
+  Info,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -187,6 +188,14 @@ export default function BulkSessionDetail() {
               {applications.length} candidate{applications.length !== 1 ? "s" : ""}
             </span>
           </div>
+        </div>
+
+        {/* Formatting disclaimer */}
+        <div className="flex items-center gap-2 mb-6 px-3.5 py-2.5 rounded-xl bg-muted/50 border border-border/60">
+          <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Results focus on content and keyword matching. Formatting may differ across CVs.
+          </p>
         </div>
 
         {/* Stats row */}

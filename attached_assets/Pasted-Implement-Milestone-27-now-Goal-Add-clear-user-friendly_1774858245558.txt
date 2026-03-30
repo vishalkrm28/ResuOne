@@ -1,0 +1,126 @@
+Implement Milestone 27 now.
+
+Goal:
+Add clear, user-friendly disclaimers across ParsePilot to set expectations about CV formatting and positioning the product correctly as an analysis tool (not a resume builder).
+
+This should:
+- reduce user confusion
+- prevent complaints about formatting
+- increase trust through transparency
+- provide basic legal protection
+
+--------------------------------------------------
+1. Update Terms of Service
+--------------------------------------------------
+
+Update:
+- /app/terms/page.tsx
+
+Add new section:
+
+Title:
+“Output & Formatting”
+
+Content:
+
+“ParsePilot is designed as a CV analysis and optimization tool.
+
+While we aim to preserve the structure and clarity of your CV, formatting and layout may vary depending on the content and processing.
+
+ParsePilot does not guarantee exact formatting replication and is not intended to function as a resume builder.
+
+Users are responsible for reviewing and finalizing the formatting before using their CV for applications.”
+
+--------------------------------------------------
+2. Add UI Disclaimer (CRITICAL)
+--------------------------------------------------
+
+Add subtle disclaimer near:
+
+- CV results page
+- export/download button
+- bulk results page
+
+Text:
+
+“Formatting may vary. Always review before submission.”
+
+Design rules:
+- small text
+- low emphasis
+- visible but not distracting
+- consistent across app
+
+--------------------------------------------------
+3. Add Contextual Tooltip (OPTIONAL)
+--------------------------------------------------
+
+Next to export button:
+
+Add tooltip icon (ℹ️)
+
+On hover:
+
+“ParsePilot optimizes content and structure. Final formatting should always be reviewed before use.”
+
+--------------------------------------------------
+4. Add Disclaimer in Bulk Mode
+--------------------------------------------------
+
+On bulk results dashboard:
+
+Add small banner or inline text:
+
+“Results focus on content and matching. Formatting may differ across CVs.”
+
+--------------------------------------------------
+5. Add Export Confirmation (OPTIONAL STRONG UX)
+--------------------------------------------------
+
+Before download:
+
+Show modal:
+
+Title:
+“Review before sending”
+
+Message:
+“Your CV content has been optimized. Please review formatting before using it in job applications.”
+
+Buttons:
+- Continue download
+- Review again
+
+--------------------------------------------------
+6. Maintain Brand Tone
+--------------------------------------------------
+
+Rules:
+
+- no legal-heavy language
+- no fear-based messaging
+- clear and confident tone
+- aligned with premium SaaS feel
+
+--------------------------------------------------
+7. Consistency Check
+--------------------------------------------------
+
+Ensure:
+
+- same wording used across app
+- no conflicting messaging
+- tone matches landing page and pricing
+
+--------------------------------------------------
+8. After Implementation
+--------------------------------------------------
+
+After implementation:
+
+1. Show updated Terms section
+2. Show where UI disclaimers are placed
+3. Show tooltip implementation
+4. Show export modal (if implemented)
+5. Suggest 2 ways to improve trust further
+6. Suggest 2 ways to reduce refund requests

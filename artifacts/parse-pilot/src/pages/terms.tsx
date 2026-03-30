@@ -48,6 +48,25 @@ const sections: { title: string; content: React.ReactNode }[] = [
     ),
   },
   {
+    title: "Output & Formatting",
+    content: (
+      <>
+        <p>
+          ParsePilot is designed as a CV analysis and optimization tool.
+        </p>
+        <p className="mt-3">
+          While we aim to preserve the structure and clarity of your CV, formatting and layout may
+          vary depending on the content and processing. ParsePilot does not guarantee exact
+          formatting replication and is not intended to function as a resume builder.
+        </p>
+        <p className="mt-3">
+          Users are responsible for reviewing and finalizing the formatting before using their CV
+          for applications.
+        </p>
+      </>
+    ),
+  },
+  {
     title: "Payments",
     content: (
       <>

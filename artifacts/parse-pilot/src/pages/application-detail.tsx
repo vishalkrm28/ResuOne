@@ -31,6 +31,7 @@ import {
   BarChart2,
   ArrowLeft,
   Users,
+  Info,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -288,6 +289,9 @@ export default function ApplicationDetail() {
   const [editedCover, setEditedCover] = useState<string | null>(null);
   const coverDirty = editedCover !== null;
 
+  // Export confirmation modal
+  const [exportConfirmUrl, setExportConfirmUrl] = useState<string | null>(null);
+
   const { status: billingStatus } = useBillingStatus();
   const isPro = billingStatus?.isPro ?? false;
   const hasBulkAccess = billingStatus?.hasBulkAccess ?? false;
@@ -495,32 +499,50 @@ export default function ApplicationDetail() {
             {/* Export — Pro or unlocked users get active buttons, others get disabled + CTA */}
             {(isPro || isUnlockedResult) ? (
               <>
-                <Button
-                  variant="outline"
-                  className="flex-1 lg:flex-none gap-2 bg-card"
-                  onClick={() => window.open(`/api/export/application/${id}/docx`, "_blank")}
-                  disabled={needsAnalysis}
-                  title="Download tailored CV as DOCX"
-                >
-                  <Download className="w-4 h-4" />
-                  CV.docx
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 lg:flex-none gap-2 bg-card"
-                  onClick={() => window.open(`/api/export/application/${id}/pdf`, "_blank")}
-                  disabled={needsAnalysis}
-                  title="Print or save tailored CV as PDF"
-                >
-                  <Download className="w-4 h-4" />
-                  CV.pdf
-                </Button>
+                <div className="relative group">
+                  <Button
+                    variant="outline"
+                    className="flex-1 lg:flex-none gap-2 bg-card"
+                    onClick={() => setExportConfirmUrl(`/api/export/application/${id}/docx`)}
+                    disabled={needsAnalysis}
+                    title="Download tailored CV as DOCX"
+                  >
+                    <Download className="w-4 h-4" />
+                    CV.docx
+                  </Button>
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-popover border border-border px-3 py-2 text-xs text-muted-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center leading-relaxed">
+                    ParsePilot optimizes content and structure. Final formatting should always be reviewed before use.
+                  </span>
+                </div>
+                <div className="relative group">
+                  <Button
+                    variant="outline"
+                    className="flex-1 lg:flex-none gap-2 bg-card"
+                    onClick={() => setExportConfirmUrl(`/api/export/application/${id}/pdf`)}
+                    disabled={needsAnalysis}
+                    title="Print or save tailored CV as PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                    CV.pdf
+                  </Button>
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-popover border border-border px-3 py-2 text-xs text-muted-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center leading-relaxed">
+                    ParsePilot optimizes content and structure. Final formatting should always be reviewed before use.
+                  </span>
+                </div>
               </>
             ) : null}
           </div>
 
           {/* CTA placement 3 — export area (free users without unlock only) */}
           {!isPro && !isUnlockedResult && <LockedExportBar />}
+
+          {/* Formatting disclaimer */}
+          {(isPro || isUnlockedResult) && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground/60 mt-1.5">
+              <Info className="w-3 h-3 shrink-0" />
+              Formatting may vary. Always review before submission.
+            </p>
+          )}
         </div>
       </div>
 
@@ -1139,7 +1161,7 @@ export default function ApplicationDetail() {
                               variant="ghost"
                               size="sm"
                               className="gap-1.5"
-                              onClick={() => window.open(`/api/export/application/${id}/docx?type=cover`, "_blank")}
+                              onClick={() => setExportConfirmUrl(`/api/export/application/${id}/docx?type=cover`)}
                             >
                               <Download className="w-3.5 h-3.5" />.docx
                             </Button>
@@ -1147,7 +1169,7 @@ export default function ApplicationDetail() {
                               variant="ghost"
                               size="sm"
                               className="gap-1.5"
-                              onClick={() => window.open(`/api/export/application/${id}/pdf?type=cover`, "_blank")}
+                              onClick={() => setExportConfirmUrl(`/api/export/application/${id}/pdf?type=cover`)}
                             >
                               <Download className="w-3.5 h-3.5" />.pdf
                             </Button>
@@ -1267,7 +1289,7 @@ export default function ApplicationDetail() {
                                   variant="ghost"
                                   size="sm"
                                   className="gap-1.5"
-                                  onClick={() => window.open(`/api/export/application/${id}/docx?type=cover`, "_blank")}
+                                  onClick={() => setExportConfirmUrl(`/api/export/application/${id}/docx?type=cover`)}
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                   .docx
@@ -1276,7 +1298,7 @@ export default function ApplicationDetail() {
                                   variant="ghost"
                                   size="sm"
                                   className="gap-1.5"
-                                  onClick={() => window.open(`/api/export/application/${id}/pdf?type=cover`, "_blank")}
+                                  onClick={() => setExportConfirmUrl(`/api/export/application/${id}/pdf?type=cover`)}
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                   .pdf
@@ -1323,6 +1345,56 @@ export default function ApplicationDetail() {
 
         </>
       )}
+
+      {/* ── Export confirmation modal ─────────────────────────────────── */}
+      <AnimatePresence>
+        {exportConfirmUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => setExportConfirmUrl(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.18 }}
+              className="bg-card border border-border rounded-2xl shadow-2xl p-6 max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Info className="w-4 h-4 text-primary" />
+                </div>
+                <h2 className="text-base font-semibold text-foreground">Review before sending</h2>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+                Your CV content has been optimized. Please review formatting before using it in job applications.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setExportConfirmUrl(null)}
+                >
+                  Review again
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    window.open(exportConfirmUrl, "_blank");
+                    setExportConfirmUrl(null);
+                  }}
+                >
+                  Continue download
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AppLayout>
   );
 }
