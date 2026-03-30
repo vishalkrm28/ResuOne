@@ -82,6 +82,67 @@ const sections: { title: string; content: React.ReactNode }[] = [
     ),
   },
   {
+    title: "Plans, Credits & Restrictions",
+    content: (
+      <>
+        <p className="mb-4">
+          ParsePilot operates on a credit-based system. Each AI analysis consumes one credit.
+          Credits are allocated monthly and do not roll over to the next billing period.
+        </p>
+
+        {/* Free Plan */}
+        <div className="mb-5">
+          <p className="font-semibold text-foreground mb-2">Free Plan</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>3 AI analyses per month, reset on the 1st of each month.</li>
+            <li>Results are locked behind a one-time $6.99 per-result unlock fee.</li>
+            <li>Access to keyword gap preview and ATS score only.</li>
+            <li>Bulk Mode is not available on the Free plan.</li>
+            <li>Cover letter generation is not available on the Free plan.</li>
+          </ul>
+        </div>
+
+        {/* Pro Plan */}
+        <div className="mb-5">
+          <p className="font-semibold text-foreground mb-2">Pro Plan — $14.99/month</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>30 AI analyses per month.</li>
+            <li>All results fully unlocked — no per-result fees.</li>
+            <li>Full access to ATS-optimised CV output, keyword analysis, cover letter generation, and section suggestions.</li>
+            <li>Unused monthly credits expire at the end of each billing cycle and do not carry over.</li>
+            <li>Pro subscription renews automatically each month until cancelled.</li>
+            <li>You may cancel at any time; access continues until the end of the current billing period.</li>
+            <li>Pro credits cannot be transferred, gifted, or applied to Bulk Mode passes.</li>
+          </ul>
+        </div>
+
+        {/* Bulk Mode */}
+        <div className="mb-5">
+          <p className="font-semibold text-foreground mb-2">Bulk Mode — One-Time Passes</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Available in three tiers: 10 CV slots ($19.99), 25 CV slots ($29.99), and 50 CV slots ($39.99).</li>
+            <li>Each slot covers one full candidate CV analysis with ATS score, keyword gaps, and optimised CV output.</li>
+            <li>No per-result unlock fees apply within a Bulk pass.</li>
+            <li>Passes are one-time purchases and do not renew automatically.</li>
+            <li>Unused slots within a pass do not expire and remain available until consumed.</li>
+            <li>Multiple passes may be purchased and will stack — slots are consumed from the most recently purchased pass first.</li>
+            <li>Bulk passes are non-transferable and are tied to the purchasing account.</li>
+          </ul>
+        </div>
+
+        {/* General */}
+        <div>
+          <p className="font-semibold text-foreground mb-2">General Credit Restrictions</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Credits and passes are non-refundable once consumed.</li>
+            <li>Unused credits or passes are non-refundable upon account deletion.</li>
+            <li>ParsePilot reserves the right to adjust plan limits or pricing with advance notice.</li>
+          </ul>
+        </div>
+      </>
+    ),
+  },
+  {
     title: "Limitation of Liability",
     content: (
       <p>
