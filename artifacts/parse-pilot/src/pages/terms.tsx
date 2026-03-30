@@ -123,8 +123,8 @@ const sections: { title: string; content: React.ReactNode }[] = [
         <div className="mb-5">
           <p className="font-semibold text-foreground mb-2">Bulk Mode — One-Time Passes</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Available in three tiers: 10 CV slots ($19.99), 25 CV slots ($29.99), and 50 CV slots ($39.99).</li>
-            <li>Each slot covers one full candidate CV analysis with ATS score, keyword gaps, and optimised CV output.</li>
+            <li>Available in three tiers: analyse 10 CVs for $19.99, 25 CVs for $29.99, or 50 CVs for $39.99 — a one-time charge per pack.</li>
+            <li>Each CV in the pack receives a full analysis: ATS match score, missing keyword gaps, and a fully optimised CV output ready to export.</li>
             <li>No per-result unlock fees apply within a Bulk pass.</li>
             <li>Passes are one-time purchases and do not renew automatically.</li>
             <li>Unused slots within a pass do not expire and remain available until consumed.</li>
