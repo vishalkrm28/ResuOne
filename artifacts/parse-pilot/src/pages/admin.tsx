@@ -94,7 +94,7 @@ export default function AdminPage() {
     if (!userId.trim()) return;
     setLoading("lookup");
     try {
-      const data = await call(`/_admin/check-user/${userId.trim()}`);
+      const data = await call(`/api/_admin/check-user/${userId.trim()}`);
       setUserState(data);
       setExpanded(true);
     } catch (e: any) {
@@ -108,7 +108,7 @@ export default function AdminPage() {
     if (!userId.trim()) return;
     setLoading("credits");
     try {
-      await call("/_admin/seed-credits", {
+      await call("/api/_admin/seed-credits", {
         method: "POST",
         body: JSON.stringify({ userId: userId.trim(), credits: Number(grantCredits) }),
       });
@@ -125,7 +125,7 @@ export default function AdminPage() {
     if (!userId.trim()) return;
     setLoading("bulk");
     try {
-      await call("/_admin/seed-bulk", {
+      await call("/api/_admin/seed-bulk", {
         method: "POST",
         body: JSON.stringify({ userId: userId.trim(), tier: bulkTier }),
       });
@@ -142,7 +142,7 @@ export default function AdminPage() {
     if (!userId.trim()) return;
     setLoading("stripe");
     try {
-      const data = await call("/_admin/sync-stripe", {
+      const data = await call("/api/_admin/sync-stripe", {
         method: "POST",
         body: JSON.stringify({ userId: userId.trim() }),
       });
