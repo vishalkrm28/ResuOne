@@ -917,15 +917,6 @@ export function buildPrintHtml(
 body{font-family:'Calibri','Segoe UI',system-ui,-apple-system,Arial,sans-serif;
      font-size:11pt;line-height:1.6;color:#374151;background:#f3f4f6}
 
-/* ── Print banner ── */
-.banner{background:#111827;color:#fff;padding:10px 28px;
-        display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.banner strong{font-size:13px}
-.banner p{font-size:11px;opacity:.55;margin-top:1px}
-.btn{background:#6E42F0;color:#fff;border:none;padding:7px 20px;
-     border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
-     font-family:'Calibri','Segoe UI',Arial,sans-serif}
-.btn:hover{background:#5a32d6}
 
 /* ── Page — A4 proportions on screen ── */
 .doc{
@@ -1092,7 +1083,6 @@ body{font-family:'Calibri','Segoe UI',system-ui,-apple-system,Arial,sans-serif;
 /* ── Print overrides ── */
 @media print{
   body{background:#fff}
-  .banner{display:none!important}
   /* @page margins handle spacing on every page incl. overflow pages */
   .doc{margin:0;padding:0;box-shadow:none;border-radius:0;width:100%;max-width:100%}
   .cv-ci a{color:#6B7280!important}
@@ -1107,13 +1097,6 @@ body{font-family:'Calibri','Segoe UI',system-ui,-apple-system,Arial,sans-serif;
 </style>
 </head>
 <body>
-<div class="banner">
-  <div>
-    <strong>ParsePilot AI — ${esc(pageTitle)}</strong>
-    <p>Ctrl+P (Cmd+P on Mac) → Save as PDF · Uncheck "Headers and footers" to hide the URL</p>
-  </div>
-  <button class="btn" onclick="window.print()">⬇ Save as PDF</button>
-</div>
 <div class="doc">${body}</div>
 <script>
 if(!window.location.search.includes('noprint')){
