@@ -75,6 +75,7 @@ export const applicationsTable = pgTable("applications", {
   status: text("status", { enum: ["draft", "analyzed", "exported"] }).default("draft").notNull(),
   identityFlagged: boolean("identity_flagged").default(false).notNull(),
   bulkSessionId: text("bulk_session_id"),
+  ipAddress: text("ip_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

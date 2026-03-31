@@ -21,6 +21,7 @@ import {
   extractIdentityFromParsedCv,
   checkAndRecordIdentity,
 } from "../lib/identity.js";
+import { getClientIp, countFreeAnalysesByIp } from "../lib/ip.js";
 
 const router: IRouter = Router();
 
@@ -378,6 +379,7 @@ router.patch("/applications/:id/cover-letter-save", requirePro, async (req, res)
 router.post("/applications/:id/analyze", async (req, res) => {
   const { id } = req.params;
   const ownerUserId = req.user?.id;
+  const clientIp = getClientIp(req);
 
   const parsed = AnalyzeApplicationBody.safeParse(req.body);
   const confirmedAnswers = parsed.success
@@ -447,6 +449,25 @@ router.post("/applications/:id/analyze", async (req, res) => {
               error: "You've used all your optimization credits.",
               code: "CREDITS_EXHAUSTED",
               remainingCredits: balance?.availableCredits ?? 0,
+            });
+            return;
+          }
+        }
+      }
+
+      // ── IP abuse check — free-tier only ───────────────────────────────────
+      // If this user is not Pro, check how many free analyses have already
+      // been performed from the same IP across ALL accounts.  Blocks users
+      // who register throwaway emails to bypass the 3-credit free limit.
+      if (!isBulkSession) {
+        const isPro = await isUserPro(ownerUserId);
+        if (!isPro && clientIp !== "unknown") {
+          const ipCount = await countFreeAnalysesByIp(clientIp);
+          const IP_FREE_LIMIT = 5; // analyses per IP across all accounts
+          if (ipCount >= IP_FREE_LIMIT) {
+            res.status(429).json({
+              error: "Too many free analyses from this network. Please upgrade to Pro to continue.",
+              code: "IP_LIMIT_EXCEEDED",
             });
             return;
           }
@@ -547,6 +568,7 @@ router.post("/applications/:id/analyze", async (req, res) => {
         parsedJdJson: parsedJd as any,
         status: "analyzed",
         identityFlagged: identityResult.isDifferentIdentity,
+        ipAddress: clientIp,
         updatedAt: new Date(),
       })
       .where(eq(applicationsTable.id, id));
