@@ -503,36 +503,26 @@ export default function ApplicationDetail() {
             {/* Export — Pro or unlocked users get active buttons, others get disabled + CTA */}
             {(isPro || isUnlockedResult) ? (
               <>
-                <div className="relative group">
-                  <Button
-                    variant="outline"
-                    className="flex-1 lg:flex-none gap-2 bg-card"
-                    onClick={() => setExportConfirmUrl(`/api/export/application/${id}/docx`)}
-                    disabled={needsAnalysis}
-                    title="Download tailored CV as DOCX"
-                  >
-                    <Download className="w-4 h-4" />
-                    CV.docx
-                  </Button>
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-popover border border-border px-3 py-2 text-xs text-muted-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center leading-relaxed">
-                    ParsePilot optimizes content and structure. Final formatting should always be reviewed before use.
-                  </span>
-                </div>
-                <div className="relative group">
-                  <Button
-                    variant="outline"
-                    className="flex-1 lg:flex-none gap-2 bg-card"
-                    onClick={() => setExportConfirmUrl(`/api/export/application/${id}/pdf`)}
-                    disabled={needsAnalysis}
-                    title="Print or save tailored CV as PDF"
-                  >
-                    <Download className="w-4 h-4" />
-                    CV.pdf
-                  </Button>
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-popover border border-border px-3 py-2 text-xs text-muted-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center leading-relaxed">
-                    ParsePilot optimizes content and structure. Final formatting should always be reviewed before use.
-                  </span>
-                </div>
+                <Button
+                  variant="outline"
+                  className="flex-1 lg:flex-none gap-2 bg-card"
+                  onClick={() => setExportConfirmUrl(`/api/export/application/${id}/docx`)}
+                  disabled={needsAnalysis}
+                  title="Download tailored CV as DOCX"
+                >
+                  <Download className="w-4 h-4" />
+                  CV.docx
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 lg:flex-none gap-2 bg-card"
+                  onClick={() => setExportConfirmUrl(`/api/export/application/${id}/pdf`)}
+                  disabled={needsAnalysis}
+                  title="Print or save tailored CV as PDF"
+                >
+                  <Download className="w-4 h-4" />
+                  CV.pdf
+                </Button>
               </>
             ) : null}
           </div>
