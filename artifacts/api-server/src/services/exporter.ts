@@ -424,19 +424,26 @@ function parseLines(text: string): LineKind[] {
   return result;
 }
 
-// ─── Style tokens ─────────────────────────────────────────────────────────────
+// ─── Style tokens — matches on-screen tailored CV renderer ────────────────────
+// Primary:  #6E42F0  (hsl 255 85% 60% — app purple)
+// Text:     #111827  (near-black)
+// Body:     #374151  (dark grey)
+// Muted:    #6B7280  (subdued labels / dates)
+// Border:   #E5E7EB  (divider lines)
+// Font:     Calibri (DOCX) / system sans-serif (HTML)
 
-const NAVY     = "1e3a5f";
-const NAVY_MID = "2d5a8e";
-const RULE     = "c8d4e0";
-const MUTED    = "666666";
-// Cover letter premium palette
-const CL_NEAR_BLACK = "1A1A1A";
-const CL_CHARCOAL   = "2C2C2C";
-const CL_GOLD       = "B8975A";   // warm gold accent
-const CL_PARCHMENT  = "D8CDB8";  // warm divider
-const CL_GREY       = "888888";   // date, labels, title
-const CL_FONT       = "Georgia";  // elegant serif
+const CL_NEAR_BLACK = "111827";   // headings, name, company
+const CL_CHARCOAL   = "374151";   // body text, bullets
+const CL_GOLD       = "6E42F0";   // purple accent — section rules, role text, icons
+const CL_PARCHMENT  = "E5E7EB";   // divider / separator lines
+const CL_GREY       = "6B7280";   // dates, muted labels
+const CL_FONT       = "Calibri";  // sans-serif matches UI
+
+// Legacy aliases kept to avoid touching HTML render path
+const NAVY     = CL_NEAR_BLACK;
+const NAVY_MID = CL_GOLD;
+const RULE     = CL_PARCHMENT;
+const MUTED    = CL_GREY;
 
 // ─── Cover letter parser ──────────────────────────────────────────────────────
 
@@ -898,242 +905,202 @@ export function buildPrintHtml(
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 /* ════════════════════════════════════════════════════
-   SHARED PALETTE (CV + Cover Letter)
-     #1A1A1A  near-black  — name, headings, company
-     #2C2C2C  warm char.  — body text, bullets
-     #B8975A  warm gold   — accent bar, section rule, role text, icons
-     #888888  soft grey   — dates, contact labels, sub-title
-     #D8CDB8  warm parch. — divider, separator tint
-   Font: Georgia,"Times New Roman",serif (system serif, reliable in print)
+   PALETTE — matches on-screen tailored CV renderer
+     #111827  near-black  — name, headings, company
+     #374151  body text   — bullets, paragraphs
+     #6E42F0  purple      — section rule, role text, icons (app primary)
+     #6B7280  muted grey  — dates, contact labels, sub-title
+     #E5E7EB  light grey  — divider lines, borders
+   Font: system sans-serif (Calibri/Segoe UI/Arial)
    ════════════════════════════════════════════════════ */
 
-body{font-family:Georgia,"Times New Roman",serif;font-size:11pt;
-     line-height:1.55;color:#2C2C2C;background:#e8ecf0}
+body{font-family:'Calibri','Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+     font-size:11pt;line-height:1.6;color:#374151;background:#f3f4f6}
 
 /* ── Print banner ── */
-.banner{background:#1A1A1A;color:#fff;padding:10px 28px;
+.banner{background:#111827;color:#fff;padding:10px 28px;
         display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .banner strong{font-size:13px}
 .banner p{font-size:11px;opacity:.55;margin-top:1px}
-.btn{background:#B8975A;color:#fff;border:none;padding:7px 20px;
-     border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
-     font-family:Georgia,"Times New Roman",serif;}
-.btn:hover{background:#A0813C}
+.btn{background:#6E42F0;color:#fff;border:none;padding:7px 20px;
+     border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
+     font-family:'Calibri','Segoe UI',Arial,sans-serif}
+.btn:hover{background:#5a32d6}
 
-/* ── Page — A4 proportions on screen, Word margins in print ── */
+/* ── Page — A4 proportions on screen ── */
 .doc{
   width:794px;max-width:100%;
   margin:24px auto 52px;
   background:#fff;
-  padding:56px 96px 64px;
-  border-radius:2px;
-  box-shadow:0 2px 20px rgba(0,0,0,.18);
+  padding:56px 80px 64px;
+  border-radius:4px;
+  box-shadow:0 2px 20px rgba(0,0,0,.12);
 }
 
 /* ── CV Header ── */
 .cv-name{
-  font-family:Georgia,"Times New Roman",serif;
-  font-size:26pt;font-weight:bold;color:#1A1A1A;
-  text-align:center;letter-spacing:.05em;line-height:1.1;margin-bottom:8px;
+  font-family:'Calibri','Segoe UI',Arial,sans-serif;
+  font-size:24pt;font-weight:700;color:#111827;
+  letter-spacing:-.01em;line-height:1.15;margin-bottom:6px;
 }
-/* Short gold accent bar under name */
-.cv-name-bar{width:52px;height:2px;background:#B8975A;margin:0 auto 12px}
 
 .cv-sub-title{
-  font-size:10.5pt;color:#777;text-align:center;
-  font-style:italic;margin-bottom:10px;
+  font-size:10.5pt;color:#6B7280;margin-bottom:8px;
 }
 
-/* Contact bar — uppercase, letter-spaced, gold icons */
+/* Contact bar — compact, left-aligned, purple icons */
 .cv-contact-bar{
-  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;
-  gap:4px 0;
-  padding-bottom:12px;margin-bottom:16px;
-  border-bottom:1px solid #D8CDB8;
-  font-size:7.5pt;color:#999;letter-spacing:.06em;text-transform:uppercase;
+  display:flex;flex-wrap:wrap;align-items:center;
+  gap:2px 0;
+  padding-bottom:10px;margin-bottom:14px;
+  border-bottom:1px solid #E5E7EB;
+  font-size:8pt;color:#6B7280;
 }
-.cv-ci{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:0 6px}
-.cv-ci a{color:#999;text-decoration:none}
-.cv-ci a:hover{color:#B8975A;text-decoration:underline}
+.cv-ci{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:0 8px}
+.cv-ci:first-child{padding-left:0}
+.cv-ci a{color:#6B7280;text-decoration:none}
+.cv-ci a:hover{color:#6E42F0;text-decoration:underline}
 .cv-ci-icon{
   display:inline-flex;align-items:center;justify-content:center;
   width:14px;height:14px;font-size:9pt;flex-shrink:0;
-  color:#B8975A;   /* gold icons */
+  color:#6E42F0;
 }
 .ci-li{background:#0a66c2;color:#fff!important;border-radius:2px;
        font-size:6.5pt;font-weight:700;letter-spacing:0;padding:1px 2px;width:auto;height:auto}
 .ci-gh{background:#1a1a1a;color:#fff!important;border-radius:2px;
        font-size:6.5pt;font-weight:700;padding:1px 2px;width:auto;height:auto}
-.cv-ci-sep{color:#D8CDB8;font-size:9pt;padding:0 2px}
+.cv-ci-sep{color:#E5E7EB;font-size:9pt;padding:0 2px}
 
-/* ── Section heading — gold rule, near-black uppercase label ── */
-.cv-section{margin-top:18px;margin-bottom:6px;padding-bottom:4px;
-            border-bottom:1.5px solid #B8975A}
-.cv-section span{
-  font-size:9pt;font-weight:700;color:#1A1A1A;
-  letter-spacing:.14em;text-transform:uppercase;
+/* ── Section heading — purple small-caps label + thin rule beneath ── */
+.cv-section{
+  display:flex;align-items:center;gap:10px;
+  margin-top:16px;margin-bottom:5px;
 }
+.cv-section span{
+  font-size:7.5pt;font-weight:800;color:#6E42F0;
+  letter-spacing:.18em;text-transform:uppercase;
+  white-space:nowrap;flex-shrink:0;
+}
+.cv-section-rule{flex:1;height:1px;background:#E5E7EB}
 
 /* ── Job entry ── */
 .cv-job-header{display:flex;justify-content:space-between;
-               align-items:baseline;margin-top:10px;margin-bottom:1px;gap:12px}
-.cv-company{font-weight:700;font-size:10pt;color:#1A1A1A}
-.cv-dates{font-size:8.5pt;color:#888;white-space:nowrap;font-style:italic;flex-shrink:0}
-.cv-role{font-size:9.5pt;color:#B8975A;font-style:italic;margin-bottom:4px}
+               align-items:baseline;margin-top:9px;margin-bottom:1px;gap:12px}
+.cv-company{font-weight:700;font-size:10pt;color:#111827}
+.cv-dates{font-size:8.5pt;color:#6B7280;white-space:nowrap;flex-shrink:0}
+.cv-role{font-size:9.5pt;font-weight:600;color:#6E42F0;margin-bottom:3px}
 
 /* ── Education entry ── */
-.cv-edu-institution{font-weight:700;font-size:10pt;color:#1A1A1A;margin-top:10px;margin-bottom:1px}
-/* When a degree row immediately follows an institution name, tighten the gap */
+.cv-edu-institution{font-weight:700;font-size:10pt;color:#111827;margin-top:9px;margin-bottom:1px}
 .cv-edu-institution + .cv-job-header{margin-top:2px!important}
-.cv-edu-text{font-size:9.5pt;color:#2C2C2C}
+.cv-edu-text{font-size:9.5pt;color:#374151}
 
 /* ── Regular bullets ── */
-.cv-bullets{margin:3px 0 4px 18px}
-.cv-bullets li{font-size:9.5pt;margin-bottom:2px;line-height:1.5;list-style-type:disc;color:#2C2C2C}
+.cv-bullets{margin:3px 0 4px 16px}
+.cv-bullets li{font-size:9.5pt;margin-bottom:2px;line-height:1.55;list-style-type:disc;color:#374151}
 
 /* ── Compact inline skills/certs ── */
-.cv-tags{font-size:9.5pt;color:#2C2C2C;line-height:1.6;margin-bottom:2px}
-.cv-tag-sep{color:#C4B99A;margin:0 4px}
+.cv-tags{font-size:9.5pt;color:#374151;line-height:1.7;margin-bottom:2px}
+.cv-tag-sep{color:#9CA3AF;margin:0 4px}
 
 /* ── Body paragraph (summary, etc.) ── */
-.cv-body{font-size:9.5pt;margin-bottom:4px;line-height:1.65;color:#2C2C2C;text-align:justify}
+.cv-body{font-size:9.5pt;margin-bottom:4px;line-height:1.7;color:#374151}
 
 /* ════════════════════════════════════════════════════
-   COVER LETTER — premium serif business-letter design
-   Font stack: Georgia (system serif, reliable in print)
-   Palette:
-     #1A1A1A  near-black  — name, headings
-     #2C2C2C  warm char.  — body text
-     #B8975A  warm gold   — accent bar, rule
-     #888888  soft grey   — date, labels, title
-     #D8CDB8  warm parch. — divider line
+   COVER LETTER — clean sans-serif business letter
+   Matching the same purple + grey palette as CV
    ════════════════════════════════════════════════════ */
 
-/* Root wrapper — all cover-letter elements inherit serif */
-.cl-wrap{font-family:Georgia,"Times New Roman",serif}
+.cl-wrap{font-family:'Calibri','Segoe UI',Arial,sans-serif}
 
-/* ── Candidate name (distinct from CV style) ── */
+/* ── Candidate name ── */
 .cl-name{
-  font-family:Georgia,"Times New Roman",serif;
-  font-size:26pt;font-weight:bold;
-  color:#1A1A1A;
-  text-align:center;letter-spacing:.06em;
-  line-height:1.1;margin-bottom:8px;
+  font-size:24pt;font-weight:700;color:#111827;
+  letter-spacing:-.01em;line-height:1.15;margin-bottom:6px;
 }
-/* Short gold accent bar below name */
 .cl-name-bar{
-  width:52px;height:2px;
-  background:#B8975A;
-  margin:0 auto 12px;
+  width:40px;height:3px;
+  background:#6E42F0;
+  margin-bottom:10px;border-radius:2px;
 }
-/* Professional title line */
 .cl-sub-title{
-  font-size:10.5pt;color:#777;
-  text-align:center;font-style:italic;
-  font-family:Georgia,"Times New Roman",serif;
-  margin-bottom:10px;
+  font-size:10.5pt;color:#6B7280;margin-bottom:8px;
 }
-/* Contact bar — override CV style for cover letter: subtle, uppercase */
-.cl-wrap .cv-contact-bar{
-  font-size:7.5pt;color:#999;
-  letter-spacing:.07em;text-transform:uppercase;
-  padding-bottom:14px;border-bottom:none;
-  gap:2px 0;
-}
-.cl-wrap .cv-ci{color:#999}
-.cl-wrap .cv-ci a{color:#999}
-.cl-wrap .cv-ci-icon{color:#B8975A}    /* gold icons */
-.cl-wrap .cv-ci-sep{color:#D8CDB8}
 
-/* ── Horizontal divider (warm parchment) ── */
+/* Contact bar — shared styles, no bottom border for cover letter */
+.cl-wrap .cv-contact-bar{
+  border-bottom:none;padding-bottom:4px;
+}
+
+/* ── Horizontal divider ── */
 .cl-divider{
-  border:none;border-top:1px solid #D8CDB8;
-  margin:6px 0 32px;
+  border:none;border-top:1px solid #E5E7EB;
+  margin:8px 0 28px;
 }
 
 /* ── Date ── */
 .cl-date{
-  font-size:9.5pt;color:#999;
-  text-align:right;font-style:italic;
-  font-family:Georgia,"Times New Roman",serif;
-  letter-spacing:.01em;margin-bottom:30px;
+  font-size:9.5pt;color:#6B7280;
+  text-align:right;
+  margin-bottom:24px;
 }
 
 /* ── Recipient block ── */
-.cl-recipient{margin-bottom:24px;line-height:1.6}
+.cl-recipient{margin-bottom:20px;line-height:1.6}
 .cl-recipient-label{
-  font-size:7.5pt;font-weight:bold;
-  color:#aaa;letter-spacing:.1em;
+  font-size:7.5pt;font-weight:700;
+  color:#9CA3AF;letter-spacing:.1em;
   text-transform:uppercase;
   display:block;margin-bottom:2px;
 }
 .cl-recipient-company{
-  font-size:11.5pt;color:#1A1A1A;
-  font-style:italic;
-  font-family:Georgia,"Times New Roman",serif;
+  font-size:11pt;color:#111827;font-weight:600;
 }
 
 /* ── Salutation ── */
 .cl-salutation{
-  font-size:11.5pt;color:#1A1A1A;
-  font-family:Georgia,"Times New Roman",serif;
-  margin-top:4px;margin-bottom:28px;
+  font-size:11pt;color:#111827;font-weight:500;
+  margin-top:4px;margin-bottom:22px;
 }
 
 /* ── Body paragraphs ── */
 .cl-para{
-  font-size:11.5pt;line-height:1.9;
-  color:#2C2C2C;
-  font-family:Georgia,"Times New Roman",serif;
-  margin-bottom:20px;
-  text-align:justify;hyphens:auto;
+  font-size:11pt;line-height:1.85;
+  color:#374151;
+  margin-bottom:18px;
 }
 
 /* ── Sign-off ── */
-.cl-sign-off{margin-top:44px}
+.cl-sign-off{margin-top:40px}
 .cl-sign-off-phrase{
-  font-size:11.5pt;color:#2C2C2C;
-  font-family:Georgia,"Times New Roman",serif;
-  margin-bottom:52px;   /* blank space for handwritten signature */
+  font-size:11pt;color:#374151;
+  margin-bottom:48px;
 }
 .cl-sig-line{
-  width:200px;border-top:1px solid #C4B99A;  /* gold-tinted line */
-  margin-bottom:10px;
+  width:180px;border-top:2px solid #6E42F0;
+  margin-bottom:10px;border-radius:1px;
 }
 .cl-sign-name{
-  font-family:Georgia,"Times New Roman",serif;
-  font-weight:bold;font-size:13pt;
-  color:#1A1A1A;letter-spacing:.03em;
+  font-weight:700;font-size:13pt;
+  color:#111827;
 }
 .cl-sign-title{
-  font-size:9.5pt;color:#888;
-  font-style:italic;
-  font-family:Georgia,"Times New Roman",serif;
-  margin-top:4px;
+  font-size:9.5pt;color:#6B7280;
+  margin-top:3px;
 }
 
 /* ── Print overrides ── */
 @media print{
-  .cl-para,.cl-salutation,.cl-sign-off-phrase{text-align:justify}
-  .cl-wrap .cv-contact-bar{text-transform:uppercase}
-}
-
-/* ── Print ── */
-/* Word default margins: 25.4 mm (1 inch) on all sides                  */
-/* .doc has padding:0 so only @page margins frame the text on paper.    */
-@media print{
   body{background:#fff}
   .banner{display:none!important}
   .doc{margin:0;padding:0;box-shadow:none;border-radius:0;width:100%;max-width:100%}
-  .cv-ci a{color:#555!important}
+  .cv-ci a{color:#6B7280!important}
   .cv-section{break-after:avoid;page-break-after:avoid}
   .cv-job-header{break-after:avoid;page-break-after:avoid}
   .cv-edu-institution{break-after:avoid;page-break-after:avoid}
-  .cl-para{text-align:justify}
-  .cv-body{text-align:justify}
-  .cv-bullets li{text-align:left}   /* bullet text stays left-aligned */
+  .cv-bullets li{text-align:left}
 }
-@page{size:A4;margin:25.4mm 25.4mm}
+@page{size:A4;margin:22mm 22mm}
 </style>
 </head>
 <body>
@@ -1225,7 +1192,6 @@ function renderCv(lines: LineKind[]): string {
     switch (line.type) {
       case "name":
         out.push(`<div class="cv-name">${esc(line.text)}</div>`);
-        out.push(`<div class="cv-name-bar"></div>`);
         break;
       case "title":
         out.push(`<div class="cv-sub-title">${esc(line.text)}</div>`);
@@ -1234,7 +1200,7 @@ function renderCv(lines: LineKind[]): string {
         out.push(renderContactBar(line.items));
         break;
       case "heading":
-        out.push(`<div class="cv-section"><span>${esc(line.text)}</span></div>`);
+        out.push(`<div class="cv-section"><span>${esc(line.text)}</span><div class="cv-section-rule"></div></div>`);
         break;
       case "job": {
         const datePart = line.dates ? `<span class="cv-dates">${esc(line.dates)}</span>` : "";
