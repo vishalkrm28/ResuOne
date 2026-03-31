@@ -1093,14 +1093,17 @@ body{font-family:'Calibri','Segoe UI',system-ui,-apple-system,Arial,sans-serif;
 @media print{
   body{background:#fff}
   .banner{display:none!important}
-  .doc{margin:0;padding:0;box-shadow:none;border-radius:0;width:100%;max-width:100%}
+  /* Move margins into content padding so @page margin can be 0,
+     which suppresses the browser's default URL / page-number header+footer */
+  .doc{margin:0;padding:22mm 22mm;box-shadow:none;border-radius:0;width:100%;max-width:100%}
   .cv-ci a{color:#6B7280!important}
   .cv-section{break-after:avoid;page-break-after:avoid}
   .cv-job-header{break-after:avoid;page-break-after:avoid}
   .cv-edu-institution{break-after:avoid;page-break-after:avoid}
   .cv-bullets li{text-align:left}
 }
-@page{size:A4;margin:22mm 22mm}
+/* margin:0 removes the browser header/footer (URL, page number) strip */
+@page{size:A4;margin:0}
 </style>
 </head>
 <body>
