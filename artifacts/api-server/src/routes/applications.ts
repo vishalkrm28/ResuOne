@@ -463,7 +463,7 @@ router.post("/applications/:id/analyze", async (req, res) => {
         const isPro = await isUserPro(ownerUserId);
         if (!isPro && clientIp !== "unknown") {
           const ipCount = await countFreeAnalysesByIp(clientIp);
-          const IP_FREE_LIMIT = 5; // analyses per IP across all accounts
+          const IP_FREE_LIMIT = 3; // analyses per IP across all accounts
           if (ipCount >= IP_FREE_LIMIT) {
             res.status(429).json({
               error: "Too many free analyses from this network. Please upgrade to Pro to continue.",
