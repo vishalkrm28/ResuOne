@@ -44,6 +44,7 @@ import { UpgradeButton } from "@/components/billing/upgrade-button";
 import { UnlockButton } from "@/components/billing/unlock-button";
 import { FreeResultsView } from "@/components/results/free-results-view";
 import { CvRenderer } from "@/components/results/cv-renderer";
+import { CoverLetterRenderer } from "@/components/results/cover-letter-renderer";
 
 // ─── Analysis progress steps shown during loading ─────────────────────────────
 
@@ -290,6 +291,7 @@ export default function ApplicationDetail() {
   // Editable cover letter state (Pro only)
   const [editedCover, setEditedCover] = useState<string | null>(null);
   const coverDirty = editedCover !== null;
+  const [isEditingCover, setIsEditingCover] = useState(false);
 
   // Export confirmation modal
   const [exportConfirmUrl, setExportConfirmUrl] = useState<string | null>(null);
@@ -1201,11 +1203,7 @@ export default function ApplicationDetail() {
                             </Button>
                           </div>
                         </div>
-                        <div className="flex-1 p-5 overflow-auto">
-                          <pre className="text-sm font-mono whitespace-pre-wrap leading-relaxed">
-                            {app.coverLetterText}
-                          </pre>
-                        </div>
+                        <CoverLetterRenderer text={app.coverLetterText ?? ""} className="flex-1 overflow-auto" />
                       </Card>
                     </div>
                   </div>
@@ -1265,7 +1263,7 @@ export default function ApplicationDetail() {
                       </Card>
                     </div>
 
-                    {/* Cover letter output — editable */}
+                    {/* Cover letter output — formatted view + optional edit mode */}
                     <div className="lg:col-span-2">
                       <Card className="h-full min-h-[500px] flex flex-col">
                         <div className="bg-muted px-4 py-3 border-b border-border flex flex-wrap justify-between items-center gap-2 rounded-t-2xl">
@@ -1275,21 +1273,21 @@ export default function ApplicationDetail() {
                               <span className="ml-2 text-amber-600 font-bold">· Unsaved changes</span>
                             )}
                           </span>
-                          <div className="flex flex-wrap gap-2">
-                            {coverDirty && (
+                          <div className="flex flex-wrap gap-2 items-center">
+                            {isEditingCover && coverDirty && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setEditedCover(null)}
+                                onClick={() => { setEditedCover(null); setIsEditingCover(false); }}
                                 className="text-muted-foreground"
                               >
                                 Discard
                               </Button>
                             )}
-                            {coverDirty && (
+                            {isEditingCover && coverDirty && (
                               <Button
                                 size="sm"
-                                onClick={handleSaveCoverLetter}
+                                onClick={async () => { await handleSaveCoverLetter(); setIsEditingCover(false); }}
                                 disabled={saveCoverMutation.isPending}
                                 className="gap-1.5"
                               >
@@ -1301,8 +1299,27 @@ export default function ApplicationDetail() {
                                 Save
                               </Button>
                             )}
-                            {app.coverLetterText && !coverDirty && (
+                            {(app.coverLetterText || editedCover) && (
                               <>
+                                {isEditingCover ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => { setIsEditingCover(false); if (!coverDirty) setEditedCover(null); }}
+                                    className="text-muted-foreground"
+                                  >
+                                    Done
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setIsEditingCover(true)}
+                                    className="text-muted-foreground"
+                                  >
+                                    Edit
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -1317,8 +1334,7 @@ export default function ApplicationDetail() {
                                   className="gap-1.5"
                                   onClick={() => setExportConfirmUrl(`/api/export/application/${id}/docx?type=cover`)}
                                 >
-                                  <Download className="w-3.5 h-3.5" />
-                                  .docx
+                                  <Download className="w-3.5 h-3.5" />.docx
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -1326,8 +1342,7 @@ export default function ApplicationDetail() {
                                   className="gap-1.5"
                                   onClick={() => setExportConfirmUrl(`/api/export/application/${id}/pdf?type=cover`)}
                                 >
-                                  <Download className="w-3.5 h-3.5" />
-                                  .pdf
+                                  <Download className="w-3.5 h-3.5" />.pdf
                                 </Button>
                               </>
                             )}
@@ -1339,17 +1354,21 @@ export default function ApplicationDetail() {
                             <p className="text-muted-foreground text-sm">Writing your cover letter…</p>
                           </div>
                         ) : app.coverLetterText || editedCover ? (
-                          <Textarea
-                            value={currentCoverText}
-                            onChange={(e) => {
-                              if (e.target.value !== app.coverLetterText) {
-                                setEditedCover(e.target.value);
-                              } else {
-                                setEditedCover(null);
-                              }
-                            }}
-                            className="flex-1 border-0 rounded-none rounded-b-2xl focus-visible:ring-0 resize-none font-serif text-base p-8 leading-relaxed"
-                          />
+                          isEditingCover ? (
+                            <Textarea
+                              value={currentCoverText}
+                              onChange={(e) => {
+                                if (e.target.value !== app.coverLetterText) {
+                                  setEditedCover(e.target.value);
+                                } else {
+                                  setEditedCover(null);
+                                }
+                              }}
+                              className="flex-1 border-0 rounded-none rounded-b-2xl focus-visible:ring-0 resize-none font-mono text-sm p-6 leading-relaxed"
+                            />
+                          ) : (
+                            <CoverLetterRenderer text={currentCoverText} className="flex-1 overflow-auto rounded-b-2xl" />
+                          )
                         ) : (
                           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-12 text-center">
                             <PenTool className="w-12 h-12 mb-4 opacity-20" />
