@@ -256,6 +256,29 @@ router.post("/_admin/sync-stripe", async (req, res) => {
   }
 });
 
+// ── POST /_admin/grant-pro ─────────────────────────────────────────────────
+// Grant or revoke Pro subscription manually (no Stripe required)
+router.post("/_admin/grant-pro", async (req, res) => {
+  if (!authAdmin(req, res)) return;
+  const { userId, revoke } = req.body as { userId?: string; revoke?: boolean };
+  if (!userId) { res.status(400).json({ error: "userId required" }); return; }
+
+  try {
+    const newStatus = revoke ? null : "active";
+    const periodEnd = revoke ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+
+    await db.update(usersTable).set({
+      subscriptionStatus: newStatus,
+      currentPeriodEnd: periodEnd,
+    }).where(eq(usersTable.id, userId));
+
+    logger.info({ userId, revoke }, `Admin ${revoke ? "revoked" : "granted"} Pro subscription`);
+    res.json({ success: true, message: revoke ? "Pro revoked" : "Pro granted (1 year)", subscriptionStatus: newStatus });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /_admin/fix-user-migration ───────────────────────────────────────
 router.post("/_admin/fix-user-migration", async (req, res) => {
   if (!authAdmin(req, res)) return;

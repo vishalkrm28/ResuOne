@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import {
   Shield, Search, CreditCard, Package, RefreshCw, LogOut,
   CheckCircle, XCircle, Loader2, Trash2, ChevronRight,
-  ChevronDown, Users, BarChart3, AlertTriangle, X, FileText,
+  ChevronDown, Users, BarChart3, AlertTriangle, X, FileText, Star,
 } from "lucide-react";
 
 const STORAGE_KEY = "pp_admin_token";
@@ -430,6 +430,28 @@ function UserRow({
     });
   }
 
+  const isPro = detail?.user?.subscriptionStatus === "active";
+
+  async function togglePro() {
+    const revoke = isPro;
+    confirmAction(
+      revoke ? "Revoke Pro subscription?" : "Grant Pro subscription?",
+      revoke
+        ? "The user will lose Pro access immediately."
+        : "This will grant 1 year of Pro access without Stripe payment.",
+      async () => {
+        await doAction("pro", async () => {
+          const data = await call("/_admin/grant-pro", {
+            method: "POST",
+            body: JSON.stringify({ userId: user.id, revoke }),
+          });
+          addToast(data.message ?? "Done", "success");
+          await refreshDetail();
+        });
+      },
+    );
+  }
+
   async function deleteApp(appId: string, title: string) {
     confirmAction(
       "Delete this CV analysis?",
@@ -526,6 +548,18 @@ function UserRow({
                   <ActionBtn icon={<Package className="w-3.5 h-3.5" />} label="Grant bulk pass" loading={actionLoading === "bulk"} onClick={grantBulk} />
                 </div>
                 <ActionBtn icon={<RefreshCw className="w-3.5 h-3.5" />} label="Sync Stripe" loading={actionLoading === "stripe"} onClick={syncStripe} />
+                <button
+                  onClick={togglePro}
+                  disabled={actionLoading === "pro" || loadingDetail}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50 ${
+                    isPro
+                      ? "bg-purple-900/40 hover:bg-red-900/40 text-purple-300 hover:text-red-300 border border-purple-700/50 hover:border-red-700/50"
+                      : "bg-purple-600 hover:bg-purple-700 text-white"
+                  }`}
+                >
+                  {actionLoading === "pro" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5" />}
+                  {isPro ? "Revoke Pro" : "Grant Pro"}
+                </button>
               </div>
 
               {/* Bulk passes */}
