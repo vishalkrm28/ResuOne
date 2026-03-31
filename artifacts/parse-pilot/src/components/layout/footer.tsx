@@ -26,6 +26,16 @@ export function Footer() {
           ATS-friendly &nbsp;•&nbsp; No fake experience added &nbsp;•&nbsp; Edit before export
         </p>
 
+        {/* SEO tool links */}
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground/70 mb-6">
+          <Link href="/cv-match-score" className="hover:text-muted-foreground transition-colors">CV Match Score</Link>
+          <Link href="/ats-resume-checker" className="hover:text-muted-foreground transition-colors">ATS Checker</Link>
+          <Link href="/resume-keyword-optimizer" className="hover:text-muted-foreground transition-colors">Keyword Optimizer</Link>
+          <Link href="/resume-job-match" className="hover:text-muted-foreground transition-colors">Resume vs Job</Link>
+          <Link href="/why-resume-rejected" className="hover:text-muted-foreground transition-colors">Why Rejected?</Link>
+          <Link href="/blog" className="hover:text-muted-foreground transition-colors">Blog</Link>
+        </div>
+
         {/* Legal links */}
         <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground/60">
           <Link

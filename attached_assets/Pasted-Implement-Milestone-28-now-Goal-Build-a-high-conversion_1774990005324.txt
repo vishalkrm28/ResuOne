@@ -1,0 +1,220 @@
+Implement Milestone 28 now.
+
+Goal:
+Build a high-conversion SEO system with 5 landing pages and a blog to capture high-intent traffic and convert users.
+
+--------------------------------------------------
+1. Create SEO Routes
+--------------------------------------------------
+
+/cv-match-score
+/ats-resume-checker
+/resume-keyword-optimizer
+/resume-job-match
+/why-resume-rejected
+
+--------------------------------------------------
+2. PAGE 1 — CV MATCH SCORE
+--------------------------------------------------
+
+Title:
+CV Match Score Tool – Check Your Resume Instantly
+
+H1:
+Check Your CV Match Score Instantly
+
+Content:
+
+Most resumes get rejected before a human sees them.
+
+Applicant Tracking Systems (ATS) scan your CV for relevance. If your CV doesn’t match the job description, it gets filtered out.
+
+ParsePilot analyzes your CV and gives you a clear match score with exact reasons.
+
+CTA:
+Analyze your CV now
+
+Sections:
+- What is CV match score
+- Why it matters
+- Missing skills detection
+
+FAQ:
+What is a good score?
+70–80%+ improves chances significantly.
+
+--------------------------------------------------
+3. PAGE 2 — ATS RESUME CHECKER
+--------------------------------------------------
+
+Title:
+ATS Resume Checker – Pass Applicant Tracking Systems
+
+H1:
+ATS Resume Checker – Pass the Bots
+
+Content:
+
+75% of resumes are rejected by ATS systems.
+
+ParsePilot scans your resume, finds missing keywords, and helps you optimize.
+
+CTA:
+Check your resume now
+
+Sections:
+- What is ATS
+- Why resumes fail
+- How to fix
+
+FAQ:
+Do ATS systems reject resumes?
+Yes, based on keywords and relevance.
+
+--------------------------------------------------
+4. PAGE 3 — RESUME KEYWORD OPTIMIZER
+--------------------------------------------------
+
+Title:
+Resume Keyword Optimization Tool
+
+H1:
+Optimize Your Resume Keywords
+
+Content:
+
+If your resume lacks the right keywords, it won’t be seen.
+
+ParsePilot extracts keywords from job descriptions and compares them.
+
+CTA:
+Find missing keywords
+
+Sections:
+- Keyword matching
+- Skill gaps
+- Optimization tips
+
+--------------------------------------------------
+5. PAGE 4 — RESUME VS JOB DESCRIPTION
+--------------------------------------------------
+
+Title:
+Compare Resume with Job Description
+
+H1:
+Compare Your Resume with Any Job
+
+Content:
+
+Most candidates don’t tailor resumes.
+
+ParsePilot shows exact gaps between your resume and job description.
+
+CTA:
+Compare now
+
+Sections:
+- Match score
+- Missing skills
+- Tailoring importance
+
+--------------------------------------------------
+6. PAGE 5 — WHY RESUME GETS REJECTED
+--------------------------------------------------
+
+Title:
+Why Your Resume Gets Rejected
+
+H1:
+Why Your Resume Gets Rejected
+
+Content:
+
+You may be qualified but still not getting interviews.
+
+ParsePilot identifies what’s missing.
+
+CTA:
+Fix your resume now
+
+Sections:
+- Top mistakes
+- ATS filtering
+- Weak descriptions
+
+--------------------------------------------------
+7. META TAGS
+--------------------------------------------------
+
+Each page must include:
+
+export const metadata = {
+  title: "...",
+  description: "..."
+};
+
+--------------------------------------------------
+8. INTERNAL LINKING
+--------------------------------------------------
+
+Each page links to:
+- /dashboard
+- other SEO pages
+- /blog
+
+--------------------------------------------------
+9. BLOG SYSTEM
+--------------------------------------------------
+
+Create:
+
+/blog
+/blog/[slug]
+
+--------------------------------------------------
+10. BLOG POSTS
+--------------------------------------------------
+
+Create 3:
+
+1. How to Beat ATS Systems in 2026
+2. Resume Mistakes That Get You Rejected
+3. How Recruiters Scan CVs
+
+Each must include CTA.
+
+--------------------------------------------------
+11. CTA RULE
+--------------------------------------------------
+
+“Analyze your CV now”
+
+Place:
+- top
+- middle
+- bottom
+
+--------------------------------------------------
+12. SITEMAP + ROBOTS
+--------------------------------------------------
+
+Create:
+- sitemap.xml
+- robots.txt
+
+--------------------------------------------------
+13. PERFORMANCE
+--------------------------------------------------
+
+- fast loading
+- mobile optimized
+
+--------------------------------------------------
+14. After Implementation
+--------------------------------------------------
+
+1. Show pages
+2. Show metadata
+3. Show blog
+4. Suggest new keywords

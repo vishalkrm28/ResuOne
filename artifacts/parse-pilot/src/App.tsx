@@ -25,6 +25,13 @@ import BulkHistory from "@/pages/bulk-history";
 import BulkSessionDetail from "@/pages/bulk-session-detail";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
+import CvMatchScore from "@/pages/seo/cv-match-score";
+import AtsResumeChecker from "@/pages/seo/ats-resume-checker";
+import ResumeKeywordOptimizer from "@/pages/seo/resume-keyword-optimizer";
+import ResumeJobMatch from "@/pages/seo/resume-job-match";
+import WhyResumeRejected from "@/pages/seo/why-resume-rejected";
+import BlogIndex from "@/pages/blog/index";
+import BlogPost from "@/pages/blog/post";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
@@ -105,6 +112,15 @@ function App() {
               <Route path="/terms" component={Terms} />
               <Route path="/privacy" component={Privacy} />
               <Route path="/contact" component={Contact} />
+              {/* SEO landing pages */}
+              <Route path="/cv-match-score" component={CvMatchScore} />
+              <Route path="/ats-resume-checker" component={AtsResumeChecker} />
+              <Route path="/resume-keyword-optimizer" component={ResumeKeywordOptimizer} />
+              <Route path="/resume-job-match" component={ResumeJobMatch} />
+              <Route path="/why-resume-rejected" component={WhyResumeRejected} />
+              {/* Blog */}
+              <Route path="/blog" component={BlogIndex} />
+              <Route path="/blog/:slug" component={BlogPost} />
               {/* Admin — own token-based auth */}
               <Route path="/admin" component={AdminPage} />
               {/* Everything else goes through the auth gate */}
