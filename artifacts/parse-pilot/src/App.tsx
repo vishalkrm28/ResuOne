@@ -25,6 +25,10 @@ import BulkHistory from "@/pages/bulk-history";
 import BulkSessionDetail from "@/pages/bulk-session-detail";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
+import RecruiterDashboard from "@/pages/recruiter/dashboard";
+import RecruiterPipeline from "@/pages/recruiter/pipeline";
+import CandidateDetail from "@/pages/recruiter/candidate-detail";
+import InviteResponse from "@/pages/invite-response";
 import CvMatchScore from "@/pages/seo/cv-match-score";
 import AtsResumeChecker from "@/pages/seo/ats-resume-checker";
 import ResumeKeywordOptimizer from "@/pages/seo/resume-keyword-optimizer";
@@ -91,6 +95,9 @@ function AppRouter() {
       <Route path="/bulk/session" component={BulkSession} />
       <Route path="/bulk/history" component={BulkHistory} />
       <Route path="/bulk/sessions/:id" component={BulkSessionDetail} />
+      <Route path="/recruiter/dashboard" component={RecruiterDashboard} />
+      <Route path="/recruiter/pipeline" component={RecruiterPipeline} />
+      <Route path="/candidate/:id" component={CandidateDetail} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -121,6 +128,8 @@ function App() {
               {/* Blog */}
               <Route path="/blog" component={BlogIndex} />
               <Route path="/blog/:slug" component={BlogPost} />
+              {/* Public invite response (candidates, no auth) */}
+              <Route path="/invite/:id" component={InviteResponse} />
               {/* Admin — own token-based auth */}
               <Route path="/admin" component={AdminPage} />
               {/* Everything else goes through the auth gate */}

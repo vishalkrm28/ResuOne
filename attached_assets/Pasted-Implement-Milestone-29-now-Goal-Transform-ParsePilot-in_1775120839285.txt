@@ -1,0 +1,270 @@
+Implement Milestone 29 now.
+
+Goal:
+Transform ParsePilot into a recruiter workflow tool by adding:
+
+1. Candidate outreach system (invite to interview / test)
+2. Recruiter dashboard UI (clean, fast, decision-focused)
+3. Basic CRM pipeline to track candidates
+
+IMPORTANT:
+- UI must be clean (Stripe/Notion style)
+- Fast decision making is priority
+- Avoid clutter (NOT a traditional ATS)
+
+--------------------------------------------------
+1. DATABASE MODELS
+--------------------------------------------------
+
+Create:
+
+Candidate:
+- id
+- name
+- email
+- score
+- skills
+- experience
+- status (new | invited | accepted | rejected)
+- createdAt
+
+Invite:
+- id
+- candidateId
+- recruiterId
+- type (interview | test)
+- status (sent | opened | accepted | rejected)
+- scheduledAt
+- meetingLink
+- message
+- createdAt
+
+Recruiter:
+- id
+- email
+- organizationName
+
+--------------------------------------------------
+2. MAIN RECRUITER DASHBOARD
+--------------------------------------------------
+
+Route:
+/recruiter/dashboard
+
+Layout:
+
+A. Top Bar:
+- Search input
+- Filters (score, status)
+- Upload CV button
+
+B. KPI Strip:
+- Total Candidates
+- Invited
+- Accepted
+- Rejected
+
+C. Candidate Table (MAIN):
+
+Columns:
+- Name
+- Score (%)
+- Top Skills
+- Experience
+- Status
+- Actions
+
+Actions:
+- View
+- Shortlist
+- Invite
+
+--------------------------------------------------
+3. CANDIDATE DETAIL VIEW
+--------------------------------------------------
+
+Route:
+/candidate/[id]
+
+Layout:
+
+LEFT (70%):
+- Match Score (large)
+- Score breakdown:
+  - Skills
+  - Experience
+  - Keywords
+- Missing skills
+- Summary
+
+RIGHT (30%) (STICKY PANEL):
+
+Actions:
+- Invite to Interview
+- Send Test Invite
+- Shortlist
+- Reject
+
+--------------------------------------------------
+4. INVITE MODAL (CRITICAL UX)
+--------------------------------------------------
+
+On clicking “Invite”:
+
+Fields:
+
+- Type:
+  Interview / Test
+
+- Message (pre-filled, editable)
+
+- Date & Time (optional)
+
+- Link:
+  Meeting link OR test link
+
+CTA:
+Send Invite
+
+Pre-fill message:
+
+“We reviewed your profile and would like to invite you to the next step.”
+
+--------------------------------------------------
+5. EMAIL SYSTEM
+--------------------------------------------------
+
+Send email:
+
+Subject:
+You’ve been invited to the next step
+
+Content:
+- recruiter name
+- organization
+- type (interview/test)
+- date/time
+- link
+
+CTA:
+Accept Invite
+
+--------------------------------------------------
+6. CANDIDATE RESPONSE PAGE
+--------------------------------------------------
+
+Route:
+/invite/[id]
+
+Actions:
+- Accept
+- Decline
+
+If accepted:
+- confirm participation
+- show details
+
+--------------------------------------------------
+7. STATUS TRACKING
+--------------------------------------------------
+
+Track:
+
+- Sent
+- Opened
+- Accepted
+- Rejected
+
+Update candidate + invite status.
+
+--------------------------------------------------
+8. PIPELINE VIEW (CRM)
+--------------------------------------------------
+
+Route:
+/recruiter/pipeline
+
+Columns:
+
+- New
+- Invited
+- Accepted
+- Rejected
+
+Each card = candidate
+
+--------------------------------------------------
+9. BULK ACTION SYSTEM
+--------------------------------------------------
+
+Enable:
+
+- Select multiple candidates
+- “Invite Selected”
+
+--------------------------------------------------
+10. STATUS UI (VISUAL)
+--------------------------------------------------
+
+Use badges:
+
+- New (yellow)
+- Invited (blue)
+- Accepted (green)
+- Rejected (red)
+
+--------------------------------------------------
+11. UI DESIGN RULES
+--------------------------------------------------
+
+Design inspiration:
+- Stripe (clean, sharp)
+- Notion (minimal)
+
+Rules:
+
+- whitespace heavy
+- no clutter
+- fast loading
+- no unnecessary animations
+
+--------------------------------------------------
+12. MICROCOPY (IMPORTANT)
+--------------------------------------------------
+
+Use:
+
+- “Send Invite” instead of Submit
+- “View Candidate” instead of Open
+- “See Match Breakdown” instead of Analyze
+
+--------------------------------------------------
+13. ANALYTICS
+--------------------------------------------------
+
+Track:
+
+- invites_sent
+- invites_accepted
+- acceptance_rate
+
+--------------------------------------------------
+14. ACCESS CONTROL
+--------------------------------------------------
+
+Only allow:
+- authenticated recruiter users
+- institution roles
+
+--------------------------------------------------
+15. AFTER IMPLEMENTATION
+--------------------------------------------------
+
+After implementation:
+
+1. Show recruiter dashboard UI code
+2. Show candidate detail page
+3. Show invite modal code
+4. Show email template
+5. Suggest UX improvements
+6. Suggest monetization strategy

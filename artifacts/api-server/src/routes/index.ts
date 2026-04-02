@@ -8,6 +8,7 @@ import billingRouter from "./billing.js";
 import bulkRouter from "./bulk.js";
 import contactRouter from "./contact.js";
 import adminSeedRouter from "./admin-seed.js";
+import recruiterRouter from "./recruiter.js";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(billingRouter);
 router.use(bulkRouter);
 router.use(contactRouter);
 router.use(adminSeedRouter);
+router.use(recruiterRouter);
 
 export default router;
