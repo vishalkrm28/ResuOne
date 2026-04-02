@@ -74,7 +74,7 @@ export default function Contact() {
             <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-foreground">ParsePilot</span>
+            <span className="font-bold text-foreground">ResuOne</span>
           </Link>
           <Link
             href="/"

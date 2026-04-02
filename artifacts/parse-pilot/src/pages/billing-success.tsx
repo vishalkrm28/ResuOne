@@ -29,10 +29,10 @@ export default function BillingSuccess() {
         <div className="space-y-2">
           <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm font-medium tracking-wide uppercase">
             <Sparkles className="w-4 h-4 text-violet-500" />
-            ParsePilot Pro
+            ResuOne Pro
           </div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Welcome to ParsePilot Pro
+            Welcome to ResuOne Pro
           </h1>
           <p className="text-muted-foreground">
             Pro features are being activated now. It can take a few seconds —

@@ -4,8 +4,8 @@ import { AlertCircle, Shield, PenLine } from "lucide-react";
 const faqs = [
   { q: "Why am I not getting interviews even though I'm qualified?", a: "Most rejections happen before a recruiter sees your application. ATS systems filter CVs by keyword match — if your resume doesn't use the same language as the job description, it gets rejected automatically." },
   { q: "What are the most common resume mistakes?", a: "Missing keywords, generic summaries not tailored to the role, weak achievement descriptions, non-standard formatting that ATS can't parse, and applying with the same CV to every job." },
-  { q: "How quickly can ParsePilot fix my resume?", a: "In under 60 seconds. Upload your CV, paste the job description, and receive a fully optimised version with every gap addressed." },
-  { q: "Do I need to rewrite my whole CV?", a: "No. ParsePilot keeps your real experience and structure — it rewrites how your work is described to match what employers are searching for." },
+  { q: "How quickly can ResuOne fix my resume?", a: "In under 60 seconds. Upload your CV, paste the job description, and receive a fully optimised version with every gap addressed." },
+  { q: "Do I need to rewrite my whole CV?", a: "No. ResuOne keeps your real experience and structure — it rewrites how your work is described to match what employers are searching for." },
 ];
 
 const mistakes = [
@@ -20,8 +20,8 @@ const mistakes = [
 export default function WhyResumeRejected() {
   return (
     <SeoLayout
-      title="Why Your Resume Gets Rejected – Common Mistakes & Fixes | ParsePilot"
-      description="Find out why your resume gets rejected and how to fix it. ParsePilot identifies ATS failures, missing keywords, and weak descriptions — and fixes them in 60 seconds."
+      title="Why Your Resume Gets Rejected – Common Mistakes & Fixes | ResuOne"
+      description="Find out why your resume gets rejected and how to fix it. ResuOne identifies ATS failures, missing keywords, and weak descriptions — and fixes them in 60 seconds."
     >
       {/* Hero */}
       <section className="pt-20 pb-16 px-6 text-center bg-gradient-to-b from-primary/5 to-background">
@@ -36,7 +36,7 @@ export default function WhyResumeRejected() {
             You may be fully qualified — but still getting no interviews. The problem isn't your experience. It's how your resume presents it.
           </p>
           <p className="text-base text-muted-foreground mb-10">
-            ParsePilot identifies exactly what's costing you interviews and fixes it, so employers finally see the candidate you actually are.
+            ResuOne identifies exactly what's costing you interviews and fixes it, so employers finally see the candidate you actually are.
           </p>
           <CtaButton label="Fix your resume now" />
         </div>
@@ -79,7 +79,7 @@ export default function WhyResumeRejected() {
             <PenLine className="w-10 h-10 text-primary mx-auto mb-4" />
             <h2 className="text-lg font-bold mb-3">Weak Descriptions</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Duty-based bullets ('responsible for…') don't demonstrate value. Recruiters want achievement evidence: numbers, impact, and scope. ParsePilot rewrites bullets to show both.
+              Duty-based bullets ('responsible for…') don't demonstrate value. Recruiters want achievement evidence: numbers, impact, and scope. ResuOne rewrites bullets to show both.
             </p>
           </div>
         </div>

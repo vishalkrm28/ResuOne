@@ -599,7 +599,7 @@ export function FreeResultsView({
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold text-foreground">
-                ParsePilot Pro — $14.99/mo
+                ResuOne Pro — $14.99/mo
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 Unlimited results · Cover letters · Better for multiple applications

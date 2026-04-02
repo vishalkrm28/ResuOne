@@ -1,4 +1,3 @@
-import { Sparkles } from "lucide-react";
 import { Link } from "wouter";
 
 export function Footer() {
@@ -7,11 +6,8 @@ export function Footer() {
       <div className="max-w-4xl mx-auto px-6 py-16 text-center">
 
         {/* Brand mark */}
-        <div className="flex items-center justify-center gap-2 mb-10">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-foreground text-lg">ParsePilot</span>
+        <div className="flex items-center justify-center mb-10">
+          <img src="/resuone-logo.png" alt="ResuOne" className="h-10 w-auto object-contain" />
         </div>
 
         {/* Main bold statement */}
@@ -56,7 +52,7 @@ export function Footer() {
           >
             Contact
           </Link>
-          <span>© {new Date().getFullYear()} ParsePilot</span>
+          <span>© {new Date().getFullYear()} ResuOne</span>
         </div>
 
       </div>

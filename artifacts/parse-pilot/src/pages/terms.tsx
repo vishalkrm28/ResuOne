@@ -7,7 +7,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
     title: "Introduction",
     content: (
       <p>
-        ParsePilot provides AI-assisted resume analysis and optimization tools. By using this
+        ResuOne provides AI-assisted resume analysis and optimization tools. By using this
         service, you agree to these terms. If you don't agree, please don't use the service.
       </p>
     ),
@@ -16,7 +16,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
     title: "Use of Service",
     content: (
       <ul className="list-disc list-inside space-y-2">
-        <li>Use ParsePilot for personal job applications only.</li>
+        <li>Use ResuOne for personal job applications only.</li>
         <li>Do not copy, resell, or exploit the platform or its outputs.</li>
         <li>Do not attempt to reverse-engineer, scrape, or overload the service.</li>
       </ul>
@@ -27,7 +27,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
     content: (
       <>
         <p>
-          ParsePilot provides suggestions and analysis only. We don't guarantee any specific
+          ResuOne provides suggestions and analysis only. We don't guarantee any specific
           outcome — including interviews, job offers, or application success.
         </p>
         <p className="mt-3">
@@ -43,7 +43,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
       <ul className="list-disc list-inside space-y-2">
         <li>You are responsible for reviewing all generated content before use.</li>
         <li>Do not include false, misleading, or fabricated information in your applications.</li>
-        <li>ParsePilot will never invent experience — but you must verify what's produced.</li>
+        <li>ResuOne will never invent experience — but you must verify what's produced.</li>
       </ul>
     ),
   },
@@ -52,11 +52,11 @@ const sections: { title: string; content: React.ReactNode }[] = [
     content: (
       <>
         <p>
-          ParsePilot is designed as a CV analysis and optimization tool.
+          ResuOne is designed as a CV analysis and optimization tool.
         </p>
         <p className="mt-3">
           While we aim to preserve the structure and clarity of your CV, formatting and layout may
-          vary depending on the content and processing. ParsePilot does not guarantee exact
+          vary depending on the content and processing. ResuOne does not guarantee exact
           formatting replication and is not intended to function as a resume builder.
         </p>
         <p className="mt-3">
@@ -75,7 +75,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
           law. Pricing may change over time — we'll communicate any changes in advance.
         </p>
         <p className="mt-3">
-          Payments are processed securely by Stripe. ParsePilot does not store your payment card
+          Payments are processed securely by Stripe. ResuOne does not store your payment card
           details.
         </p>
       </>
@@ -86,7 +86,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
     content: (
       <>
         <p className="mb-4">
-          ParsePilot operates on a credit-based system. Each AI analysis consumes one credit.
+          ResuOne operates on a credit-based system. Each AI analysis consumes one credit.
           Pro plan credits are allocated monthly and do not roll over to the next billing period.
           Free plan credits are a one-time sign-up allowance and do not reset.
         </p>
@@ -139,7 +139,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
           <ul className="list-disc list-inside space-y-1">
             <li>Credits and passes are non-refundable once consumed.</li>
             <li>Unused credits or passes are non-refundable upon account deletion.</li>
-            <li>ParsePilot reserves the right to adjust plan limits or pricing with advance notice.</li>
+            <li>ResuOne reserves the right to adjust plan limits or pricing with advance notice.</li>
           </ul>
         </div>
       </>
@@ -149,7 +149,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
     title: "Limitation of Liability",
     content: (
       <p>
-        ParsePilot is not responsible for decisions made based on generated output, or for any
+        ResuOne is not responsible for decisions made based on generated output, or for any
         direct or indirect losses arising from use of the service. Use it as a tool, not as
         professional career advice.
       </p>
@@ -159,7 +159,7 @@ const sections: { title: string; content: React.ReactNode }[] = [
     title: "Changes to These Terms",
     content: (
       <p>
-        We may update these terms over time. Continued use of ParsePilot after changes are
+        We may update these terms over time. Continued use of ResuOne after changes are
         published constitutes acceptance of the revised terms.
       </p>
     ),
@@ -174,13 +174,13 @@ export default function Terms() {
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            Back to ParsePilot
+            Back to ResuOne
           </Link>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
               <Sparkles className="w-3 h-3 text-primary-foreground" />
             </div>
-            <span className="font-bold text-sm">ParsePilot</span>
+            <span className="font-bold text-sm">ResuOne</span>
           </div>
         </div>
       </header>

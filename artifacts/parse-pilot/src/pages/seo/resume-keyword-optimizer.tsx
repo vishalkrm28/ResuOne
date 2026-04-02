@@ -3,16 +3,16 @@ import { Search, Target, Zap } from "lucide-react";
 
 const faqs = [
   { q: "Why do keywords matter so much?", a: "ATS systems filter resumes by searching for exact phrases from the job description. If your CV uses 'managed a team' but the job says 'led cross-functional teams', you won't match — even though it means the same thing." },
-  { q: "Will ParsePilot add keywords I don't actually have?", a: "Never. ParsePilot only adds keywords that reflect your real experience, reframing how you describe it to match the language employers use. It never invents skills or roles." },
-  { q: "How many keywords does a typical resume miss?", a: "Most CVs miss 15–30% of the critical keywords from any given job description. ParsePilot identifies every gap and shows you how to address them." },
-  { q: "Does keyword stuffing work?", a: "No — modern ATS systems penalise obvious stuffing. ParsePilot embeds keywords naturally in rewritten experience bullets, not as a list at the bottom." },
+  { q: "Will ResuOne add keywords I don't actually have?", a: "Never. ResuOne only adds keywords that reflect your real experience, reframing how you describe it to match the language employers use. It never invents skills or roles." },
+  { q: "How many keywords does a typical resume miss?", a: "Most CVs miss 15–30% of the critical keywords from any given job description. ResuOne identifies every gap and shows you how to address them." },
+  { q: "Does keyword stuffing work?", a: "No — modern ATS systems penalise obvious stuffing. ResuOne embeds keywords naturally in rewritten experience bullets, not as a list at the bottom." },
 ];
 
 export default function ResumeKeywordOptimizer() {
   return (
     <SeoLayout
-      title="Resume Keyword Optimization Tool | ParsePilot"
-      description="Find missing resume keywords instantly. ParsePilot compares your CV against any job description, identifies keyword gaps, and rewrites your resume to pass ATS filters."
+      title="Resume Keyword Optimization Tool | ResuOne"
+      description="Find missing resume keywords instantly. ResuOne compares your CV against any job description, identifies keyword gaps, and rewrites your resume to pass ATS filters."
     >
       {/* Hero */}
       <section className="pt-20 pb-16 px-6 text-center bg-gradient-to-b from-primary/5 to-background">
@@ -27,7 +27,7 @@ export default function ResumeKeywordOptimizer() {
             If your resume lacks the right keywords, it won't be seen — regardless of how qualified you are. ATS systems filter on exact phrase matches, not intent.
           </p>
           <p className="text-base text-muted-foreground mb-10">
-            ParsePilot extracts every key term from the job description, compares it against your CV, and rewrites your resume to close every gap.
+            ResuOne extracts every key term from the job description, compares it against your CV, and rewrites your resume to close every gap.
           </p>
           <CtaButton label="Find missing keywords" />
         </div>
@@ -40,7 +40,7 @@ export default function ResumeKeywordOptimizer() {
             <Search className="w-8 h-8 text-primary mb-4" />
             <h2 className="text-lg font-bold mb-3">Keyword Matching</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              ParsePilot extracts every meaningful phrase from the job description — hard skills, soft skills, tools, certifications — and checks whether your CV contains them in any form.
+              ResuOne extracts every meaningful phrase from the job description — hard skills, soft skills, tools, certifications — and checks whether your CV contains them in any form.
             </p>
           </div>
           <div className="bg-muted/30 rounded-2xl p-6 border border-border/40">
@@ -54,7 +54,7 @@ export default function ResumeKeywordOptimizer() {
             <Zap className="w-8 h-8 text-primary mb-4" />
             <h2 className="text-lg font-bold mb-3">Optimization Tips</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              ParsePilot doesn't just list gaps — it rewrites your experience bullets to naturally include the missing keywords, matching the exact phrasing ATS systems look for.
+              ResuOne doesn't just list gaps — it rewrites your experience bullets to naturally include the missing keywords, matching the exact phrasing ATS systems look for.
             </p>
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function ResumeKeywordOptimizer() {
       {/* Example keyword list visual */}
       <section className="py-12 bg-muted/20 border-y border-border/40 px-6">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-xl font-bold text-center mb-8">Example: Keywords ParsePilot Finds Missing</h2>
+          <h2 className="text-xl font-bold text-center mb-8">Example: Keywords ResuOne Finds Missing</h2>
           <div className="flex flex-wrap gap-2 justify-center">
             {["Stakeholder management", "KPI reporting", "Cross-functional collaboration", "Agile methodology", "Python", "Data analysis", "Project delivery", "Budget oversight", "SQL", "Presentation skills"].map(kw => (
               <span key={kw} className="bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 text-xs font-medium px-3 py-1.5 rounded-full">

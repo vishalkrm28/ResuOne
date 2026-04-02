@@ -1,6 +1,6 @@
 import { Sidebar } from "./sidebar";
 import { useState } from "react";
-import { Menu, Sparkles } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Link } from "wouter";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -36,11 +36,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
-            </div>
-            <span className="text-sm font-bold">ParsePilot AI</span>
+          <div className="flex items-center">
+            <img src="/resuone-logo.png" alt="ResuOne" className="h-7 w-auto object-contain" />
           </div>
           <div className="w-9" /> {/* spacer */}
         </header>
@@ -60,7 +57,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/contact" className="hover:text-muted-foreground transition-colors">
             Contact
           </Link>
-          <span>© {new Date().getFullYear()} ParsePilot</span>
+          <span>© {new Date().getFullYear()} ResuOne</span>
         </div>
       </div>
     </div>

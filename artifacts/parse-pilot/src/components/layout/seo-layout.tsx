@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
 
 interface SeoLayoutProps {
@@ -26,11 +26,8 @@ export function SeoLayout({ title, description, children }: SeoLayoutProps) {
       {/* Nav */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border/40">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-foreground">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            ParsePilot
+          <Link href="/" className="flex items-center">
+            <img src="/resuone-logo.png" alt="ResuOne" className="h-8 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Blog</Link>

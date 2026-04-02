@@ -3,7 +3,6 @@ import { useAuth } from "@workspace/replit-auth-web";
 import {
   LayoutDashboard,
   FilePlus2,
-  Sparkles,
   LogOut,
   ChevronRight,
   Settings2,
@@ -62,15 +61,10 @@ export function Sidebar() {
   return (
     <aside className="w-64 h-screen sticky top-0 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-sidebar-border">
+      <div className="px-5 py-4 border-b border-sidebar-border">
         <Link href="/">
-          <div className="flex items-center gap-2.5 cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="text-base font-bold tracking-tight text-sidebar-foreground">
-              ParsePilot AI
-            </span>
+          <div className="cursor-pointer flex items-center">
+            <img src="/resuone-logo.png" alt="ResuOne" className="h-9 w-auto object-contain" />
           </div>
         </Link>
       </div>

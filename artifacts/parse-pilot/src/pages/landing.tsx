@@ -26,8 +26,8 @@ import {
 
 const faqs: { q: string; a: string }[] = [
   {
-    q: "Does ParsePilot invent experience I don't have?",
-    a: "Never. ParsePilot only uses what's in your CV. It restructures and reframes how your existing experience is presented — it never adds roles, skills, or achievements that aren't there. This is a hard constraint built into every output.",
+    q: "Does ResuOne invent experience I don't have?",
+    a: "Never. ResuOne only uses what's in your CV. It restructures and reframes how your existing experience is presented — it never adds roles, skills, or achievements that aren't there. This is a hard constraint built into every output.",
   },
   {
     q: "What do I get for free?",
@@ -47,7 +47,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "Is the output ATS-friendly?",
-    a: "Yes. ParsePilot uses standard section headers and the exact keyword language ATS systems filter for. DOCX exports follow formatting conventions most parsers handle correctly.",
+    a: "Yes. ResuOne uses standard section headers and the exact keyword language ATS systems filter for. DOCX exports follow formatting conventions most parsers handle correctly.",
   },
 ];
 
@@ -86,7 +86,7 @@ function HeroMockPanel() {
           <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
           <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
           <span className="ml-2 text-xs text-white/80 font-medium">
-            ParsePilot — Operations Manager
+            ResuOne — Operations Manager
           </span>
         </div>
 
@@ -199,11 +199,8 @@ export default function Landing() {
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <nav className="border-b border-border/50 sticky top-0 z-50 bg-background/90 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-bold tracking-tight">ParsePilot</span>
+          <div className="flex items-center">
+            <img src="/resuone-logo.png" alt="ResuOne" className="h-9 w-auto object-contain" />
           </div>
 
           <div className="flex items-center gap-6">
@@ -380,7 +377,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-12">
             <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">
-              What ParsePilot does
+              What ResuOne does
             </p>
             <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
               Shows you what's wrong — and rewrites it
@@ -447,7 +444,7 @@ export default function Landing() {
               num: "1",
               icon: <FileText className="w-5 h-5" />,
               title: "Upload your CV",
-              body: "Paste text or upload a PDF or DOCX. ParsePilot extracts your work history, skills, and education.",
+              body: "Paste text or upload a PDF or DOCX. ResuOne extracts your work history, skills, and education.",
             },
             {
               num: "2",
@@ -487,7 +484,7 @@ export default function Landing() {
                 You see everything before you pay
               </h2>
               <p className="text-muted-foreground text-lg">
-                Most tools make you commit before you see the output. ParsePilot shows you the analysis first, always.
+                Most tools make you commit before you see the output. ResuOne shows you the analysis first, always.
               </p>
             </div>
 
@@ -501,7 +498,7 @@ export default function Landing() {
                   Zero fabrication — hard constraint, not a setting
                 </p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Every word in the output comes directly from your original CV. ParsePilot restructures and sharpens how your experience is presented — it never invents roles, skills, or achievements. This is enforced at the system level, not a guideline.
+                  Every word in the output comes directly from your original CV. ResuOne restructures and sharpens how your experience is presented — it never invents roles, skills, or achievements. This is enforced at the system level, not a guideline.
                 </p>
               </div>
             </div>
@@ -552,7 +549,7 @@ export default function Landing() {
             See it in action
           </p>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
-            The exact output ParsePilot produces
+            The exact output ResuOne produces
           </h2>
           <p className="text-muted-foreground text-lg max-w-md mx-auto">
             Real gaps. Specific fixes. The same experience — presented with the language the role calls for.
@@ -570,7 +567,7 @@ export default function Landing() {
                 <div className="w-2 h-2 rounded-full bg-white/20" />
                 <div className="w-2 h-2 rounded-full bg-white/20" />
                 <span className="ml-2 text-xs text-white/60 font-medium">
-                  ParsePilot — Senior Business Analyst
+                  ResuOne — Senior Business Analyst
                 </span>
               </div>
 
@@ -678,7 +675,7 @@ export default function Landing() {
               <div className="flex-1 h-px bg-border/60" />
               <span className="flex items-center gap-1 font-medium">
                 <Sparkles className="w-3 h-3 text-primary" />
-                ParsePilot rewrites using your existing experience
+                ResuOne rewrites using your existing experience
               </span>
               <div className="flex-1 h-px bg-border/60" />
             </div>

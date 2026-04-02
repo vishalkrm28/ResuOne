@@ -314,7 +314,7 @@ export default function NewApplication() {
 
           <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1">
             <AlertCircle className="w-3 h-3" />
-            ParsePilot will only rewrite existing facts — it will never invent experience.
+            ResuOne will only rewrite existing facts — it will never invent experience.
           </p>
         </div>
       </form>

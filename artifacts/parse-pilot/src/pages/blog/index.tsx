@@ -6,8 +6,8 @@ import { ArrowRight, Clock, Calendar } from "lucide-react";
 export default function BlogIndex() {
   return (
     <SeoLayout
-      title="ParsePilot Blog – Resume Tips, ATS Advice & Job Search Guides"
-      description="Expert guides on beating ATS systems, fixing common resume mistakes, and getting more interviews. Free advice from the ParsePilot team."
+      title="ResuOne Blog – Resume Tips, ATS Advice & Job Search Guides"
+      description="Expert guides on beating ATS systems, fixing common resume mistakes, and getting more interviews. Free advice from the ResuOne team."
     >
       {/* Hero */}
       <section className="pt-16 pb-10 px-6 text-center">

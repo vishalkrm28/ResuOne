@@ -41,7 +41,7 @@ export default function InviteResponse() {
         <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-primary-foreground" />
         </div>
-        <span className="font-bold text-foreground text-base">ParsePilot</span>
+        <span className="font-bold text-foreground text-base">ResuOne</span>
       </div>
 
       <div className="w-full max-w-md">
@@ -163,7 +163,7 @@ export default function InviteResponse() {
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground/40 mt-12">Powered by ParsePilot</p>
+      <p className="text-xs text-muted-foreground/40 mt-12">Powered by ResuOne</p>
     </div>
   );
 }

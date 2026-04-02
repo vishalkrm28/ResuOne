@@ -157,7 +157,7 @@ function LockedCoverLetterSection() {
               className="w-full h-11 opacity-50 cursor-not-allowed"
               disabled
               aria-disabled="true"
-              aria-label="Generate cover letter — available on ParsePilot Pro"
+              aria-label="Generate cover letter — available on ResuOne Pro"
             >
               <Lock className="w-4 h-4 mr-2" />
               Generate Letter
@@ -221,8 +221,8 @@ function LockedExportBar() {
           className="gap-2 bg-card opacity-40 cursor-not-allowed"
           disabled
           aria-disabled="true"
-          aria-label="Export CV as DOCX — available on ParsePilot Pro"
-          title="Export to DOCX — available on ParsePilot Pro"
+          aria-label="Export CV as DOCX — available on ResuOne Pro"
+          title="Export to DOCX — available on ResuOne Pro"
         >
           <Download className="w-4 h-4" />
           CV.docx
@@ -232,8 +232,8 @@ function LockedExportBar() {
           className="gap-2 bg-card opacity-40 cursor-not-allowed"
           disabled
           aria-disabled="true"
-          aria-label="Export CV as PDF — available on ParsePilot Pro"
-          title="Export to PDF — available on ParsePilot Pro"
+          aria-label="Export CV as PDF — available on ResuOne Pro"
+          title="Export to PDF — available on ResuOne Pro"
         >
           <Download className="w-4 h-4" />
           CV.pdf
@@ -241,7 +241,7 @@ function LockedExportBar() {
       </div>
       <p className="text-xs text-muted-foreground flex items-center gap-1.5">
         <Lock className="w-3 h-3 text-violet-500 shrink-0" aria-hidden="true" />
-        Export available on ParsePilot Pro
+        Export available on ResuOne Pro
       </p>
     </div>
   );
@@ -718,7 +718,7 @@ export default function ApplicationDetail() {
                     </div>
                     <h3 className="text-2xl font-bold mb-3">Ready to Optimize</h3>
                     <p className="text-muted-foreground mb-8 max-w-md mx-auto text-lg">
-                      ParsePilot AI will parse the job description, identify keyword gaps, and rewrite your CV to
+                      ResuOne will parse the job description, identify keyword gaps, and rewrite your CV to
                       maximize ATS compatibility — without inventing any experience.
                     </p>
                     <Button size="lg" onClick={() => handleAnalyze()} className="gap-2 h-14 px-8 text-lg">
@@ -930,7 +930,7 @@ export default function ApplicationDetail() {
                           {app.missingKeywords.length > 0 && (
                             <p className="text-sm text-muted-foreground bg-muted p-4 rounded-xl border border-border">
                               Go to the <strong>Missing Info</strong> tab to provide context around these keywords.
-                              ParsePilot AI will weave them into your CV without inventing anything.
+                              ResuOne will weave them into your CV without inventing anything.
                             </p>
                           )}
                         </CardContent>
@@ -1040,7 +1040,7 @@ export default function ApplicationDetail() {
                     <div className="mb-6">
                       <h3 className="text-2xl font-bold mb-2">Clarification Required</h3>
                       <p className="text-muted-foreground">
-                        To address missing keywords without inventing facts, ParsePilot AI needs you to confirm your
+                        To address missing keywords without inventing facts, ResuOne needs you to confirm your
                         experience. Answer any relevant fields and re-run the analysis.
                       </p>
                     </div>

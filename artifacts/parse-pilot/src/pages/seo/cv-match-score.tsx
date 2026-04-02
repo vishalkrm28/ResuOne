@@ -3,16 +3,16 @@ import { BarChart3, Target, AlertCircle } from "lucide-react";
 
 const faqs = [
   { q: "What is a good CV match score?", a: "A score of 70–80% or higher significantly improves your chances of passing ATS filters and reaching a human reviewer. Anything below 60% usually means critical keywords or sections are missing." },
-  { q: "How is the match score calculated?", a: "ParsePilot compares your CV against the job description using keyword frequency, skill alignment, and section relevance — the same signals ATS systems use to rank candidates." },
-  { q: "Can I improve my score?", a: "Yes. ParsePilot shows exactly which keywords are missing and rewrites your CV to include them naturally, without inventing experience you don't have." },
+  { q: "How is the match score calculated?", a: "ResuOne compares your CV against the job description using keyword frequency, skill alignment, and section relevance — the same signals ATS systems use to rank candidates." },
+  { q: "Can I improve my score?", a: "Yes. ResuOne shows exactly which keywords are missing and rewrites your CV to include them naturally, without inventing experience you don't have." },
   { q: "Is it free to check my score?", a: "Yes — your match score and missing keyword list are shown for free. The full optimised CV output requires a one-time $6.99 unlock or a Pro subscription." },
 ];
 
 export default function CvMatchScore() {
   return (
     <SeoLayout
-      title="CV Match Score Tool – Check Your Resume Instantly | ParsePilot"
-      description="Check your CV match score against any job description instantly. ParsePilot analyses your resume, finds missing keywords, and shows your ATS compatibility score."
+      title="CV Match Score Tool – Check Your Resume Instantly | ResuOne"
+      description="Check your CV match score against any job description instantly. ResuOne analyses your resume, finds missing keywords, and shows your ATS compatibility score."
     >
       {/* Hero */}
       <section className="pt-20 pb-16 px-6 text-center bg-gradient-to-b from-primary/5 to-background">
@@ -27,7 +27,7 @@ export default function CvMatchScore() {
             Most resumes get rejected before a human sees them. Applicant Tracking Systems scan your CV for relevance — if it doesn't match the job description, it gets filtered out automatically.
           </p>
           <p className="text-base text-muted-foreground mb-10">
-            ParsePilot analyses your CV and gives you a clear match score with exact reasons, so you know exactly what to fix.
+            ResuOne analyses your CV and gives you a clear match score with exact reasons, so you know exactly what to fix.
           </p>
           <CtaButton label="Analyze your CV now" />
         </div>
@@ -54,7 +54,7 @@ export default function CvMatchScore() {
             <AlertCircle className="w-8 h-8 text-primary mb-4" />
             <h2 className="text-lg font-bold mb-3">Missing Skills Detection</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              ParsePilot identifies every keyword and skill phrase present in the job description but absent from your CV, ranked by importance so you know exactly what to address first.
+              ResuOne identifies every keyword and skill phrase present in the job description but absent from your CV, ranked by importance so you know exactly what to address first.
             </p>
           </div>
         </div>
@@ -68,7 +68,7 @@ export default function CvMatchScore() {
 
       {/* How it works */}
       <section className="py-16 max-w-3xl mx-auto px-6">
-        <h2 className="text-2xl font-bold text-center mb-10">How ParsePilot Calculates Your Score</h2>
+        <h2 className="text-2xl font-bold text-center mb-10">How ResuOne Calculates Your Score</h2>
         <div className="space-y-6">
           {[
             { step: "1", title: "Upload your CV", desc: "Paste or upload your existing CV in any format." },

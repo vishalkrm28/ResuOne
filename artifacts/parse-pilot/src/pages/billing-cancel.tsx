@@ -23,7 +23,7 @@ export default function BillingCancel() {
         <div className="space-y-2">
           <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm font-medium tracking-wide uppercase">
             <Sparkles className="w-4 h-4 text-violet-500" />
-            ParsePilot Pro
+            ResuOne Pro
           </div>
           <h1 className="text-3xl font-bold tracking-tight">
             No worries

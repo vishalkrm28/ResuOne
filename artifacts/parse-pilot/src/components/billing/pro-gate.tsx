@@ -52,7 +52,7 @@ export function ProGate({ isPro, feature, compact = false, children, className }
       <div className="space-y-1.5">
         <h3 className="text-lg font-semibold">{feature}</h3>
         <p className="text-sm text-muted-foreground max-w-xs">
-          This feature is included in ParsePilot Pro. Upgrade to unlock it.
+          This feature is included in ResuOne Pro. Upgrade to unlock it.
         </p>
       </div>
       <Link href="/settings">

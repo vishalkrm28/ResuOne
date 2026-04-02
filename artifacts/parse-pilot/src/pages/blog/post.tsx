@@ -10,7 +10,7 @@ export default function BlogPost() {
 
   if (!post) {
     return (
-      <SeoLayout title="Post Not Found | ParsePilot Blog" description="This blog post could not be found.">
+      <SeoLayout title="Post Not Found | ResuOne Blog" description="This blog post could not be found.">
         <div className="text-center py-32 px-6">
           <p className="text-muted-foreground text-lg mb-6">This article doesn't exist.</p>
           <Link href="/blog" className="text-primary hover:underline font-medium">← Back to Blog</Link>
@@ -22,7 +22,7 @@ export default function BlogPost() {
   const others = blogPosts.filter(p => p.slug !== slug).slice(0, 2);
 
   return (
-    <SeoLayout title={`${post.title} | ParsePilot Blog`} description={post.description}>
+    <SeoLayout title={`${post.title} | ResuOne Blog`} description={post.description}>
       {/* Back link */}
       <div className="max-w-2xl mx-auto px-6 pt-8">
         <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">

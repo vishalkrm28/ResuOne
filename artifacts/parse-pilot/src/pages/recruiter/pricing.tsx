@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { startRecruiterCheckout } from "@/lib/recruiter-api";
-import { CheckCircle2, Users, Zap, Shield, ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, Users, Zap, Shield, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const SOLO_FEATURES = [
@@ -48,11 +48,8 @@ export default function RecruiterPricing() {
       {/* Nav */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-foreground">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            ParsePilot
+          <Link href="/" className="flex items-center">
+            <img src="/resuone-logo.png" alt="ResuOne" className="h-8 w-auto object-contain" />
           </Link>
           <Link href="/recruiter/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             ← Back to Dashboard
@@ -67,7 +64,7 @@ export default function RecruiterPricing() {
             <Users className="w-3.5 h-3.5" /> Recruiter Add-on
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-4">
-            Turn ParsePilot into your full hiring workflow
+            Turn ResuOne into your full hiring workflow
           </h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Manage candidates, send interview invites, track responses, and import directly from CV analyses — all in one place.
@@ -157,7 +154,7 @@ export default function RecruiterPricing() {
         <div className="mt-14 border border-border/40 rounded-2xl p-6 text-center">
           <p className="font-semibold text-foreground mb-2">Running an HR agency or staffing firm?</p>
           <p className="text-muted-foreground text-sm mb-4">
-            ParsePilot Recruiter can be white-labelled with your branding. Invite emails, pipeline, and candidate pages — all under your name.
+            ResuOne Recruiter can be white-labelled with your branding. Invite emails, pipeline, and candidate pages — all under your name.
           </p>
           <Link href="/contact" className="text-primary hover:underline text-sm font-medium">
             Contact us about white-label →

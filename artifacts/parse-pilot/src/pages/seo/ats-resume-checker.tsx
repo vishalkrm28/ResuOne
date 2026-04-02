@@ -4,15 +4,15 @@ import { Shield, AlertCircle, CheckCircle2 } from "lucide-react";
 const faqs = [
   { q: "Do ATS systems really reject resumes automatically?", a: "Yes. Most large employers use ATS to filter applications before a recruiter sees them. Resumes are ranked by keyword relevance, and low-scoring ones are never opened." },
   { q: "What makes a resume ATS-friendly?", a: "Standard section headings (Experience, Education, Skills), no tables or graphics, exact keyword matches from the job description, and clean formatting that parsers can read." },
-  { q: "How does ParsePilot fix ATS issues?", a: "It identifies which keywords are missing, rewrites your experience bullets to include them naturally, and outputs a clean DOCX file that ATS systems parse correctly." },
+  { q: "How does ResuOne fix ATS issues?", a: "It identifies which keywords are missing, rewrites your experience bullets to include them naturally, and outputs a clean DOCX file that ATS systems parse correctly." },
   { q: "Is my data safe?", a: "Yes. Your CV and job description are used only to generate your result and are never shared or sold." },
 ];
 
 export default function AtsResumeChecker() {
   return (
     <SeoLayout
-      title="ATS Resume Checker – Pass Applicant Tracking Systems | ParsePilot"
-      description="Free ATS resume checker. ParsePilot scans your CV for ATS compatibility, finds missing keywords, and helps you pass applicant tracking systems automatically."
+      title="ATS Resume Checker – Pass Applicant Tracking Systems | ResuOne"
+      description="Free ATS resume checker. ResuOne scans your CV for ATS compatibility, finds missing keywords, and helps you pass applicant tracking systems automatically."
     >
       {/* Hero */}
       <section className="pt-20 pb-16 px-6 text-center bg-gradient-to-b from-primary/5 to-background">
@@ -27,7 +27,7 @@ export default function AtsResumeChecker() {
             75% of resumes are rejected by Applicant Tracking Systems before a human ever reads them. It's not about your experience — it's about how your CV is written.
           </p>
           <p className="text-base text-muted-foreground mb-10">
-            ParsePilot scans your resume, identifies exactly what ATS systems are looking for, and helps you fix it — so your application gets seen.
+            ResuOne scans your resume, identifies exactly what ATS systems are looking for, and helps you fix it — so your application gets seen.
           </p>
           <CtaButton label="Check your resume now" />
         </div>
@@ -54,7 +54,7 @@ export default function AtsResumeChecker() {
             <CheckCircle2 className="w-8 h-8 text-primary mb-4" />
             <h2 className="text-lg font-bold mb-3">How to Fix It</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              ParsePilot rewrites your CV to include the exact keywords from the job description, uses standard section headings, and exports a clean DOCX that every major ATS can parse correctly.
+              ResuOne rewrites your CV to include the exact keywords from the job description, uses standard section headings, and exports a clean DOCX that every major ATS can parse correctly.
             </p>
           </div>
         </div>
@@ -66,7 +66,7 @@ export default function AtsResumeChecker() {
           {[
             { stat: "75%", label: "of resumes rejected by ATS before human review" },
             { stat: "3×", label: "more interviews with ATS-optimised CVs" },
-            { stat: "60s", label: "to get your ATS report with ParsePilot" },
+            { stat: "60s", label: "to get your ATS report with ResuOne" },
           ].map(s => (
             <div key={s.stat}>
               <p className="text-4xl font-extrabold text-primary mb-1">{s.stat}</p>

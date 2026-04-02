@@ -3,16 +3,16 @@ import { FileText, BarChart3, PenLine } from "lucide-react";
 
 const faqs = [
   { q: "Why should I tailor my resume for every job?", a: "Tailored resumes get 3× more interviews. Generic CVs score low in ATS and feel impersonal to recruiters. Matching your CV to the job description is the single highest-impact thing you can do." },
-  { q: "How long does it take to compare with ParsePilot?", a: "Under 60 seconds. Upload your CV, paste the job description, and you'll see your match score, gaps, and an optimised draft immediately." },
-  { q: "Will ParsePilot change my actual experience?", a: "No. It only reframes how your existing experience is described, using the language of the job description. No invented roles or skills — ever." },
+  { q: "How long does it take to compare with ResuOne?", a: "Under 60 seconds. Upload your CV, paste the job description, and you'll see your match score, gaps, and an optimised draft immediately." },
+  { q: "Will ResuOne change my actual experience?", a: "No. It only reframes how your existing experience is described, using the language of the job description. No invented roles or skills — ever." },
   { q: "Can I use it for multiple jobs?", a: "Yes. Each analysis is tied to one job description. Pro subscribers get 100 analyses per month to apply broadly." },
 ];
 
 export default function ResumeJobMatch() {
   return (
     <SeoLayout
-      title="Compare Resume with Job Description – Resume vs Job Match | ParsePilot"
-      description="Compare your resume against any job description instantly. ParsePilot shows your match score, missing skills, and rewrites your CV to close the gap. Free to try."
+      title="Compare Resume with Job Description – Resume vs Job Match | ResuOne"
+      description="Compare your resume against any job description instantly. ResuOne shows your match score, missing skills, and rewrites your CV to close the gap. Free to try."
     >
       {/* Hero */}
       <section className="pt-20 pb-16 px-6 text-center bg-gradient-to-b from-primary/5 to-background">
@@ -27,7 +27,7 @@ export default function ResumeJobMatch() {
             Most candidates send the same generic resume to every application. That's why 80% of applications fail — not because the candidate is underqualified, but because the resume doesn't speak the employer's language.
           </p>
           <p className="text-base text-muted-foreground mb-10">
-            ParsePilot shows the exact gaps between your resume and any job description, then closes them automatically.
+            ResuOne shows the exact gaps between your resume and any job description, then closes them automatically.
           </p>
           <CtaButton label="Compare now" />
         </div>
@@ -54,7 +54,7 @@ export default function ResumeJobMatch() {
             <PenLine className="w-8 h-8 text-primary mb-4" />
             <h2 className="text-lg font-bold mb-3">Why Tailoring Matters</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              A tailored CV that matches 80%+ of the job description is 3× more likely to get an interview. ParsePilot does the tailoring for you in under a minute.
+              A tailored CV that matches 80%+ of the job description is 3× more likely to get an interview. ResuOne does the tailoring for you in under a minute.
             </p>
           </div>
         </div>
@@ -62,7 +62,7 @@ export default function ResumeJobMatch() {
 
       {/* Side-by-side visual */}
       <section className="py-12 px-6 max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-center mb-10">Before vs After ParsePilot</h2>
+        <h2 className="text-2xl font-bold text-center mb-10">Before vs After ResuOne</h2>
         <div className="grid md:grid-cols-2 gap-6">
           <div className="border border-red-200 dark:border-red-800 rounded-2xl p-6 bg-red-50/50 dark:bg-red-900/10">
             <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-3">❌ Generic Resume</p>
@@ -74,7 +74,7 @@ export default function ResumeJobMatch() {
             </ul>
           </div>
           <div className="border border-green-200 dark:border-green-800 rounded-2xl p-6 bg-green-50/50 dark:bg-green-900/10">
-            <p className="text-sm font-semibold text-green-600 dark:text-green-400 mb-3">✓ ParsePilot Optimised</p>
+            <p className="text-sm font-semibold text-green-600 dark:text-green-400 mb-3">✓ ResuOne Optimised</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>• Match score: 84%</li>
               <li>• All critical keywords present</li>

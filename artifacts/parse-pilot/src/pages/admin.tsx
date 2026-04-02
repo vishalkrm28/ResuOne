@@ -126,7 +126,7 @@ export default function AdminPage() {
             </div>
             <div className="text-center">
               <h1 className="text-xl font-semibold text-white">Admin Panel</h1>
-              <p className="text-sm text-zinc-400 mt-1">ParsePilot AI</p>
+              <p className="text-sm text-zinc-400 mt-1">ResuOne</p>
             </div>
           </div>
           <div className="space-y-3">

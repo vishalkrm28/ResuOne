@@ -93,13 +93,13 @@ export default function Privacy() {
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            Back to ParsePilot
+            Back to ResuOne
           </Link>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
               <Sparkles className="w-3 h-3 text-primary-foreground" />
             </div>
-            <span className="font-bold text-sm">ParsePilot</span>
+            <span className="font-bold text-sm">ResuOne</span>
           </div>
         </div>
       </header>
