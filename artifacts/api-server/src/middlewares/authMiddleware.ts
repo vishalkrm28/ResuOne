@@ -77,6 +77,23 @@ export async function authMiddleware(
       .limit(1);
 
     if (existingUser) {
+      // If email is missing, refresh the profile from Clerk and patch the DB row
+      if (!existingUser.email) {
+        try {
+          const clerkUser = await clerk.users.getUser(userId);
+          const email = clerkUser.emailAddresses[0]?.emailAddress ?? null;
+          const firstName = clerkUser.firstName ?? null;
+          const lastName = clerkUser.lastName ?? null;
+          const profileImageUrl = clerkUser.imageUrl ?? null;
+          if (email) {
+            await db.update(usersTable).set({ email, firstName, lastName, profileImageUrl, updatedAt: new Date() }).where(eq(usersTable.id, userId));
+            existingUser.email = email;
+            existingUser.firstName = firstName;
+            existingUser.lastName = lastName;
+            existingUser.profileImageUrl = profileImageUrl;
+          }
+        } catch (_) { /* silent — use what we have */ }
+      }
       req.user = {
         id: existingUser.id,
         email: existingUser.email,
