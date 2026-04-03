@@ -117,7 +117,7 @@ export async function importFromAnalyses(applicationIds: string[]) {
 
 export async function getRecruiterAccess() {
   const res = await authedFetch(`${BASE}/recruiter/access`);
-  if (!res.ok) return { hasAccess: false };
+  if (!res.ok) return { hasAccess: false, plan: null, isTeamOwner: false, isMember: false };
   return res.json();
 }
 
@@ -132,7 +132,8 @@ export async function startRecruiterCheckout(plan: "solo" | "team", successUrl: 
   return res.json();
 }
 
-// Public (no auth)
+// ─── Public invite (candidate respond) ────────────────────────────────────────
+
 export async function getInvitePublic(id: string) {
   const res = await fetch(`${BASE}/invite/${id}`);
   if (!res.ok) throw new Error("Invite not found");
@@ -145,5 +146,54 @@ export async function respondToInvite(id: string, action: "accept" | "decline", 
     body: JSON.stringify({ action, token }),
   });
   if (!res.ok) throw new Error("Failed to respond");
+  return res.json();
+}
+
+// ─── Team management ─────────────────────────────────────────────────────────
+
+export async function getTeam() {
+  const res = await authedFetch(`${BASE}/recruiter/team`);
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to load team"); }
+  return res.json();
+}
+
+export async function inviteTeamMember(email: string) {
+  const res = await authedFetch(`${BASE}/recruiter/team/invite`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to invite"); }
+  return res.json();
+}
+
+export async function cancelTeamInvite(inviteId: string) {
+  const res = await authedFetch(`${BASE}/recruiter/team/invites/${inviteId}`, { method: "DELETE" });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+  return res.json();
+}
+
+export async function removeTeamMember(userId: string) {
+  const res = await authedFetch(`${BASE}/recruiter/team/members/${userId}`, { method: "DELETE" });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+  return res.json();
+}
+
+export async function leaveTeam() {
+  const res = await authedFetch(`${BASE}/recruiter/team/leave`, { method: "POST" });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+  return res.json();
+}
+
+// ─── Public: team invite join ─────────────────────────────────────────────────
+
+export async function getTeamInvite(token: string) {
+  const res = await fetch(`${BASE}/recruiter/team/join/${token}`);
+  if (!res.ok) throw new Error("Invite not found");
+  return res.json();
+}
+
+export async function acceptTeamInvite(token: string) {
+  const res = await authedFetch(`${BASE}/recruiter/team/join/${token}/accept`, { method: "POST" });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to accept"); }
   return res.json();
 }

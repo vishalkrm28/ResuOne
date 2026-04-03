@@ -32,6 +32,9 @@ export const usersTable = pgTable("users", {
   // Recruiter add-on subscription
   recruiterSubscriptionStatus: varchar("recruiter_subscription_status"),
   recruiterSubscriptionId: varchar("recruiter_subscription_id"),
+
+  // Recruiter Team plan — set for members who joined an owner's team
+  recruiterTeamId: varchar("recruiter_team_id"),
 });
 
 export type UpsertUser = typeof usersTable.$inferInsert;

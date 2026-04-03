@@ -29,6 +29,7 @@ import RecruiterDashboard from "@/pages/recruiter/dashboard";
 import RecruiterPipeline from "@/pages/recruiter/pipeline";
 import CandidateDetail from "@/pages/recruiter/candidate-detail";
 import RecruiterPricing from "@/pages/recruiter/pricing";
+import TeamJoin from "@/pages/recruiter/team-join";
 import InviteResponse from "@/pages/invite-response";
 import CvMatchScore from "@/pages/seo/cv-match-score";
 import AtsResumeChecker from "@/pages/seo/ats-resume-checker";
@@ -132,6 +133,8 @@ function App() {
               <Route path="/blog/:slug" component={BlogPost} />
               {/* Public invite response (candidates, no auth) */}
               <Route path="/invite/:id" component={InviteResponse} />
+              {/* Team invite join (requires sign-in inside the page) */}
+              <Route path="/recruiter/team/join/:token" component={TeamJoin} />
               {/* Admin — own token-based auth */}
               <Route path="/admin" component={AdminPage} />
               {/* Everything else goes through the auth gate */}

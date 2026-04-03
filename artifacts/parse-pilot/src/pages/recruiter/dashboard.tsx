@@ -5,20 +5,22 @@ import {
   getCandidates, getRecruiterAnalytics, updateCandidateStatus,
   deleteCandidate, sendInvite, bulkInvite, createCandidate, getRecruiterAccess
 } from "@/lib/recruiter-api";
-import { Loader2, Users, Mail, CheckCircle2, XCircle, Search, Upload,
-  ChevronDown, Trash2, LayoutGrid, BarChart3, Plus, ArrowRight, FileText, Download } from "lucide-react";
+import { Loader2, Users, Mail, CheckCircle2, XCircle, Search,
+  Trash2, LayoutGrid, BarChart3, Plus, ArrowRight, FileText, Download, UserCog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { InviteModal } from "./invite-modal";
 import { StatusBadge } from "./status-badge";
 import { AddCandidateModal } from "./add-candidate-modal";
 import { ImportFromAnalysesModal } from "./import-modal";
 import { CsvImportModal } from "./csv-import-modal";
+import { TeamTab } from "./team-tab";
 
 export default function RecruiterDashboard() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  const [activeTab, setActiveTab] = useState<"pipeline" | "team">("pipeline");
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterScore, setFilterScore] = useState<string>("all");
@@ -81,23 +83,42 @@ export default function RecruiterDashboard() {
       <header className="border-b border-border/40 bg-background/95 backdrop-blur sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
           <Link href="/" className="font-bold text-foreground text-base shrink-0">← ResuOne</Link>
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Users className="w-4 h-4 text-primary" /> Recruiter
+
+          {/* Tab switcher */}
+          <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab("pipeline")}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${activeTab === "pipeline" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Users className="w-3.5 h-3.5" /> Pipeline
+            </button>
+            <button
+              onClick={() => setActiveTab("team")}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${activeTab === "team" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <UserCog className="w-3.5 h-3.5" /> Team
+              {accessData?.plan === "team" && (
+                <span className="bg-primary/15 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full">Team</span>
+              )}
+            </button>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link href="/recruiter/pipeline" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border/40 rounded-lg px-3 py-1.5">
-              <LayoutGrid className="w-3.5 h-3.5" /> Pipeline
-            </Link>
-            <button onClick={() => setAnalysesImportOpen(true)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border/40 rounded-lg px-3 py-1.5 hover:border-primary/30 transition-colors">
-              <Download className="w-3.5 h-3.5" /> From Analyses
-            </button>
-            <button onClick={() => setCsvImportOpen(true)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border/40 rounded-lg px-3 py-1.5 hover:border-primary/30 transition-colors">
-              <FileText className="w-3.5 h-3.5" /> CSV Import
-            </button>
-            <button onClick={() => setAddOpen(true)} className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors">
-              <Plus className="w-3.5 h-3.5" /> Add Candidate
-            </button>
-          </div>
+
+          {activeTab === "pipeline" && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link href="/recruiter/pipeline" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border/40 rounded-lg px-3 py-1.5">
+                <LayoutGrid className="w-3.5 h-3.5" /> Pipeline
+              </Link>
+              <button onClick={() => setAnalysesImportOpen(true)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border/40 rounded-lg px-3 py-1.5 hover:border-primary/30 transition-colors">
+                <Download className="w-3.5 h-3.5" /> From Analyses
+              </button>
+              <button onClick={() => setCsvImportOpen(true)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border/40 rounded-lg px-3 py-1.5 hover:border-primary/30 transition-colors">
+                <FileText className="w-3.5 h-3.5" /> CSV Import
+              </button>
+              <button onClick={() => setAddOpen(true)} className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> Add Candidate
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -118,6 +139,14 @@ export default function RecruiterDashboard() {
             </Link>
           </div>
         )}
+
+        {/* Team tab */}
+        {activeTab === "team" && accessData !== undefined && (
+          <TeamTab accessData={{ hasAccess: accessData.hasAccess ?? false, plan: accessData.plan ?? null, isTeamOwner: accessData.isTeamOwner ?? false, isMember: accessData.isMember ?? false, teamOwnerId: accessData.teamOwnerId }} />
+        )}
+
+        {/* Pipeline tab */}
+        {activeTab === "pipeline" && <>
 
         {/* KPI Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -266,6 +295,7 @@ export default function RecruiterDashboard() {
             </table>
           </div>
         )}
+        </>}
       </main>
 
       {/* Invite modal (single) */}

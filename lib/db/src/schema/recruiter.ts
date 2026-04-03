@@ -63,3 +63,18 @@ export const candidateNotesTable = pgTable("candidate_notes", {
 
 export const insertCandidateNoteSchema = createInsertSchema(candidateNotesTable).omit({ id: true, createdAt: true });
 export type CandidateNote = typeof candidateNotesTable.$inferSelect;
+
+// ─── Recruiter Team Invites ───────────────────────────────────────────────────
+
+export const recruiterTeamInvitesTable = pgTable("recruiter_team_invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  teamOwnerId: text("team_owner_id").notNull(),
+  invitedEmail: text("invited_email").notNull(),
+  token: text("token").notNull().unique(),
+  status: text("status", { enum: ["pending", "accepted", "declined", "cancelled"] }).default("pending").notNull(),
+  invitedUserId: text("invited_user_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type RecruiterTeamInvite = typeof recruiterTeamInvitesTable.$inferSelect;
