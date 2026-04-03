@@ -202,15 +202,25 @@ function HeroMockPanel() {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+const API_BASE = (import.meta as any).env?.VITE_API_URL ?? "/api";
+
 export default function Landing() {
   const { isAuthenticated, isLoading, login } = useAuth();
   const [, setLocation] = useLocation();
+  const [analysesCount, setAnalysesCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       setLocation("/dashboard");
     }
   }, [isAuthenticated, isLoading, setLocation]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/public/stats`)
+      .then((r) => r.json())
+      .then((d) => setAnalysesCount(d.analysesCount ?? 0))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -222,6 +232,9 @@ export default function Landing() {
           <div className="flex items-center gap-6">
             <a href="#how-it-works" className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               How it works
+            </a>
+            <a href="#use-cases" className="hidden md:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              For Recruiters
             </a>
             <a href="#pricing" className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Pricing
@@ -251,7 +264,9 @@ export default function Landing() {
           <div className="flex-1 text-center lg:text-left max-w-xl mx-auto lg:mx-0">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-sm font-medium mb-6">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              CV analysis · candidate matching · instant invites
+              {analysesCount !== null && analysesCount >= 50
+                ? `${analysesCount.toLocaleString()}+ CVs analyzed`
+                : "CV analysis · candidate matching · instant invites"}
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.07] mb-5">
@@ -413,7 +428,7 @@ export default function Landing() {
       </section>
 
       {/* ── Use Cases ────────────────────────────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-6 py-20">
+      <section id="use-cases" className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
           <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">
             Who uses ResuOne

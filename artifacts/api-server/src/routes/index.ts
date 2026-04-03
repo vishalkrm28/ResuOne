@@ -9,9 +9,11 @@ import bulkRouter from "./bulk.js";
 import contactRouter from "./contact.js";
 import adminSeedRouter from "./admin-seed.js";
 import recruiterRouter from "./recruiter.js";
+import publicRouter from "./public.js";
 
 const router: IRouter = Router();
 
+router.use(publicRouter);
 router.use(healthRouter);
 router.use(authRouter);
 router.use(applicationsRouter);
