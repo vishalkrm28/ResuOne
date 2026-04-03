@@ -190,14 +190,21 @@ export default function HelpPage() {
       <div className="max-w-3xl mx-auto px-6 mb-10">
         <div className="grid sm:grid-cols-4 gap-3">
           {sections.map((s) => (
-            <a
+            <button
               key={s.id}
-              href={`#${s.id}`}
-              className="flex items-center gap-2.5 p-3.5 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:bg-muted/30 transition-colors text-sm font-medium"
+              onClick={() => {
+                const el = document.getElementById(s.id);
+                if (el) {
+                  const offset = 80;
+                  const top = el.getBoundingClientRect().top + window.scrollY - offset;
+                  window.scrollTo({ top, behavior: "smooth" });
+                }
+              }}
+              className="flex items-center gap-2.5 p-3.5 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:bg-muted/30 transition-colors text-sm font-medium text-left"
             >
               <span className="text-primary">{s.icon}</span>
               {s.title}
-            </a>
+            </button>
           ))}
         </div>
       </div>

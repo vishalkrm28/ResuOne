@@ -28,7 +28,6 @@ export function Footer() {
           <Link href="/resume-job-match" className="hover:text-muted-foreground transition-colors">Resume vs Job</Link>
           <Link href="/why-resume-rejected" className="hover:text-muted-foreground transition-colors">Why Rejected?</Link>
           <Link href="/blog" className="hover:text-muted-foreground transition-colors">Blog</Link>
-          <Link href="/help" className="hover:text-muted-foreground transition-colors">Help</Link>
         </div>
 
         {/* Legal links */}
