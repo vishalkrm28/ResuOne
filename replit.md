@@ -384,34 +384,6 @@ Maximize conversion from free users to paid users ($4 unlock or Pro subscription
 
 `artifacts/parse-pilot/vite.config.ts` has `fs.allow` set to include the workspace root's `lib/` and `node_modules/` directories so that workspace packages (e.g. `@workspace/replit-auth-web`) can be resolved by Vite in development.
 
-## Tinkle Map (Mobile App)
-
-`artifacts/tinkle-map` is an Expo React Native app (TypeScript, expo-router v6 for file-based routing).
-
-### Styling System
-
-Tinkle Map uses **React Native StyleSheet + design tokens** (not NativeWind/Tailwind). This is intentional:
-- NativeWind v4 requires `tailwindcss@~3` which conflicts with the workspace-wide `@tailwindcss/vite@^4` used by parse-pilot.
-- The `useColors()` hook in `hooks/useColors.ts` returns all design tokens from `constants/colors.ts`, supporting light/dark mode automatically.
-- All tokens (primary, background, foreground, card, muted, border, destructive, success, trustHigh/Medium/Low, radius) are centralized and consistent across all components.
-
-### Architecture
-
-- **Navigation**: NativeTabs (iOS 26 liquid glass) with fallback to ClassicTabs + BlurView.
-- **State**: `AppContext` (toilets, savedPlaces, filters, userCity, etc.) via React Context.
-- **Storage**: AsyncStorage with keys: `tinkle_map_toilets`, `tinkle_map_saved`, `tinkle_map_reports`, `tinkle_map_initialized`.
-- **Trust Score**: `utils/trustScore.ts` — 90-day half-life decay, High≥10 signals, Medium≥3, Low otherwise.
-- **Seed Data**: 11 demo toilets across London (3), Amsterdam (2), Barcelona (2), Paris (2), New York (3).
-- **Auth**: Scaffolded (Login/Signup screens) — pending Supabase integration in a future task.
-- **Types**: `types/index.ts` mirrors planned Supabase schema shapes for easy future migration.
-
-### Key Rules
-
-- Feather icon names: use `React.ComponentProps<typeof Feather>["name"]` type — never `as any`.
-- Tab icons: Use `"user"` not `"person"` (Feather icon set).
-- Web insets: 67px top, 84px tab bar.
-- `react-native-maps` must be pinned to exactly `1.18.0` if added.
-
 ## esbuild / Zod Note
 
 The API server is bundled by esbuild. `lib/db` exports TypeScript source directly (not compiled dist). Because `lib/db/src/schema/*.ts` uses `import { z } from "zod/v4"`, esbuild will fail to resolve this subpath if you import from `@workspace/db` in a way that forces esbuild to traverse into those schema files.
