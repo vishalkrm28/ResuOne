@@ -1,0 +1,613 @@
+You are building MILESTONE 35 for Resuone.
+
+PROJECT CONTEXT
+Resuone already has or is implementing:
+- Next.js App Router
+- Supabase
+- Anthropic Claude integration
+- CV parsing
+- CV vs job analysis
+- recruiter ranking workflow
+- open job recommendations
+- tailored CV generation
+- cover letter generation
+
+Now build the next practical user workflow:
+1. save jobs
+2. track applications
+3. connect each application to tailored CV and cover letter
+4. manage application stages
+5. generate interview preparation per job
+6. store interview questions and answers
+7. give the user a clean pipeline view
+
+PRIMARY GOAL
+Turn Resuone into a true application management platform, not just an analysis/generation tool.
+
+USER JOURNEY
+1. User receives recommended jobs or finds jobs manually
+2. User saves jobs they like
+3. User creates tailored CV / cover letter for a saved job
+4. User marks when they apply
+5. User tracks application stage
+6. User generates interview prep for that exact job
+7. User stores notes, answers, and reminders
+8. User sees all applications in one structured dashboard
+
+IMPORTANT RULES
+- Keep application records as first-class product entities
+- Do not treat saved jobs and applied jobs as the same thing
+- Save job metadata snapshot so changes in external provider do not break historical application records
+- Keep user-generated notes editable
+- AI-generated interview prep must be grounded in the actual job and user profile
+- Never invent facts about the candidate
+- All AI calls must happen server-side
+- Save all outputs in Supabase
+- Keep architecture modular for future notifications and email integrations
+
+TECH STACK
+- Next.js App Router
+- TypeScript
+- Supabase
+- Anthropic Claude
+- Zod
+- Existing Resuone UI system
+
+BUILD THE FOLLOWING
+
+1) DATABASE TABLES
+Create and use these Supabase tables:
+
+saved_jobs
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- external_jobs_cache_id uuid references external_jobs_cache(id) on delete set null
+- source_job_description_id uuid references job_descriptions(id) on delete set null
+- job_title text not null
+- company text
+- location text
+- employment_type text
+- remote_type text
+- salary_min numeric
+- salary_max numeric
+- currency text
+- apply_url text
+- job_snapshot jsonb not null default '{}'::jsonb
+- created_at timestamptz default now()
+
+applications
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- saved_job_id uuid references saved_jobs(id) on delete set null
+- external_jobs_cache_id uuid references external_jobs_cache(id) on delete set null
+- source_job_description_id uuid references job_descriptions(id) on delete set null
+- tailored_cv_id uuid references tailored_cvs(id) on delete set null
+- cover_letter_id uuid references cover_letters(id) on delete set null
+- application_title text not null
+- company text
+- location text
+- apply_url text
+- stage text not null default 'saved'
+- status text not null default 'active'
+- applied_at timestamptz
+- next_step_at timestamptz
+- job_snapshot jsonb not null default '{}'::jsonb
+- notes text
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+application_timeline_events
+- id uuid primary key default gen_random_uuid()
+- application_id uuid references applications(id) on delete cascade
+- user_id uuid not null
+- event_type text not null
+- title text not null
+- description text
+- event_at timestamptz default now()
+- metadata jsonb default '{}'::jsonb
+- created_at timestamptz default now()
+
+interview_preps
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- application_id uuid references applications(id) on delete cascade
+- tailored_cv_id uuid references tailored_cvs(id) on delete set null
+- cover_letter_id uuid references cover_letters(id) on delete set null
+- prep_summary text
+- prep_json jsonb not null
+- created_at timestamptz default now()
+
+interview_question_answers
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- interview_prep_id uuid references interview_preps(id) on delete cascade
+- question text not null
+- answer_draft text
+- answer_type text default 'general'
+- display_order integer default 0
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+application_reminders
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- application_id uuid references applications(id) on delete cascade
+- reminder_type text not null
+- reminder_at timestamptz not null
+- reminder_note text
+- is_completed boolean default false
+- created_at timestamptz default now()
+
+Add indexes where appropriate on:
+- user_id
+- application_id
+- stage
+- status
+- reminder_at
+
+2) STAGE / STATUS MODEL
+
+Allowed application stage values:
+- saved
+- preparing
+- applied
+- screening
+- interview
+- final_round
+- offer
+- rejected
+- withdrawn
+
+Allowed status values:
+- active
+- archived
+- closed
+
+Add Zod enums for these values.
+
+3) NEW FILES AND FOLDERS
+Create:
+
+lib/application/application-schemas.ts
+lib/application/application-prompts.ts
+lib/application/application-helpers.ts
+lib/application/interview-prep.ts
+lib/application/pipeline.ts
+
+app/api/applications/save-job/route.ts
+app/api/applications/list-saved-jobs/route.ts
+app/api/applications/create/route.ts
+app/api/applications/list/route.ts
+app/api/applications/[id]/route.ts
+app/api/applications/update-stage/route.ts
+app/api/applications/update-notes/route.ts
+app/api/applications/link-assets/route.ts
+app/api/applications/add-timeline-event/route.ts
+app/api/applications/create-reminder/route.ts
+app/api/applications/list-reminders/route.ts
+
+app/api/interview-prep/generate/route.ts
+app/api/interview-prep/list/route.ts
+app/api/interview-prep/save-answer/route.ts
+
+app/applications/page.tsx
+app/applications/[id]/page.tsx
+app/applications/pipeline/page.tsx
+app/interview-prep/page.tsx
+app/interview-prep/[id]/page.tsx
+
+4) SAVED JOBS FLOW
+Build a saved jobs feature.
+
+POST /api/applications/save-job
+Input:
+{
+  "userId": "...",
+  "externalJobsCacheId": "...",
+  "sourceJobDescriptionId": "...",
+  "jobTitle": "...",
+  "company": "...",
+  "location": "...",
+  "employmentType": "...",
+  "remoteType": "...",
+  "salaryMin": null,
+  "salaryMax": null,
+  "currency": "",
+  "applyUrl": "...",
+  "jobSnapshot": {...}
+}
+
+Rules:
+- allow saving from external recommended job
+- allow saving from manually pasted/imported job
+- preserve snapshot of job data
+- prevent duplicate saved jobs for same user and same source if possible
+
+5) APPLICATION CREATION FLOW
+Create applications as distinct objects.
+
+POST /api/applications/create
+Input:
+{
+  "userId": "...",
+  "savedJobId": "...",
+  "externalJobsCacheId": "...",
+  "sourceJobDescriptionId": "...",
+  "applicationTitle": "Operations Manager at Company X",
+  "company": "Company X",
+  "location": "Stockholm",
+  "applyUrl": "...",
+  "tailoredCvId": "...",
+  "coverLetterId": "...",
+  "notes": ""
+}
+
+Behavior:
+- create application row
+- default stage = saved or preparing depending on whether assets are linked
+- create first timeline event automatically:
+  - event_type: application_created
+  - title: Application created
+
+6) UPDATE STAGE FLOW
+POST /api/applications/update-stage
+Input:
+{
+  "applicationId": "...",
+  "stage": "interview"
+}
+
+Rules:
+- validate stage enum
+- update applications.updated_at
+- auto-create timeline event for stage change
+- if stage becomes applied and applied_at is null, set applied_at = now()
+
+Timeline event example:
+- event_type: stage_changed
+- title: Stage updated to interview
+
+7) NOTES + ASSET LINKING
+POST /api/applications/update-notes
+Input:
+{
+  "applicationId": "...",
+  "notes": "Need to highlight logistics KPI ownership in interview."
+}
+
+POST /api/applications/link-assets
+Input:
+{
+  "applicationId": "...",
+  "tailoredCvId": "...",
+  "coverLetterId": "..."
+}
+
+Rules:
+- allow user to attach/change tailored CV and cover letter
+- keep assets optional
+- update updated_at timestamp
+
+8) REMINDERS
+POST /api/applications/create-reminder
+Input:
+{
+  "applicationId": "...",
+  "userId": "...",
+  "reminderType": "follow_up",
+  "reminderAt": "2026-05-01T09:00:00.000Z",
+  "reminderNote": "Follow up if no response after application."
+}
+
+GET/POST /api/applications/list-reminders
+Return upcoming reminders ordered by reminder_at
+
+Reminder types:
+- follow_up
+- interview
+- deadline
+- personal_note
+
+9) APPLICATION LIST + PIPELINE
+Build applications list page:
+app/applications/page.tsx
+
+Show:
+- application title
+- company
+- stage
+- status
+- applied date
+- next step date
+- linked tailored CV
+- linked cover letter
+- last updated
+- actions
+
+Build pipeline page:
+app/applications/pipeline/page.tsx
+
+Use kanban-style columns:
+- Saved
+- Preparing
+- Applied
+- Screening
+- Interview
+- Final Round
+- Offer
+- Rejected
+
+Each card should show:
+- role
+- company
+- location
+- updated time
+- whether tailored CV exists
+- whether cover letter exists
+- next reminder if any
+
+Support:
+- stage filtering
+- search by company/title
+- active vs archived filter
+
+10) APPLICATION DETAIL PAGE
+Build:
+app/applications/[id]/page.tsx
+
+Sections:
+A) Header
+- application title
+- company
+- current stage
+- status
+- apply link
+
+B) Linked assets
+- tailored CV
+- cover letter
+
+C) Notes
+- editable text area
+
+D) Timeline
+- all timeline events in order
+
+E) Reminders
+- upcoming reminders
+- add reminder form
+
+F) Interview prep
+- generate interview prep button
+- view latest interview prep if exists
+
+G) Quick actions
+- mark applied
+- move to interview
+- mark rejected
+- archive
+
+11) INTERVIEW PREP JSON SHAPE
+Create Zod schema in lib/application/application-schemas.ts
+
+Expected output:
+{
+  "prep_summary": "",
+  "likely_questions": [
+    {
+      "question": "",
+      "why_it_matters": "",
+      "answer_strategy": "",
+      "answer_type": "behavioral"
+    }
+  ],
+  "company_focus_areas": [],
+  "role_focus_areas": [],
+  "strengths_to_emphasize": [],
+  "risks_to_address": [],
+  "questions_to_ask_them": [],
+  "30_second_pitch": "",
+  "90_second_pitch": ""
+}
+
+Allowed answer_type values:
+- behavioral
+- technical
+- role_fit
+- motivation
+- culture
+- leadership
+- experience
+
+12) INTERVIEW PREP PROMPTS
+Create:
+lib/application/application-prompts.ts
+
+Add prompt helper:
+buildInterviewPrepPrompt({
+  parsedCVJson,
+  tailoredCVJson,
+  coverLetterText,
+  jobJsonOrText,
+  applicationNotes
+})
+
+Rules for prompt:
+- grounded in actual candidate data
+- grounded in actual role
+- do not invent achievements
+- provide practical interview prep
+- include realistic likely questions
+- include concise answer strategy, not fake biography
+
+13) INTERVIEW PREP GENERATION ROUTE
+Create:
+app/api/interview-prep/generate/route.ts
+
+Input:
+{
+  "userId": "...",
+  "applicationId": "...",
+  "tailoredCvId": "...",
+  "coverLetterId": "...",
+  "jobText": "..."
+}
+
+Flow:
+1. resolve application
+2. resolve linked job snapshot / job source
+3. resolve tailored CV if present
+4. resolve original parsed CV if needed
+5. resolve cover letter if present
+6. build interview prep prompt
+7. call Claude
+8. validate JSON
+9. save interview_preps row
+10. also insert interview_question_answers rows from likely_questions with empty answer_draft initially
+
+Use Sonnet for this route by default.
+
+14) SAVE ANSWER DRAFT ROUTE
+Create:
+app/api/interview-prep/save-answer/route.ts
+
+Input:
+{
+  "questionAnswerId": "...",
+  "answerDraft": "..."
+}
+
+Rules:
+- update answer draft
+- update updated_at
+- allow user to refine answers over time
+
+15) INTERVIEW PREP PAGES
+Build:
+app/interview-prep/page.tsx
+app/interview-prep/[id]/page.tsx
+
+A) interview-prep page
+Show:
+- related application
+- company
+- created date
+- quick summary
+- actions: open, regenerate
+
+B) interview-prep detail page
+Show:
+- prep summary
+- 30 second pitch
+- 90 second pitch
+- strengths to emphasize
+- risks to address
+- questions to ask them
+- likely questions list
+
+For each likely question show:
+- question
+- why it matters
+- answer strategy
+- editable answer draft textarea
+- save button
+
+16) HELPER FUNCTIONS
+Create in lib/application/application-helpers.ts:
+- buildJobSnapshot()
+- buildApplicationTitle()
+- createTimelineEvent()
+- normalizeApplicationStage()
+- shouldSetAppliedAt()
+
+Create in lib/application/pipeline.ts:
+- groupApplicationsByStage()
+- getStageDisplayLabel()
+- sortApplicationsForPipeline()
+
+Create in lib/application/interview-prep.ts:
+- mergePrepInputs()
+- prepJsonToQuestionRows()
+
+17) UI REQUIREMENTS
+The UI should feel premium and practical.
+
+Saved jobs area:
+- save from recommendation card
+- open job
+- create application from saved job
+
+Application page:
+- clear pipeline status
+- editable notes
+- linked assets
+- reminders
+- timeline
+
+Pipeline page:
+- visual and simple
+- easy to scan
+- designed for real usage
+
+Interview prep:
+- feels serious, not gimmicky
+- editable answer workspace
+- built for actual interview use
+
+18) COST CONTROL
+- reuse saved job snapshots
+- reuse tailored CV / cover letter
+- only regenerate interview prep on demand
+- save outputs persistently
+- do not rerun expensive AI calls unnecessarily
+
+19) SECURITY + VALIDATION
+- backend-only AI routes
+- validate model JSON with Zod
+- restrict all reads/writes to user-owned records
+- do not render raw HTML
+- rate-limit AI-heavy routes
+- validate dates and enums carefully
+
+20) QUALITY REQUIREMENTS
+- keep routes thin
+- use helper functions
+- keep Supabase queries clear
+- add loading and error states in UI
+- add empty states:
+  - no saved jobs
+  - no applications
+  - no interview prep yet
+  - no reminders yet
+
+21) SUCCESS CRITERIA
+This milestone is complete when:
+- user can save jobs
+- user can create and manage applications
+- user can link tailored CV and cover letter
+- user can move applications through stages
+- timeline events are stored
+- reminders are stored and listed
+- pipeline view works
+- interview prep can be generated per application
+- answer drafts can be saved
+- everything persists in Supabase
+
+22) FUTURE-READY NOTES
+Keep architecture ready for:
+- calendar integration
+- follow-up email draft generation
+- recruiter contact tracking
+- application analytics
+- notification system
+- auto-reminders
+- interview rehearsal mode
+- voice mock interview mode
+
+NOW DO THE FOLLOWING
+- Generate all required code files
+- Show code file by file
+- Do not skip important implementation pieces
+- Keep naming consistent with Resuone
+- Keep architecture aligned with previous milestones
+- Do not only explain — actually output the implementation
