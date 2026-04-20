@@ -1,0 +1,760 @@
+You are building MILESTONE 38 for Resuone.
+
+PROJECT CONTEXT
+Resuone already has or is implementing:
+- Next.js App Router
+- Supabase
+- Anthropic Claude integration
+- CV parsing
+- CV vs job analysis
+- recruiter workflows
+- open job recommendations
+- tailored CV generation
+- cover letter generation
+- application tracker
+- saved jobs
+- interview prep
+- follow-up email drafts
+- interview scheduling
+- mock interview sessions
+- notifications
+- smart reminders
+- sync-ready calendar/email integrations
+
+Now build the business and operations layer so Resuone can:
+1. manage subscription plans
+2. track and deduct credits
+3. support recruiter/team workspaces
+4. control feature access
+5. show admin analytics and usage metrics
+6. monitor AI cost and user activity
+7. prepare the product for paid scale
+
+PRIMARY GOAL
+Turn Resuone from a feature-rich product into a business-ready SaaS platform.
+
+USER / BUSINESS OUTCOMES
+This milestone should support:
+- individual candidate accounts
+- recruiter solo plans
+- recruiter team plans
+- credit-based usage for AI-heavy actions
+- workspace-level collaboration
+- admin visibility into growth, usage, and costs
+- plan-based gating of premium features
+
+IMPORTANT RULES
+- Credits must be deducted server-side only
+- Billing state must not be trusted from frontend
+- Workspace roles and permissions must be enforced on backend
+- AI usage should be logged at both user and workspace level
+- Do not overcomplicate finance logic at first
+- Keep Stripe integration modular and optional if not fully connected yet
+- Support free plan + paid plan + team plan structure
+- Build everything so pricing can evolve later
+- Keep architecture ready for entitlements and subscriptions
+
+TECH STACK
+- Next.js App Router
+- TypeScript
+- Supabase
+- Stripe-ready billing abstraction
+- Anthropic Claude
+- Zod
+- Existing Resuone UI system
+
+BUILD THE FOLLOWING
+
+1) DATABASE TABLES
+Create and use these Supabase tables:
+
+plans
+- id uuid primary key default gen_random_uuid()
+- code text not null unique
+- name text not null
+- billing_type text not null default 'subscription'
+- monthly_price numeric default 0
+- yearly_price numeric default 0
+- included_credits integer default 0
+- max_team_members integer default 1
+- features jsonb default '{}'::jsonb
+- is_active boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+subscriptions
+- id uuid primary key default gen_random_uuid()
+- user_id uuid
+- workspace_id uuid
+- plan_id uuid references plans(id) on delete set null
+- provider text default 'stripe'
+- provider_customer_id text
+- provider_subscription_id text
+- status text not null default 'inactive'
+- current_period_start timestamptz
+- current_period_end timestamptz
+- cancel_at_period_end boolean default false
+- metadata jsonb default '{}'::jsonb
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+credit_wallets
+- id uuid primary key default gen_random_uuid()
+- user_id uuid
+- workspace_id uuid
+- balance integer not null default 0
+- lifetime_allocated integer not null default 0
+- lifetime_used integer not null default 0
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+credit_transactions
+- id uuid primary key default gen_random_uuid()
+- wallet_id uuid references credit_wallets(id) on delete cascade
+- user_id uuid
+- workspace_id uuid
+- transaction_type text not null
+- amount integer not null
+- balance_after integer not null
+- reason text not null
+- reference_type text
+- reference_id uuid
+- metadata jsonb default '{}'::jsonb
+- created_at timestamptz default now()
+
+workspaces
+- id uuid primary key default gen_random_uuid()
+- owner_user_id uuid not null
+- name text not null
+- slug text not null unique
+- workspace_type text not null default 'recruiter_team'
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+workspace_members
+- id uuid primary key default gen_random_uuid()
+- workspace_id uuid references workspaces(id) on delete cascade
+- user_id uuid not null
+- role text not null default 'member'
+- status text not null default 'active'
+- invited_by_user_id uuid
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+workspace_invitations
+- id uuid primary key default gen_random_uuid()
+- workspace_id uuid references workspaces(id) on delete cascade
+- email text not null
+- role text not null default 'member'
+- invited_by_user_id uuid not null
+- token text not null unique
+- status text not null default 'pending'
+- expires_at timestamptz
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+feature_entitlements
+- id uuid primary key default gen_random_uuid()
+- plan_id uuid references plans(id) on delete cascade
+- feature_key text not null
+- feature_value jsonb not null default '{}'::jsonb
+- created_at timestamptz default now()
+
+admin_metrics_daily
+- id uuid primary key default gen_random_uuid(),
+- metric_date date not null unique,
+- total_users integer default 0,
+- new_users integer default 0,
+- active_users integer default 0,
+- total_workspaces integer default 0,
+- active_workspaces integer default 0,
+- total_subscriptions integer default 0,
+- active_subscriptions integer default 0,
+- total_credits_used integer default 0,
+- total_ai_requests integer default 0,
+- estimated_ai_cost numeric default 0,
+- total_revenue_mrr numeric default 0,
+- created_at timestamptz default now(),
+- updated_at timestamptz default now()
+
+feature_usage_events
+- id uuid primary key default gen_random_uuid()
+- user_id uuid
+- workspace_id uuid
+- feature_key text not null
+- reference_type text
+- reference_id uuid
+- credits_used integer default 0
+- estimated_ai_cost numeric default 0
+- metadata jsonb default '{}'::jsonb
+- created_at timestamptz default now()
+
+Add indexes where appropriate on:
+- user_id
+- workspace_id
+- plan_id
+- status
+- created_at
+- metric_date
+- feature_key
+
+2) ENUM / VALUE MODELS
+
+Allowed plan billing_type values:
+- subscription
+- credits
+- hybrid
+
+Allowed subscription status values:
+- inactive
+- trialing
+- active
+- past_due
+- canceled
+- incomplete
+
+Allowed transaction_type values:
+- allocation
+- usage
+- adjustment
+- refund
+- bonus
+- subscription_renewal
+
+Allowed workspace_type values:
+- recruiter_team
+- institution
+- personal
+
+Allowed workspace member role values:
+- owner
+- admin
+- recruiter
+- member
+- viewer
+
+Allowed workspace member status values:
+- active
+- invited
+- suspended
+- removed
+
+Allowed invitation status values:
+- pending
+- accepted
+- expired
+- revoked
+
+Create Zod enums for all of these.
+
+3) NEW FILES AND FOLDERS
+Create:
+
+lib/billing/billing-schemas.ts
+lib/billing/billing-helpers.ts
+lib/billing/credit-engine.ts
+lib/billing/entitlements.ts
+lib/billing/stripe-adapter.ts
+
+lib/workspaces/workspace-schemas.ts
+lib/workspaces/workspace-helpers.ts
+lib/workspaces/permissions.ts
+
+lib/admin/admin-schemas.ts
+lib/admin/admin-metrics.ts
+lib/admin/admin-helpers.ts
+
+app/api/billing/plans/route.ts
+app/api/billing/current-subscription/route.ts
+app/api/billing/create-workspace/route.ts
+app/api/billing/credit-balance/route.ts
+app/api/billing/credit-transactions/route.ts
+app/api/billing/allocate-credits/route.ts
+app/api/billing/check-entitlement/route.ts
+
+app/api/workspaces/create/route.ts
+app/api/workspaces/list/route.ts
+app/api/workspaces/[id]/route.ts
+app/api/workspaces/invite-member/route.ts
+app/api/workspaces/list-members/route.ts
+app/api/workspaces/update-member-role/route.ts
+app/api/workspaces/remove-member/route.ts
+app/api/workspaces/accept-invite/route.ts
+
+app/api/admin/metrics/route.ts
+app/api/admin/usage-breakdown/route.ts
+app/api/admin/revenue-summary/route.ts
+app/api/admin/users-overview/route.ts
+app/api/admin/workspaces-overview/route.ts
+
+app/billing/page.tsx
+app/workspaces/page.tsx
+app/workspaces/[id]/page.tsx
+app/admin/page.tsx
+
+4) DEFAULT PLAN MODEL
+Seed plans such as:
+
+FREE
+- code: free
+- monthly_price: 0
+- included_credits: 10
+- max_team_members: 1
+
+PRO
+- code: pro
+- monthly_price: 19
+- yearly_price: 190
+- included_credits: 150
+- max_team_members: 1
+
+RECRUITER_SOLO
+- code: recruiter_solo
+- monthly_price: 49
+- yearly_price: 490
+- included_credits: 400
+- max_team_members: 1
+
+RECRUITER_TEAM
+- code: recruiter_team
+- monthly_price: 149
+- yearly_price: 1490
+- included_credits: 1500
+- max_team_members: 5
+
+Add feature entitlements examples like:
+- cv_analysis_enabled
+- recruiter_ranking_enabled
+- open_jobs_enabled
+- tailored_cv_enabled
+- cover_letter_enabled
+- interview_prep_enabled
+- mock_interview_enabled
+- team_workspace_enabled
+- credits_rollover_enabled
+- export_enabled
+- admin_dashboard_enabled
+
+5) CREDIT ECONOMY
+Build a simple server-side credit engine.
+
+Example credit costs:
+- CV parse = 1 credit
+- CV vs JD analysis = 2 credits
+- job recommendations = 3 credits
+- tailored CV generation = 3 credits
+- cover letter generation = 2 credits
+- interview prep generation = 3 credits
+- mock interview session generation = 3 credits
+- answer evaluation = 1 credit
+
+Create:
+lib/billing/credit-engine.ts
+
+Include helpers:
+- getOrCreateWallet()
+- getWalletBalance()
+- allocateCredits()
+- deductCredits()
+- canAffordCredits()
+- recordCreditTransaction()
+
+CREDIT RULES
+- all deductions must be atomic
+- reject request if credits insufficient
+- write transaction row for every credit movement
+- update lifetime_used and lifetime_allocated
+- support both user wallet and workspace wallet
+- prefer workspace wallet when feature is team-scoped
+
+6) ENTITLEMENT CHECKS
+Create:
+lib/billing/entitlements.ts
+
+Helpers:
+- getActivePlanForUserOrWorkspace()
+- getEntitlement(featureKey)
+- requireEntitlement(featureKey)
+- getCreditCostForFeature(featureKey)
+- requireCreditsForFeature(featureKey)
+
+Use this on premium routes so access is controlled centrally.
+
+7) STRIPE-READY BILLING ABSTRACTION
+Create:
+lib/billing/stripe-adapter.ts
+
+For this milestone:
+- do not require full Stripe checkout unless already connected
+- build placeholder-safe adapter with interface like:
+  - createCheckoutSession()
+  - getSubscriptionStatus()
+  - syncSubscriptionFromProvider()
+- return safe mock-ready status if Stripe is not configured
+- keep provider logic isolated
+
+Create routes:
+- app/api/billing/plans/route.ts
+- app/api/billing/current-subscription/route.ts
+
+Billing page should show:
+- current plan
+- credits remaining
+- feature list
+- upgrade cards
+- workspace seat limit where relevant
+
+8) WORKSPACE CREATION + TEAM MANAGEMENT
+Create:
+app/api/workspaces/create/route.ts
+app/api/workspaces/list/route.ts
+app/api/workspaces/[id]/route.ts
+app/api/workspaces/invite-member/route.ts
+app/api/workspaces/list-members/route.ts
+app/api/workspaces/update-member-role/route.ts
+app/api/workspaces/remove-member/route.ts
+app/api/workspaces/accept-invite/route.ts
+
+Create:
+lib/workspaces/permissions.ts
+
+Include helpers:
+- isWorkspaceOwner()
+- isWorkspaceAdmin()
+- canManageMembers()
+- canViewWorkspaceBilling()
+- canUseRecruiterFeatures()
+- requireWorkspacePermission()
+
+INVITATION FLOW
+- owner/admin invites by email
+- create token
+- store invitation
+- accept invite by token
+- add workspace_members row
+- update invitation status
+- do not require actual email sending yet
+- return invite link/token for now
+
+9) WORKSPACE PAGE
+Build:
+app/workspaces/page.tsx
+app/workspaces/[id]/page.tsx
+
+workspaces page should show:
+- user’s workspaces
+- role
+- plan
+- members count
+- credits balance
+- actions
+
+workspace detail page should show:
+A) workspace header
+- name
+- slug
+- plan
+- credits remaining
+
+B) team members
+- member name/email if available
+- role
+- status
+- actions
+
+C) invitations
+- pending invitations
+- role invited
+- copy invite link
+
+D) workspace usage summary
+- credits used this month
+- most used features
+- recent activity
+
+E) billing/plan summary
+- current plan
+- seat limit
+- entitlement list
+
+10) ADMIN ANALYTICS
+Create:
+app/api/admin/metrics/route.ts
+app/api/admin/usage-breakdown/route.ts
+app/api/admin/revenue-summary/route.ts
+app/api/admin/users-overview/route.ts
+app/api/admin/workspaces-overview/route.ts
+
+Create:
+lib/admin/admin-metrics.ts
+lib/admin/admin-helpers.ts
+
+Metrics to support:
+- total users
+- new users last 7 / 30 days
+- active users
+- total workspaces
+- active workspaces
+- active subscriptions
+- credits used today / 7 days / 30 days
+- AI request count
+- estimated AI cost
+- MRR estimate
+- top used features
+- most active workspaces
+- most active users
+
+Use existing ai_usage_logs and feature_usage_events where relevant.
+
+11) FEATURE USAGE EVENT TRACKING
+Create feature usage logging helpers so important product actions write events.
+
+feature_usage_events should be written for:
+- cv_parse
+- job_match
+- job_recommendations
+- tailored_cv
+- cover_letter
+- interview_prep
+- mock_interview_generation
+- answer_evaluation
+- recruiter_batch_analysis
+
+Create helper:
+logFeatureUsage({
+  userId,
+  workspaceId,
+  featureKey,
+  referenceType,
+  referenceId,
+  creditsUsed,
+  estimatedAiCost,
+  metadata
+})
+
+This should be easy to call from earlier milestone routes.
+
+12) ADMIN PAGE
+Build:
+app/admin/page.tsx
+
+Show:
+A) top-level metric cards
+- total users
+- active subscriptions
+- MRR
+- credits used this month
+- estimated AI cost this month
+
+B) usage charts/table blocks
+- daily active users
+- top feature usage
+- subscriptions by plan
+- workspaces by type
+
+C) operational tables
+- recent high-usage users
+- recent high-usage workspaces
+- recent credit transactions
+- recent subscription changes
+
+Keep the first version simple and useful.
+Use clean tables/cards.
+No need for fancy charts if not yet set up.
+
+13) BILLING PAGE
+Build:
+app/billing/page.tsx
+
+Show:
+- current plan
+- current subscription status
+- credits remaining
+- monthly included credits
+- recent credit transactions
+- feature access
+- upgrade/downgrade options
+
+Add workspace billing context if user is in a workspace:
+- workspace plan
+- shared credit balance
+- seat usage
+
+14) CREDIT BALANCE + TRANSACTION ROUTES
+Create:
+app/api/billing/credit-balance/route.ts
+app/api/billing/credit-transactions/route.ts
+app/api/billing/allocate-credits/route.ts
+
+balance route should return:
+{
+  "walletId": "...",
+  "balance": 120,
+  "lifetimeAllocated": 500,
+  "lifetimeUsed": 380
+}
+
+allocate route should support admin/provider allocation:
+{
+  "userId": "...",
+  "workspaceId": "...",
+  "amount": 100,
+  "reason": "subscription_renewal"
+}
+
+Restrict allocation route appropriately.
+
+15) SUBSCRIPTION / PLAN ROUTES
+Create:
+app/api/billing/current-subscription/route.ts
+app/api/billing/check-entitlement/route.ts
+
+check entitlement input:
+{
+  "userId": "...",
+  "workspaceId": "...",
+  "featureKey": "tailored_cv_enabled"
+}
+
+return:
+{
+  "allowed": true,
+  "planCode": "pro",
+  "featureValue": {...},
+  "creditCost": 3
+}
+
+16) PERMISSION MODEL
+Back-end permission rules should support:
+- workspace owner can manage billing, members, roles
+- workspace admin can manage members except owner
+- recruiter/member can use recruiter features if entitled
+- viewer can view but not manage or trigger premium workflows
+- personal users have no workspace member scope
+
+Enforce on workspace routes and team-sensitive routes.
+
+17) ADMIN ACCESS MODEL
+Keep admin routes restricted.
+Use a simple allowlist-based helper for now or a role flag if already available.
+
+Create helper:
+requireAdminAccess(userId)
+
+Do not expose admin metrics to ordinary users.
+
+18) COST OBSERVABILITY
+Build estimated AI cost helpers.
+
+Create in lib/admin/admin-helpers.ts:
+- estimateCostFromUsage()
+- sumAiCostByPeriod()
+- summarizeCreditsByPeriod()
+
+Use:
+- ai_usage_logs
+- feature_usage_events
+- model_name if available
+- approximate cost mapping per feature if exact model token cost is unavailable
+
+This does not need to be perfect initially, but should be directionally useful.
+
+19) FEATURE GATING INTEGRATION
+Update premium routes conceptually so they can call:
+- requireEntitlement(featureKey)
+- requireCreditsForFeature(featureKey)
+
+Feature keys to gate include:
+- recruiter_ranking_enabled
+- open_jobs_enabled
+- tailored_cv_enabled
+- cover_letter_enabled
+- interview_prep_enabled
+- mock_interview_enabled
+- team_workspace_enabled
+- export_enabled
+
+If access denied:
+- return structured response with reason
+- include upgrade hint
+- do not crash route
+
+20) UI REQUIREMENTS
+The product should now feel SaaS-ready.
+
+Billing page:
+- clean plan cards
+- transparent credits
+- recent usage
+
+Workspace page:
+- serious recruiter-team feel
+- easy member management
+- invite flow visible
+
+Admin page:
+- operator dashboard
+- growth + usage + cost visibility
+
+Add empty states:
+- no workspace yet
+- no recent credit transactions
+- no active subscription
+- no admin data yet
+
+21) SECURITY + VALIDATION
+- all credits and entitlements enforced server-side
+- do not trust client-declared plan
+- do not trust client-declared role
+- validate enums, IDs, amounts, and ownership
+- restrict admin routes
+- keep Stripe/provider tokens off frontend
+- invitation tokens must be unique and reasonably random
+- role changes must prevent owner removal mistakes
+
+22) QUALITY REQUIREMENTS
+- keep billing logic isolated
+- keep workspace permission logic isolated
+- keep admin analytics query logic isolated
+- keep API routes thin
+- reuse Supabase utilities
+- add loading/error states in UI
+- add helpful comments in critical credit logic
+- use file-by-file implementation output
+
+23) SUCCESS CRITERIA
+This milestone is complete when:
+- plans can be listed
+- subscriptions can be read
+- credit balances are tracked
+- credit transactions are logged
+- workspace can be created
+- members can be invited and managed
+- permissions are enforced
+- billing page shows real plan/credit context
+- workspace page shows team context
+- feature usage events are logged
+- admin metrics can be queried
+- admin page shows useful SaaS metrics
+- groundwork is ready for real paid growth
+
+24) FUTURE-READY NOTES
+Keep architecture ready for:
+- real Stripe checkout + webhook sync
+- usage-based billing top-ups
+- annual billing discounts
+- promo codes
+- invoice history
+- seat-based billing
+- enterprise SSO
+- audit logs
+- recruiter organization hierarchy
+- profit analytics by feature/plan
+
+NOW DO THE FOLLOWING
+- Generate all required code files
+- Show code file by file
+- Do not skip important implementation pieces
+- Keep naming consistent with Resuone
+- Keep architecture aligned with previous milestones
+- Do not only explain — actually output the implementation
