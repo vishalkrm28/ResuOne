@@ -395,7 +395,7 @@ router.post("/_admin/fix-user-migration", async (req, res) => {
 
       const moved: Record<string, number> = {};
       for (const tbl of ["applications","bulk_sessions","bulk_passes","contact_messages","unlock_purchases","usage_balances","usage_events","user_identity_profiles"]) {
-        const r = await db.execute(sql.raw(`UPDATE ${tbl} SET user_id = '${new_id}' WHERE user_id = '${old_id}'`));
+        const r = await db.execute(sql`UPDATE ${sql.raw(tbl)} SET user_id = ${new_id} WHERE user_id = ${old_id}`);
         moved[tbl] = (r as any).rowCount ?? 0;
       }
       report["moved"] = moved;
