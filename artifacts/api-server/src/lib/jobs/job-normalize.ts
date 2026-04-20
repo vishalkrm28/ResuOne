@@ -43,77 +43,304 @@ export function inferEmploymentType(raw: string | null | undefined): string {
 
 // ─── Country inference ────────────────────────────────────────────────────────
 
-const COUNTRY_HINTS: Array<{ pattern: RegExp; country: string }> = [
-  // ── Remote / global (check first so "Remote, Belgium" → remote) ────────────
-  { pattern: /\bremote\b|\banywhere\b|\bglobal\b|\bworldwide\b|\bwork from home\b|\bwfh\b/i, country: "remote" },
+// Stage 1: Complete country name → ISO-2 lookup (all 195 UN member states +
+// key territories, with common aliases and native-language names).
+const COUNTRY_NAMES: Record<string, string> = {
+  // A
+  afghanistan: "af", albania: "al", algeria: "dz", andorra: "ad",
+  angola: "ao", argentina: "ar", armenia: "am", australia: "au",
+  austria: "at", azerbaijan: "az",
+  // B
+  bahamas: "bs", bahrain: "bh", bangladesh: "bd", barbados: "bb",
+  belarus: "by", belgium: "be", belgique: "be", belgie: "be", belgien: "be",
+  belize: "bz", benin: "bj", bhutan: "bt", bolivia: "bo",
+  "bosnia and herzegovina": "ba", bosnia: "ba", botswana: "bw",
+  brazil: "br", brasil: "br", brunei: "bn", bulgaria: "bg",
+  "burkina faso": "bf", burundi: "bi",
+  // C
+  "cabo verde": "cv", "cape verde": "cv", cambodia: "kh", cameroon: "cm",
+  canada: "ca", "central african republic": "cf", chad: "td", chile: "cl",
+  china: "cn", colombia: "co", comoros: "km", congo: "cg",
+  "democratic republic of the congo": "cd", "dr congo": "cd", "drc": "cd",
+  "costa rica": "cr", croatia: "hr", cuba: "cu", cyprus: "cy",
+  "czech republic": "cz", czechia: "cz",
+  // D
+  denmark: "dk", danmark: "dk", djibouti: "dj", dominica: "dm",
+  "dominican republic": "do",
+  // E
+  ecuador: "ec", egypt: "eg", "el salvador": "sv",
+  "equatorial guinea": "gq", eritrea: "er", estonia: "ee", eswatini: "sz",
+  swaziland: "sz", ethiopia: "et",
+  // F
+  fiji: "fj", finland: "fi", suomi: "fi", france: "fr",
+  // G
+  gabon: "ga", gambia: "gm", georgia: "ge", germany: "de",
+  deutschland: "de", ghana: "gh", greece: "gr", grenada: "gd",
+  guatemala: "gt", guinea: "gn", "guinea-bissau": "gw", guyana: "gy",
+  // H
+  haiti: "ht", honduras: "hn", hungary: "hu",
+  // I
+  iceland: "is", india: "in", indonesia: "id", iran: "ir", iraq: "iq",
+  ireland: "ie", eire: "ie", israel: "il", italy: "it", italia: "it",
+  // J
+  jamaica: "jm", japan: "jp", jordan: "jo",
+  // K
+  kazakhstan: "kz", kenya: "ke", kiribati: "ki",
+  "north korea": "kp", "south korea": "kr", korea: "kr",
+  kosovo: "xk", kuwait: "kw", kyrgyzstan: "kg",
+  // L
+  laos: "la", latvia: "lv", lebanon: "lb", lesotho: "ls", liberia: "lr",
+  libya: "ly", liechtenstein: "li", lithuania: "lt", luxembourg: "lu",
+  // M
+  madagascar: "mg", malawi: "mw", malaysia: "my", maldives: "mv",
+  mali: "ml", malta: "mt", "marshall islands": "mh", mauritania: "mr",
+  mauritius: "mu", mexico: "mx",
+  micronesia: "fm", moldova: "md", monaco: "mc", mongolia: "mn",
+  montenegro: "me", morocco: "ma", mozambique: "mz", myanmar: "mm",
+  burma: "mm",
+  // N
+  namibia: "na", nauru: "nr", nepal: "np", netherlands: "nl",
+  nederland: "nl", holland: "nl", "new zealand": "nz", nicaragua: "ni",
+  niger: "ne", nigeria: "ng", "north macedonia": "mk", macedonia: "mk",
+  norway: "no", norge: "no",
+  // O
+  oman: "om",
+  // P
+  pakistan: "pk", palau: "pw", palestine: "ps", panama: "pa",
+  "papua new guinea": "pg", paraguay: "py", peru: "pe", philippines: "ph",
+  poland: "pl", polska: "pl", portugal: "pt",
+  // Q
+  qatar: "qa",
+  // R
+  romania: "ro", russia: "ru", rwanda: "rw",
+  // S
+  "saint kitts and nevis": "kn", "saint lucia": "lc",
+  "saint vincent and the grenadines": "vc", samoa: "ws",
+  "san marino": "sm", "sao tome and principe": "st",
+  "saudi arabia": "sa", senegal: "sn", serbia: "rs",
+  seychelles: "sc", "sierra leone": "sl", singapore: "sg",
+  slovakia: "sk", slovenia: "si", "solomon islands": "sb",
+  somalia: "so", "south africa": "za", "south sudan": "ss",
+  spain: "es", "sri lanka": "lk", sudan: "sd", suriname: "sr",
+  sweden: "se", sverige: "se", switzerland: "ch", schweiz: "ch",
+  suisse: "ch", svizzera: "ch", syria: "sy",
+  // T
+  taiwan: "tw", tajikistan: "tj", tanzania: "tz", thailand: "th",
+  "timor-leste": "tl", "east timor": "tl", togo: "tg", tonga: "to",
+  "trinidad and tobago": "tt", trinidad: "tt", tunisia: "tn",
+  turkey: "tr", türkiye: "tr", turkmenistan: "tm", tuvalu: "tv",
+  // U
+  uganda: "ug", ukraine: "ua",
+  "united arab emirates": "ae", uae: "ae",
+  "united kingdom": "gb", uk: "gb", "great britain": "gb",
+  england: "gb", scotland: "gb", wales: "gb",
+  "united states": "us", usa: "us", "u.s.a": "us", "u.s": "us",
+  "united states of america": "us",
+  uruguay: "uy", uzbekistan: "uz",
+  // V
+  vanuatu: "vu", venezuela: "ve", vietnam: "vn",
+  // Y
+  yemen: "ye",
+  // Z
+  zambia: "zm", zimbabwe: "zw",
+  // Key territories often used in job listings
+  "hong kong": "hk", "hong kong sar": "hk",
+  macau: "mo", macao: "mo",
+  "puerto rico": "pr",
+};
 
-  // ── Europe ────────────────────────────────────────────────────────────────
-  { pattern: /\bbelgium\b|\bbel?gi[eë]\b|\bbrussels?\b|\bbr[uü]ssel\b|\bantwerp(en)?\b|\bgent\b|\bghent\b|\bli[eè]ge\b|\blur?ik\b|\bleuven\b|\blouvain\b|\bbruges?\b|\bbrugge\b|\bnamur\b|\bcharleroi\b|\bmechelen\b|\bmons\b|\baalst\b|\bgenk\b|\bhasselt\b|\bkortrijk\b|\bostend\b|\boosten(de)?\b/i, country: "be" },
-  { pattern: /\bgermany\b|\bdeutschland\b|\bberlin\b|\bhamburg\b|\bm[uü]nchen\b|\bmunich\b|\bfrankfurt\b|\bcologne\b|\bk[oö]ln\b|\bstuttgart\b|\bd[uü]sseldorf\b|\bleipzig\b|\bdortmund\b|\bessen\b|\bnuremberg\b|\bn[uü]rnberg\b|\bbremen\b|\bhanover\b|\bhannover\b/i, country: "de" },
-  { pattern: /\bfrance\b|\bparis\b|\blyon\b|\bmarseille\b|\btoulouse\b|\bnice\b|\bnantes\b|\bstrasbourg\b|\bmontpellier\b|\bbordeaux\b|\blille\b|\brennes\b|\breims\b|\bgrenoble\b/i, country: "fr" },
-  { pattern: /\bnetherlands\b|\bholland\b|\bnederland\b|\bamsterdam\b|\brotterdam\b|\bthe hague\b|\bden haag\b|\butrecht\b|\beindhoven\b|\bgroningen\b|\btilburg\b|\bbreda\b|\bapeldoorn\b/i, country: "nl" },
-  { pattern: /\bspain\b|\bespa[nñ]a\b|\bmadrid\b|\bbarcelona\b|\bvalencia\b|\bseville\b|\bsevilla\b|\bzaragoza\b|\bm[aá]laga\b|\bbilbao\b|\balicante\b|\bcordoba\b|\bvalladolid\b/i, country: "es" },
-  { pattern: /\bital[yi]\b|\bitalia\b|\brome\b|\broma\b|\bmilan[oe]?\b|\bnaples\b|\bnapoli\b|\bturin\b|\btorino\b|\bpalermo\b|\bgenoa\b|\bgenova\b|\bbologna\b|\bflorence\b|\bfirenze\b/i, country: "it" },
-  { pattern: /\bsweden\b|\bsverige\b|\bstockholm\b|\bgothenburg\b|\bg[oö]teborg\b|\bmalm[oö]\b|\buppsala\b|\blink[oö]ping\b/i, country: "se" },
-  { pattern: /\bnorway\b|\bnorge\b|\boslo\b|\bbergen\b|\btrondheim\b|\bstavanger\b/i, country: "no" },
-  { pattern: /\bdenmark\b|\bdanmark\b|\bcopenhagen\b|\bk[oø]benhavn\b|\baarhus\b|\bodense\b/i, country: "dk" },
-  { pattern: /\bfinland\b|\bsuomi\b|\bhelsinki\b|\bespoo\b|\btampere\b|\bturku\b/i, country: "fi" },
-  { pattern: /\bswitzerland\b|\bschweiz\b|\bzurich\b|\bz[uü]rich\b|\bgeneva\b|\bgen[eè]ve\b|\bbern\b|\bbasel\b|\blausanne\b/i, country: "ch" },
-  { pattern: /\baustria\b|\b[oö]sterreich\b|\bvienna\b|\bwien\b|\bgraz\b|\blinz\b|\bsalzburg\b|\binnsbruck\b/i, country: "at" },
-  { pattern: /\bunited kingdom\b|\buk\b|\bgreat britain\b|\bengland\b|\bscotland\b|\bwales\b|\blondon\b|\bmanchester\b|\bedinburgh\b|\bbirmingham\b|\bglasgow\b|\bleeds\b|\bbristol\b|\bliverpool\b|\bsheffield\b|\bcambridge\b|\boxford\b|\bnotting(ham)?\b|\bbrighton\b/i, country: "gb" },
-  { pattern: /\bireland\b|\b[eé]ire\b|\bdublin\b|\bcork\b|\bgalway\b|\blimerick\b/i, country: "ie" },
-  { pattern: /\bportugal\b|\blisbon\b|\blisboa\b|\bporto\b|\bbraga\b|\bcoimbra\b/i, country: "pt" },
-  { pattern: /\bpoland\b|\bpolska\b|\bwarsaw\b|\bwarszawa\b|\bkrak[oó]w\b|\bwroclaw\b|\bwr[oó]claw\b|\bpozna[nń]\b|\bgda[nń]sk\b|\blod[zź]\b/i, country: "pl" },
-  { pattern: /\bczech\b|\bczechia\b|\bprague\b|\bpraha\b|\bbrno\b|\bostrava\b/i, country: "cz" },
-  { pattern: /\bhungary\b|\bmagyarorsz[aá]g\b|\bbudapest\b|\bdebrecen\b/i, country: "hu" },
-  { pattern: /\bromania\b|\bbucharest\b|\bbucure[sș]ti\b|\bcluj\b|\btimiș?oara\b/i, country: "ro" },
-  { pattern: /\bgreece\b|\bathens\b|\bathina\b|\bthessaloniki\b/i, country: "gr" },
+// Stage 2: Major world cities → ISO-2 (for locations that omit the country name)
+const CITY_TO_COUNTRY: Record<string, string> = {
+  // Remote signals (handled here so we scan once)
+  remote: "remote", anywhere: "remote", worldwide: "remote",
+  global: "remote", "work from home": "remote", wfh: "remote",
+  // Belgium
+  brussels: "be", bruxelles: "be", brussel: "be", antwerp: "be",
+  antwerpen: "be", ghent: "be", gent: "be", liege: "be", luik: "be",
+  leuven: "be", louvain: "be", bruges: "be", brugge: "be", namur: "be",
+  charleroi: "be", mechelen: "be", mons: "be", aalst: "be", genk: "be",
+  hasselt: "be", kortrijk: "be", ostend: "be", ostende: "be",
+  // Germany
+  berlin: "de", hamburg: "de", munich: "de", münchen: "de",
+  frankfurt: "de", cologne: "de", köln: "de", stuttgart: "de",
+  düsseldorf: "de", dusseldorf: "de", leipzig: "de", dortmund: "de",
+  essen: "de", nuremberg: "de", nürnberg: "de", bremen: "de",
+  hanover: "de", hannover: "de", dresden: "de", bonn: "de",
+  // France
+  paris: "fr", lyon: "fr", marseille: "fr", toulouse: "fr", nice: "fr",
+  nantes: "fr", strasbourg: "fr", montpellier: "fr", bordeaux: "fr",
+  lille: "fr", rennes: "fr", reims: "fr", grenoble: "fr",
+  // Netherlands
+  amsterdam: "nl", rotterdam: "nl", "the hague": "nl", "den haag": "nl",
+  utrecht: "nl", eindhoven: "nl", groningen: "nl", tilburg: "nl",
+  breda: "nl", nijmegen: "nl",
+  // Spain
+  madrid: "es", barcelona: "es", valencia: "es", seville: "es",
+  sevilla: "es", zaragoza: "es", malaga: "es", málaga: "es",
+  bilbao: "es", alicante: "es",
+  // Italy
+  rome: "it", roma: "it", milan: "it", milano: "it", naples: "it",
+  napoli: "it", turin: "it", torino: "it", palermo: "it", genoa: "it",
+  genova: "it", bologna: "it", florence: "it", firenze: "it",
+  // UK
+  london: "gb", manchester: "gb", edinburgh: "gb", birmingham: "gb",
+  glasgow: "gb", leeds: "gb", bristol: "gb", liverpool: "gb",
+  sheffield: "gb", cambridge: "gb", oxford: "gb", brighton: "gb",
+  nottingham: "gb", newcastle: "gb", cardiff: "gb",
+  // Ireland
+  dublin: "ie", cork: "ie", galway: "ie", limerick: "ie",
+  // Sweden
+  stockholm: "se", gothenburg: "se", göteborg: "se", malmö: "se",
+  malmo: "se", uppsala: "se",
+  // Norway
+  oslo: "no", bergen: "no", trondheim: "no", stavanger: "no",
+  // Denmark
+  copenhagen: "dk", københavn: "dk", aarhus: "dk", odense: "dk",
+  // Finland
+  helsinki: "fi", espoo: "fi", tampere: "fi", turku: "fi",
+  // Switzerland
+  zurich: "ch", zürich: "ch", geneva: "ch", genève: "ch", bern: "ch",
+  basel: "ch", lausanne: "ch",
+  // Austria
+  vienna: "at", wien: "at", graz: "at", linz: "at", salzburg: "at",
+  innsbruck: "at",
+  // Poland
+  warsaw: "pl", warszawa: "pl", krakow: "pl", kraków: "pl",
+  wroclaw: "pl", wrocław: "pl", poznan: "pl", gdansk: "pl",
+  // Czech Republic
+  prague: "cz", praha: "cz", brno: "cz", ostrava: "cz",
+  // Hungary
+  budapest: "hu",
+  // Romania
+  bucharest: "ro", cluj: "ro",
+  // Portugal
+  lisbon: "pt", lisboa: "pt", porto: "pt", braga: "pt",
+  // Greece
+  athens: "gr", thessaloniki: "gr",
+  // US
+  "new york": "us", "san francisco": "us", "los angeles": "us",
+  chicago: "us", seattle: "us", austin: "us", denver: "us",
+  atlanta: "us", boston: "us", miami: "us", houston: "us",
+  dallas: "us", phoenix: "us", portland: "us", nashville: "us",
+  minneapolis: "us", detroit: "us", columbus: "us", charlotte: "us",
+  "las vegas": "us", philadelphia: "us", "san diego": "us",
+  "san jose": "us", pittsburgh: "us", cleveland: "us", raleigh: "us",
+  memphis: "us", "kansas city": "us", indianapolis: "us",
+  baltimore: "us", milwaukee: "us", "new orleans": "us",
+  sacramento: "us", omaha: "us", "salt lake city": "us",
+  // Canada
+  toronto: "ca", vancouver: "ca", montreal: "ca", calgary: "ca",
+  ottawa: "ca", edmonton: "ca", winnipeg: "ca", quebec: "ca",
+  // Brazil
+  "sao paulo": "br", "são paulo": "br", "rio de janeiro": "br",
+  brasilia: "br", brasília: "br", curitiba: "br", fortaleza: "br",
+  "belo horizonte": "br", manaus: "br", recife: "br",
+  // Mexico
+  "mexico city": "mx", guadalajara: "mx", monterrey: "mx",
+  puebla: "mx", tijuana: "mx",
+  // Argentina
+  "buenos aires": "ar", rosario: "ar", mendoza: "ar",
+  // Japan
+  tokyo: "jp", osaka: "jp", kyoto: "jp", yokohama: "jp",
+  nagoya: "jp", sapporo: "jp", fukuoka: "jp", kobe: "jp",
+  // China
+  beijing: "cn", shanghai: "cn", shenzhen: "cn", guangzhou: "cn",
+  chengdu: "cn", wuhan: "cn", tianjin: "cn", hangzhou: "cn",
+  nanjing: "cn",
+  // South Korea
+  seoul: "kr", incheon: "kr", busan: "kr", daejeon: "kr", daegu: "kr",
+  // India
+  bangalore: "in", bengaluru: "in", mumbai: "in", bombay: "in",
+  "new delhi": "in", delhi: "in", hyderabad: "in", chennai: "in",
+  madras: "in", kolkata: "in", calcutta: "in", pune: "in",
+  ahmedabad: "in", noida: "in", gurgaon: "in", gurugram: "in",
+  // Australia
+  sydney: "au", melbourne: "au", brisbane: "au", perth: "au",
+  adelaide: "au", canberra: "au", "gold coast": "au",
+  // New Zealand
+  auckland: "nz", wellington: "nz", christchurch: "nz",
+  // Singapore
+  singapore: "sg",
+  // Hong Kong
+  "hong kong": "hk",
+  // Taiwan
+  taipei: "tw",
+  // Thailand
+  bangkok: "th", "chiang mai": "th",
+  // Indonesia
+  jakarta: "id", surabaya: "id", bandung: "id",
+  // Malaysia
+  "kuala lumpur": "my", penang: "my",
+  // Philippines
+  manila: "ph", cebu: "ph",
+  // Vietnam
+  "ho chi minh": "vn", hanoi: "vn",
+  // UAE
+  dubai: "ae", "abu dhabi": "ae", sharjah: "ae",
+  // Israel
+  "tel aviv": "il", jerusalem: "il", haifa: "il",
+  // Saudi Arabia
+  riyadh: "sa", jeddah: "sa", dammam: "sa",
+  // South Africa
+  johannesburg: "za", "cape town": "za", durban: "za", pretoria: "za",
+  // Egypt
+  cairo: "eg", alexandria: "eg",
+  // Kenya
+  nairobi: "ke", mombasa: "ke",
+  // Nigeria
+  lagos: "ng", abuja: "ng",
+  // Other capitals/major hubs
+  accra: "gh", "dar es salaam": "tz", addis: "et", "addis ababa": "et",
+  "kuala lumpur": "my", kathmandu: "np", colombo: "lk",
+  dhaka: "bd", karachi: "pk", lahore: "pk", islamabad: "pk",
+  tashkent: "uz", almaty: "kz", baku: "az", tbilisi: "ge",
+  yerevan: "am", minsk: "by", riga: "lv", vilnius: "lt", tallinn: "ee",
+  helsinki: "fi", sofia: "bg", zagreb: "hr", belgrade: "rs",
+  sarajevo: "ba", skopje: "mk", tirana: "al", chisinau: "md",
+  kyiv: "ua", kiev: "ua", moscow: "ru", "saint petersburg": "ru",
+  amman: "jo", beirut: "lb", baghdad: "iq", tehran: "ir",
+  doha: "qa", muscat: "om", manama: "bh", kuwait: "kw",
+  tunis: "tn", algiers: "dz", casablanca: "ma", rabat: "ma",
+  khartoum: "sd", kampala: "ug", dakar: "sn", abidjan: "ci",
+  "ivory coast": "ci", kinshasa: "cd", luanda: "ao",
+  lusaka: "zm", harare: "zw", maputo: "mz",
+  lima: "pe", bogota: "co", bogotá: "co", medellin: "co",
+  quito: "ec", "la paz": "bo", asuncion: "py", montevideo: "uy",
+  caracas: "ve", panama: "pa", "san jose": "cr",
+  "san juan": "pr", havana: "cu",
+};
 
-  // ── Americas ──────────────────────────────────────────────────────────────
-  // US state abbreviations first (e.g. "Jacksonville, FL")
-  {
-    pattern: /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\s*$/i,
-    country: "us",
-  },
-  { pattern: /\bunited states\b|\busa\b|\bu\.s\.a\b|\bnew york\b|\bsan francisco\b|\blos angeles\b|\bchicago\b|\bseattle\b|\baustin\b|\bdenver\b|\batlanta\b|\bboston\b|\bmiami\b|\bhouston\b|\bdallas\b|\bphoenix\b|\bportland\b|\bnashville\b|\bminneapolis\b|\bdetroit\b|\bcolumbus\b|\bcharlotte\b|\blas vegas\b|\bsalt lake\b|\bphiladelphia\b|\bsan diego\b|\bsan jose\b|\bpittsburgh\b|\bcleveland\b|\braleigh\b|\bmemphis\b|\blouisville\b|\bkansas city\b|\bindianapolis\b|\bbaltimore\b|\bmilwaukee\b|\bnew orleans\b|\btucson\b|\bfresno\b|\bsacramento\b|\bmesa\b|\bomaha\b|\bvirginiabeach\b/i, country: "us" },
-  { pattern: /\bcanada\b|\btoronto\b|\bvancouver\b|\bmontreal\b|\bcalgary\b|\bottawa\b|\bedmonton\b|\bwinnipeg\b|\bquebec\b|\bhamilton\b|\bkitchener\b/i, country: "ca" },
-  { pattern: /\bbrazil\b|\bbrasil\b|\bs[aã]o paulo\b|\brio de janeiro\b|\bbras[ií]lia\b|\bcuritiba\b|\bfortaleza\b|\bbelo horizonte\b|\bmanaus\b|\brecife\b/i, country: "br" },
-  { pattern: /\bmexico\b|\bm[eé]xico\b|\bmexico city\b|\bguadalajara\b|\bmonterrey\b|\bpuebla\b|\btijuana\b|\bc[uú]liac[aá]n\b|\bm[eé]rida\b/i, country: "mx" },
-  { pattern: /\bargentina\b|\bbuenos aires\b|\bc[oó]rdoba\b|\brosario\b|\bmendon?za\b/i, country: "ar" },
-  { pattern: /\bchile\b|\bsantiago\b|\bvalpara[ií]so\b/i, country: "cl" },
-  { pattern: /\bcolombia\b|\bbogot[aá]\b|\bmedellin\b|\bmedell[ií]n\b|\bcali\b/i, country: "co" },
-
-  // ── Asia-Pacific ──────────────────────────────────────────────────────────
-  { pattern: /\bjapan\b|\bnihon\b|\btokyo\b|\bosaka\b|\bkyoto\b|\byokohama\b|\bnagoya\b|\bsapporo\b|\bfukuoka\b|\bkobe\b/i, country: "jp" },
-  { pattern: /\bchina\b|\bzhongguo\b|\bbeijing\b|\bshanghai\b|\bshenzhen\b|\bguangzhou\b|\bchengdu\b|\bwuhan\b|\btianjin\b|\bxi'?an\b|\bhangzhou\b|\bnanjing\b/i, country: "cn" },
-  { pattern: /\bsouth korea\b|\bkorea\b|\bkorean\b|\bseoul\b|\bincheon\b|\bbusan\b|\bdaejeon\b|\bdaegu\b/i, country: "kr" },
-  { pattern: /\bindia\b|\bbangalore\b|\bbengaluru\b|\bmumbai\b|\bbombay\b|\bnew delhi\b|\bdelhi\b|\bhyderabad\b|\bchennai\b|\bmadras\b|\bkolkata\b|\bcalcutta\b|\bpune\b|\bahmedabad\b|\bnoida\b|\bgurgaon\b/i, country: "in" },
-  { pattern: /\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b|\bperth\b|\badelaide\b|\bcanberra\b|\bgold coast\b/i, country: "au" },
-  { pattern: /\bnew zealand\b|\bauckland\b|\bwellington\b|\bchristchurch\b|\bhamilton\b/i, country: "nz" },
-  { pattern: /\bsingapore\b/i, country: "sg" },
-  { pattern: /\bhong kong\b/i, country: "hk" },
-  { pattern: /\btaiwan\b|\btaipei\b/i, country: "tw" },
-  { pattern: /\bthailand\b|\bbangkok\b|\bchiang mai\b/i, country: "th" },
-  { pattern: /\bindonesia\b|\bjakarta\b|\bsurabaya\b|\bbandung\b/i, country: "id" },
-  { pattern: /\bmalaysia\b|\bkuala lumpur\b|\bpenang\b/i, country: "my" },
-  { pattern: /\bphilippines\b|\bmanila\b|\bcebu\b/i, country: "ph" },
-  { pattern: /\bvietnam\b|\bho chi minh\b|\bhanoi\b/i, country: "vn" },
-
-  // ── Middle East & Africa ──────────────────────────────────────────────────
-  { pattern: /\buae\b|\bunited arab emirates\b|\bdubai\b|\babu dhabi\b|\bsharjah\b/i, country: "ae" },
-  { pattern: /\bisrael\b|\btel aviv\b|\bjerusalem\b|\bhaifa\b/i, country: "il" },
-  { pattern: /\bsaudi arabia\b|\briyadh\b|\bjeddah\b|\bdammam\b/i, country: "sa" },
-  { pattern: /\bsouth africa\b|\bjohannesburg\b|\bcape town\b|\bdurban\b|\bpretoria\b/i, country: "za" },
-  { pattern: /\begypt\b|\bcairo\b|\balexandria\b/i, country: "eg" },
-  { pattern: /\bkenya\b|\bnairobi\b/i, country: "ke" },
-  { pattern: /\bnigeria\b|\blagos\b|\babuja\b/i, country: "ng" },
-];
+// US state abbreviations regex ("Jacksonville, FL" → "us")
+const US_STATE_ABBREV = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\s*$/i;
 
 export function inferCountry(location: string, queryCountry = ""): string {
   if (queryCountry) return queryCountry;
-  for (const { pattern, country } of COUNTRY_HINTS) {
-    if (pattern.test(location)) return country;
+  if (!location) return "";
+
+  const loc = location.toLowerCase().trim();
+
+  // 1. Check multi-word city phrases first (longer matches take priority)
+  for (const [city, code] of Object.entries(CITY_TO_COUNTRY)) {
+    if (city.includes(" ") && loc.includes(city)) return code;
   }
+
+  // 2. Check for country name as a whole word in the location string
+  for (const [name, code] of Object.entries(COUNTRY_NAMES)) {
+    const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    if (re.test(loc)) return code;
+  }
+
+  // 3. Single-word city lookup
+  const tokens = loc.split(/[\s,/|]+/);
+  for (const token of tokens) {
+    if (token.length < 3) continue;
+    const hit = CITY_TO_COUNTRY[token];
+    if (hit) return hit;
+  }
+
+  // 4. US state abbreviation fallback ("Jacksonville, FL")
+  if (US_STATE_ABBREV.test(location)) return "us";
+
   return "";
 }
 
