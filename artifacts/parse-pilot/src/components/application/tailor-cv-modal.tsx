@@ -19,6 +19,7 @@ interface Props {
   jobCompany?: string;
   externalJobCacheId?: string;
   jobText?: string;
+  defaultApplicationId?: string;
   onClose: () => void;
 }
 
@@ -30,6 +31,7 @@ export function TailorCvModal({
   jobCompany,
   externalJobCacheId,
   jobText,
+  defaultApplicationId,
   onClose,
 }: Props) {
   const { toast } = useToast();
@@ -37,7 +39,7 @@ export function TailorCvModal({
 
   const [mode, setMode] = useState<Mode>("tailor");
   const [selectedAppId, setSelectedAppId] = useState<string>(
-    applications[0]?.id ?? "",
+    defaultApplicationId ?? applications[0]?.id ?? "",
   );
   const [versionName, setVersionName] = useState(
     jobTitle && jobCompany

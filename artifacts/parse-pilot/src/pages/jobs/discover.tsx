@@ -289,6 +289,7 @@ export default function GlobalJobDiscover() {
   const [savingJobId, setSavingJobId] = useState<string | null>(null);
 
   const [applications, setApplications] = useState<Application[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string>("");
   const [modalJob, setModalJob] = useState<DiscoveredJob | null>(null);
   const [modalMode, setModalMode] = useState<"tailor" | "cover-letter">("tailor"); // captured for future use
 
@@ -303,6 +304,7 @@ export default function GlobalJobDiscover() {
           ? data
           : [];
         setApplications(apps);
+        if (apps.length > 0) setSelectedAppId(apps[0].id);
       })
       .catch(() => {});
   }, []);
@@ -398,6 +400,7 @@ export default function GlobalJobDiscover() {
           jobTitle={modalJob.title}
           jobCompany={modalJob.company ?? undefined}
           externalJobCacheId={modalJob.id}
+          defaultApplicationId={selectedAppId || undefined}
           onClose={() => setModalJob(null)}
         />
       )}
@@ -444,6 +447,24 @@ export default function GlobalJobDiscover() {
                   )}
                 </Button>
               </div>
+
+              {applications.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">CV to tailor with</Label>
+                  <select
+                    value={selectedAppId}
+                    onChange={(e) => setSelectedAppId(e.target.value)}
+                    disabled={loading}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {applications.slice(0, 20).map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.jobTitle} @ {a.company}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
