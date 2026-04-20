@@ -66,7 +66,7 @@ interface DiscoverResponse {
   cached: boolean;
   aiRanked: boolean;
   matchData: Record<string, MatchInfo>;
-  sourceBreakdown: Record<string, number>;
+  sourceBreakdown: { google_jobs?: number; greenhouse?: number };
   errors?: string[];
 }
 
@@ -483,7 +483,7 @@ export default function GlobalJobDiscover() {
               Global Job Discovery
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              AI-powered matching across Google Jobs, Greenhouse, and Lever — driven by your CV.
+              AI-powered matching across Google Jobs and Greenhouse ATS — driven by your CV.
             </p>
           </div>
         </div>
@@ -632,13 +632,10 @@ export default function GlobalJobDiscover() {
                     </span>
                   )}
                   <span>
-                    {Object.entries(result.sourceBreakdown)
-                      .filter(([, n]) => n > 0)
-                      .map(([src, n]) => {
-                        const labels: Record<string, string> = { google_jobs: "Google", greenhouse: "Greenhouse", lever: "Lever" };
-                        return `${labels[src] ?? src}: ${n}`;
-                      })
-                      .join(" · ")}
+                    {[
+                      result.sourceBreakdown.google_jobs ? `Google: ${result.sourceBreakdown.google_jobs}` : null,
+                      result.sourceBreakdown.greenhouse ? `Greenhouse: ${result.sourceBreakdown.greenhouse}` : null,
+                    ].filter(Boolean).join(" · ")}
                   </span>
                 </p>
               </div>
@@ -694,7 +691,7 @@ export default function GlobalJobDiscover() {
           <div className="text-center py-20 text-muted-foreground space-y-3 mt-8">
             <Globe className="h-12 w-12 mx-auto opacity-20" />
             <p className="text-sm">Select a CV and click Find My Jobs to discover matching roles globally.</p>
-            <p className="text-xs opacity-70">Powered by Google Jobs, Greenhouse ATS &amp; Lever ATS</p>
+            <p className="text-xs opacity-70">Powered by Google Jobs &amp; Greenhouse ATS</p>
           </div>
         )}
       </div>

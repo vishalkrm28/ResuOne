@@ -149,10 +149,24 @@ router.post("/jobs/discover", async (req, res) => {
         .orderBy(desc(candidateProfilesTable.createdAt))
         .limit(1);
 
-      if (profile?.normalizedProfile) {
+      // Fallback: if no profile found for this specific application, try the
+      // most recent profile for this user (handles cases where the candidate
+      // profile was created under a different application ID)
+      let resolvedProfile = profile;
+      if (!resolvedProfile && applicationId) {
+        const [fallback] = await db
+          .select()
+          .from(candidateProfilesTable)
+          .where(eq(candidateProfilesTable.userId, userId))
+          .orderBy(desc(candidateProfilesTable.createdAt))
+          .limit(1);
+        resolvedProfile = fallback;
+      }
+
+      if (resolvedProfile?.normalizedProfile) {
         const unifiedJobs = deduped.slice(0, 50);
         const recommendations = await matchDiscoveredJobsWithAI({
-          candidateProfile: profile.normalizedProfile as Record<string, unknown>,
+          candidateProfile: resolvedProfile.normalizedProfile as Record<string, unknown>,
           jobs: unifiedJobs,
           remoteOnly,
         });

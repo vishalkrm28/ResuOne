@@ -44,20 +44,29 @@ export function inferEmploymentType(raw: string | null | undefined): string {
 // ─── Country inference ────────────────────────────────────────────────────────
 
 const COUNTRY_HINTS: Array<{ pattern: RegExp; country: string }> = [
-  { pattern: /\bsweden\b|\bstockholm\b|\bgothenburg\b|\bmalmö\b|\bse\b/i, country: "se" },
+  { pattern: /\bsweden\b|\bstockholm\b|\bgothenburg\b|\bmalmö\b/i, country: "se" },
   { pattern: /\bnorway\b|\boslo\b|\bbergen\b/i, country: "no" },
   { pattern: /\bdenmark\b|\bcopenhagen\b/i, country: "dk" },
   { pattern: /\bfinland\b|\bhelsinki\b/i, country: "fi" },
   { pattern: /\bgermany\b|\bberlin\b|\bhamburg\b|\bmunich\b/i, country: "de" },
-  { pattern: /\bnetherlands\b|\bamsterdam\b/i, country: "nl" },
-  { pattern: /\bunited kingdom\b|\blondon\b|\buk\b|\bmanchester\b/i, country: "gb" },
-  { pattern: /\bunited states\b|\bnew york\b|\bsan francisco\b|\busa\b/i, country: "us" },
-  { pattern: /\baustralia\b|\bsydney\b|\bmelbourne\b/i, country: "au" },
-  { pattern: /\bcanada\b|\btoronto\b|\bvancouver\b/i, country: "ca" },
+  { pattern: /\bnetherlands\b|\bamsterdam\b|\brotterdam\b/i, country: "nl" },
+  { pattern: /\bbel?gium\b|\bbrussels?\b|\bbr[uü]ssel\b|\bantwerp\b|\bghent\b|\bliège\b/i, country: "be" },
+  { pattern: /\bswitzerland\b|\bzurich\b|\bgeneva\b|\bbern\b/i, country: "ch" },
+  { pattern: /\baustri[ae]\b|\bvienna\b/i, country: "at" },
+  { pattern: /\bunited kingdom\b|\blondon\b|\bmanchester\b|\bedinburgh\b|\bbirmingham\b/i, country: "gb" },
+  { pattern: /\bireland\b|\bdublin\b/i, country: "ie" },
+  { pattern: /\bunited states\b|\bnew york\b|\bsan francisco\b|\blos angeles\b|\bchicago\b|\bseattle\b|\busa\b|\bu\.s\.a\./i, country: "us" },
+  { pattern: /\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b/i, country: "au" },
+  { pattern: /\bcanada\b|\btoronto\b|\bvancouver\b|\bmontreal\b/i, country: "ca" },
   { pattern: /\bsingapore\b/i, country: "sg" },
-  { pattern: /\bindian?\b|\bbangalore\b|\bmumbai\b/i, country: "in" },
-  { pattern: /\bfrancee?\b|\bparis\b/i, country: "fr" },
+  { pattern: /\bindia\b|\bbangalore\b|\bmumbai\b|\bdelhi\b|\bhyderabad\b/i, country: "in" },
+  { pattern: /\bfrance\b|\bparis\b|\blyon\b|\bmarseille\b/i, country: "fr" },
   { pattern: /\bspain\b|\bmadrid\b|\bbarcelona\b/i, country: "es" },
+  { pattern: /\bportugal\b|\blisbon\b|\bporto\b/i, country: "pt" },
+  { pattern: /\bpoland\b|\bwarsaw\b|\bkrakow\b/i, country: "pl" },
+  { pattern: /\bczech\b|\bprague\b/i, country: "cz" },
+  { pattern: /\bital[yi]\b|\brome\b|\bmilan\b/i, country: "it" },
+  { pattern: /\bremote\b|\banywhere\b|\bglobal\b|\bworldwide\b/i, country: "remote" },
 ];
 
 export function inferCountry(location: string, queryCountry = ""): string {

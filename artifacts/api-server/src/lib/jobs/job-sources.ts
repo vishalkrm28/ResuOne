@@ -3,29 +3,41 @@ import {
   fetchGreenhouseJobs,
   getDefaultGreenhouseBoardTokens,
 } from "./sources/greenhouse.js";
-import {
-  fetchLeverJobs,
-  getDefaultLeverCompanies,
-} from "./sources/lever.js";
 import type { UnifiedJob } from "./job-schema.js";
 import { logger } from "../logger.js";
 
 /**
- * Filter jobs from ATS sources (Greenhouse, Lever) by query keywords.
- * These sources return ALL jobs from a company board — we need to narrow
- * down to roles that actually match what the user searched for.
+ * Filter Greenhouse jobs by title-only keyword match.
+ * Description-based matching is too broad — words like "Manager" or "Data"
+ * appear in virtually every job and cause thousands of false positives.
+ * Title matching is strict and meaningful.
  */
-function filterByQuery(jobs: UnifiedJob[], query: string): UnifiedJob[] {
+function filterByTitleQuery(jobs: UnifiedJob[], query: string): UnifiedJob[] {
   if (!query.trim()) return jobs;
+  // Split into meaningful words (4+ chars to avoid noise like "and", "for")
   const keywords = query
     .toLowerCase()
     .split(/\s+/)
-    .filter((w) => w.length > 2);
+    .filter((w) => w.length >= 4);
   if (!keywords.length) return jobs;
   return jobs.filter((job) => {
-    const haystack = `${job.title} ${job.description ?? ""}`.toLowerCase();
-    return keywords.some((kw) => haystack.includes(kw));
+    const title = job.title.toLowerCase();
+    // At least one keyword must appear in the title
+    return keywords.some((kw) => title.includes(kw));
   });
+}
+
+/**
+ * Filter jobs by country code.
+ * Keeps jobs whose inferred country matches the requested country.
+ * Also keeps jobs with no inferred country (unknown) OR remote jobs
+ * so we don't over-filter when country detection is uncertain.
+ */
+function filterByCountry(jobs: UnifiedJob[], country: string): UnifiedJob[] {
+  if (!country) return jobs;
+  return jobs.filter(
+    (job) => !job.country || job.country === country || job.country === "remote",
+  );
 }
 
 export interface DiscoveryInput {
@@ -41,7 +53,6 @@ export interface DiscoveryResult {
   sourceBreakdown: {
     google_jobs: number;
     greenhouse: number;
-    lever: number;
   };
   errors: string[];
 }
@@ -49,9 +60,11 @@ export interface DiscoveryResult {
 /**
  * Orchestrate all discovery sources.
  *
- * - Calls Google Jobs (SerpApi), Greenhouse, and Lever in parallel
- * - Tolerates partial failures — one source failure never breaks the whole search
- * - Returns merged results plus a per-source breakdown and any error messages
+ * Sources:
+ *  - Google Jobs via SerpApi (query + country aware, primary source)
+ *  - Greenhouse ATS (company boards, filtered by title keywords + country)
+ *
+ * Lever is excluded — all tested company handles currently return 404.
  */
 export async function discoverJobsFromSources(
   input: DiscoveryInput,
@@ -66,20 +79,15 @@ export async function discoverJobsFromSources(
 
   const errors: string[] = [];
 
-  // ── Run all sources in parallel ──────────────────────────────────────────
+  // ── Run sources in parallel ───────────────────────────────────────────────
 
-  const [googleResult, greenhouseResult, leverResult] = await Promise.allSettled([
-    // Google Jobs via SerpApi
+  const [googleResult, greenhouseResult] = await Promise.allSettled([
+    // Google Jobs via SerpApi — respects query + country natively
     fetchGoogleJobs({ query, country, location, remoteOnly, limit: effectiveLimit }),
 
-    // Greenhouse ATS (seeded board tokens)
+    // Greenhouse ATS — fetch all boards then filter locally
     fetchGreenhouseJobs({
       boardTokens: getDefaultGreenhouseBoardTokens(query, country),
-    }),
-
-    // Lever ATS (seeded company handles)
-    fetchLeverJobs({
-      companies: getDefaultLeverCompanies(query, country),
     }),
   ]);
 
@@ -98,25 +106,20 @@ export async function discoverJobsFromSources(
     logger.warn({ err: greenhouseResult.reason }, "Greenhouse source failed");
     errors.push(`greenhouse: ${msg}`);
   }
-  const greenhouseJobs = filterByQuery(greenhouseRaw, query);
 
-  const leverRaw: UnifiedJob[] =
-    leverResult.status === "fulfilled" ? leverResult.value : [];
-  if (leverResult.status === "rejected") {
-    const msg = String(leverResult.reason?.message ?? leverResult.reason);
-    logger.warn({ err: leverResult.reason }, "Lever source failed");
-    errors.push(`lever: ${msg}`);
-  }
-  const leverJobs = filterByQuery(leverRaw, query);
+  // Apply title-keyword filter then country filter for Greenhouse
+  const greenhouseFiltered = filterByTitleQuery(greenhouseRaw, query);
+  const greenhouseJobs = country
+    ? filterByCountry(greenhouseFiltered, country)
+    : greenhouseFiltered;
 
-  const jobs = [...googleJobs, ...greenhouseJobs, ...leverJobs];
+  const jobs = [...googleJobs, ...greenhouseJobs];
 
   return {
     jobs,
     sourceBreakdown: {
       google_jobs: googleJobs.length,
       greenhouse: greenhouseJobs.length,
-      lever: leverJobs.length,
     },
     errors,
   };
