@@ -55,7 +55,16 @@ const COUNTRY_HINTS: Array<{ pattern: RegExp; country: string }> = [
   { pattern: /\baustri[ae]\b|\bvienna\b/i, country: "at" },
   { pattern: /\bunited kingdom\b|\blondon\b|\bmanchester\b|\bedinburgh\b|\bbirmingham\b/i, country: "gb" },
   { pattern: /\bireland\b|\bdublin\b/i, country: "ie" },
-  { pattern: /\bunited states\b|\bnew york\b|\bsan francisco\b|\blos angeles\b|\bchicago\b|\bseattle\b|\busa\b|\bu\.s\.a\./i, country: "us" },
+  {
+    // US state abbreviations in "City, ST" format (e.g. "Jacksonville, FL")
+    pattern: /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\s*$/i,
+    country: "us",
+  },
+  {
+    // Common US city names not covered by state abbreviations
+    pattern: /\bunited states\b|\bnew york\b|\bsan francisco\b|\blos angeles\b|\bchicago\b|\bseattle\b|\busa\b|\bu\.s\.a\b|\baustin\b|\bdenver\b|\batlanta\b|\bboston\b|\bmiami\b|\bhouston\b|\bdallas\b|\bphoenix\b|\bportland\b|\bnashville\b|\bminneapolis\b|\bdetroit\b|\bcolumbus\b|\bcharlotte\b|\blas vegas\b|\bsalt lake\b|\bphiladelphia\b|\bsan diego\b|\bsan jose\b|\bpittsburgh\b|\bcleveland\b/i,
+    country: "us",
+  },
   { pattern: /\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b/i, country: "au" },
   { pattern: /\bcanada\b|\btoronto\b|\bvancouver\b|\bmontreal\b/i, country: "ca" },
   { pattern: /\bsingapore\b/i, country: "sg" },
