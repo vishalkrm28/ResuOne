@@ -13,6 +13,7 @@ import {
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { logger } from "../lib/logger.js";
 import { spendCredits, canSpendCredits } from "../lib/credits.js";
+import { logFeatureUsage } from "../lib/billing/feature-usage.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { AI_MODELS } from "../services/ai.js";
 import { buildInterviewPrepPrompt } from "../lib/tracker/interview-prep-prompts.js";
@@ -220,6 +221,14 @@ router.post("/interview-prep/generate", authMiddleware, async (req, res) => {
     .orderBy(asc(interviewQuestionAnswersTable.displayOrder));
 
   res.status(201).json({ prep, questions });
+  void logFeatureUsage({
+    userId,
+    featureKey: "interview_prep",
+    referenceType: "interview_prep",
+    referenceId: prep.id,
+    creditsUsed: 1,
+    metadata: { applicationId: app.id, questionCount: questions.length },
+  });
 });
 
 // ─── GET /api/interview-prep/list ────────────────────────────────────────────

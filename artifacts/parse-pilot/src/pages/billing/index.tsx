@@ -12,6 +12,7 @@ import {
   listPlans,
   getCreditBalance,
   getBillingStatus,
+  checkEntitlement,
   FEATURE_LABELS,
   type Plan,
   type CreditBalance,
@@ -80,20 +81,21 @@ export default function BillingPage() {
 
   const load = useCallback(async () => {
     try {
-      const [ps, bal, status] = await Promise.all([
+      const [ps, bal, status, planCheck] = await Promise.all([
         listPlans(),
         getCreditBalance().catch(() => null),
         getBillingStatus().catch(() => null),
+        checkEntitlement("cv_analysis_enabled").catch(() => null),
       ]);
       setPlans(ps);
       setBalance(bal);
       setBillingStatus(status);
 
-      // Determine current plan code from billing status
-      if (status) {
-        if (status.isPro) setCurrentPlanCode("pro");
-        // Recruiter detection: we check subscription price ID if available
-        // Keep it simple — if Pro, show pro; otherwise free
+      // Use the entitlement resolver which knows the user's exact plan code
+      if (planCheck?.planCode) {
+        setCurrentPlanCode(planCheck.planCode);
+      } else if (status?.isPro) {
+        setCurrentPlanCode("pro");
       }
     } catch (err) {
       toast({ variant: "destructive", title: "Failed to load billing info" });

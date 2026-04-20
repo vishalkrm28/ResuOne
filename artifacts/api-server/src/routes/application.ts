@@ -10,6 +10,7 @@ import {
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { logger } from "../lib/logger.js";
 import { spendCredits, CREDIT_COSTS, canSpendCredits } from "../lib/credits.js";
+import { logFeatureUsage } from "../lib/billing/feature-usage.js";
 import { tailorCv, generateCoverLetter, generateAtsImprovements } from "../services/tailoring-ai.js";
 import {
   buildDefaultTailoredCvVersionName,
@@ -231,6 +232,14 @@ router.post("/application/tailor-cv", authMiddleware, async (req, res) => {
     .returning();
 
   res.status(201).json(formatTailoredCvDetail(saved));
+  void logFeatureUsage({
+    userId,
+    featureKey: "tailored_cv",
+    referenceType: "tailored_cv",
+    referenceId: saved.id,
+    creditsUsed: CREDIT_COSTS.tailored_cv,
+    metadata: { jobTitle: resolvedJobTitle, jobCompany: resolvedJobCompany },
+  });
 });
 
 // ─── POST /api/application/cover-letter ──────────────────────────────────────
@@ -338,6 +347,14 @@ router.post("/application/cover-letter", authMiddleware, async (req, res) => {
     .returning();
 
   res.status(201).json(formatCoverLetter(saved));
+  void logFeatureUsage({
+    userId,
+    featureKey: "cover_letter",
+    referenceType: "cover_letter",
+    referenceId: saved.id,
+    creditsUsed: CREDIT_COSTS.cover_letter,
+    metadata: { jobTitle: resolvedJobTitle, jobCompany: resolvedJobCompany, tone: resolvedTone },
+  });
 });
 
 // ─── GET /api/application/tailored-cvs ───────────────────────────────────────

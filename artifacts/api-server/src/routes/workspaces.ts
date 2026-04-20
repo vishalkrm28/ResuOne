@@ -6,6 +6,7 @@
 
 import { Router, type IRouter } from "express";
 import { z } from "zod";
+import nodemailer from "nodemailer";
 import { db, plansTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
@@ -155,8 +156,54 @@ router.post("/workspaces/:id/invite", async (req, res) => {
       invitedByUserId: req.user.id,
     });
 
+    // Send invite email via SMTP (non-fatal)
+    const smtpUser = process.env["SMTP_USER"];
+    const smtpPass = process.env["SMTP_PASS"];
+    const appBase = process.env["APP_BASE_URL"] ?? "https://resuone.com";
+    const acceptUrl = `${appBase}/workspaces/accept?token=${invite.token}`;
+    if (smtpUser && smtpPass) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: "smtppro.zoho.eu",
+          port: 465,
+          secure: true,
+          auth: { user: smtpUser, pass: smtpPass },
+        });
+        await transporter.sendMail({
+          from: `"ResuOne" <${smtpUser}>`,
+          to: parsed.data.email,
+          subject: `You've been invited to join ${ws.name} on ResuOne`,
+          text: [
+            `Hi there,`,
+            ``,
+            `You've been invited to join the workspace "${ws.name}" on ResuOne as a ${parsed.data.role}.`,
+            ``,
+            `Accept your invitation here:`,
+            acceptUrl,
+            ``,
+            `This link expires in 7 days. If you weren't expecting this invite, you can safely ignore it.`,
+            ``,
+            `— The ResuOne Team`,
+          ].join("\n"),
+          html: `
+            <p>Hi there,</p>
+            <p>You've been invited to join the workspace <strong>${ws.name}</strong> on ResuOne as a <strong>${parsed.data.role}</strong>.</p>
+            <p><a href="${acceptUrl}" style="display:inline-block;padding:10px 20px;background:#6366f1;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Accept Invitation</a></p>
+            <p>Or copy this link: <a href="${acceptUrl}">${acceptUrl}</a></p>
+            <p style="color:#888;font-size:12px;">This link expires in 7 days. If you weren't expecting this invite, you can safely ignore it.</p>
+            <p>— The ResuOne Team</p>
+          `,
+        });
+        logger.info({ email: parsed.data.email, workspaceId: ws.id }, "Workspace invite email sent");
+      } catch (emailErr) {
+        logger.warn({ emailErr }, "Workspace invite email failed — invite still created");
+      }
+    } else {
+      logger.warn("SMTP not configured — workspace invite email skipped");
+    }
+
     // Return invite link token — caller can share this link
-    const inviteLink = `/invite-response?token=${invite.token}`;
+    const inviteLink = `/workspaces/accept?token=${invite.token}`;
     res.json({ invite, inviteLink });
   } catch (err: any) {
     if (err.status === 403) { res.status(403).json({ error: err.message }); return; }

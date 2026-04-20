@@ -60,6 +60,7 @@ import NotificationSettingsPage from "@/pages/settings/notifications";
 import IntegrationsPage from "@/pages/integrations/index";
 import WorkspacesPage from "@/pages/workspaces/index";
 import WorkspaceDetailPage from "@/pages/workspaces/workspace-detail";
+import AcceptInvitePage from "@/pages/workspaces/accept-invite";
 import BillingPage from "@/pages/billing/index";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
@@ -144,6 +145,7 @@ function AppRouter() {
       <Route path="/settings/notifications" component={NotificationSettingsPage} />
       <Route path="/integrations" component={IntegrationsPage} />
       <Route path="/billing" component={BillingPage} />
+      <Route path="/workspaces/accept" component={AcceptInvitePage} />
       <Route path="/workspaces/:id" component={WorkspaceDetailPage} />
       <Route path="/workspaces" component={WorkspacesPage} />
       <Route component={NotFound} />

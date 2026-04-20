@@ -13,6 +13,7 @@ import {
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { logger } from "../lib/logger.js";
 import { spendCredits, canSpendCredits } from "../lib/credits.js";
+import { logFeatureUsage } from "../lib/billing/feature-usage.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { AI_MODELS } from "../services/ai.js";
 import { createTimelineEvent } from "../lib/tracker/tracker-helpers.js";
@@ -177,6 +178,14 @@ router.post("/mock-interview/create-session", authMiddleware, async (req, res) =
   });
 
   res.json({ session, questions });
+  void logFeatureUsage({
+    userId,
+    featureKey: "mock_interview_session",
+    referenceType: "mock_interview_session",
+    referenceId: session.id,
+    creditsUsed: 1,
+    metadata: { sessionType: body.sessionType, questionCount: questions.length, applicationId: app.id },
+  });
 });
 
 // ─── GET /api/mock-interview/list-sessions ────────────────────────────────────
@@ -386,6 +395,14 @@ router.post("/mock-interview/evaluate-answer", authMiddleware, async (req, res) 
   }
 
   res.json({ answer, feedback });
+  void logFeatureUsage({
+    userId,
+    featureKey: "mock_interview_evaluate",
+    referenceType: "mock_interview_answer",
+    referenceId: answer.id,
+    creditsUsed: 1,
+    metadata: { sessionId: body.sessionId, questionId: body.questionId, score: feedback.score },
+  });
 });
 
 // ─── POST /api/mock-interview/complete-session ────────────────────────────────
