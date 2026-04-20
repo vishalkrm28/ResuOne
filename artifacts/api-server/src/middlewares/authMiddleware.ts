@@ -4,6 +4,7 @@ import type { AuthUser } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { initFreeCredits } from "../lib/credits.js";
+import { logger } from "../lib/logger.js";
 
 declare global {
   namespace Express {
@@ -92,7 +93,9 @@ export async function authMiddleware(
             existingUser.lastName = lastName;
             existingUser.profileImageUrl = profileImageUrl;
           }
-        } catch (_) { /* silent — use what we have */ }
+        } catch (profileSyncErr) {
+          logger.warn({ profileSyncErr, userId }, "Non-fatal: failed to sync Clerk profile to DB — auth proceeds with cached data");
+        }
       }
       req.user = {
         id: existingUser.id,

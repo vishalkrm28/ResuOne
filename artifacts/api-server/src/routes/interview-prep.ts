@@ -55,13 +55,12 @@ router.post("/interview-prep/generate", authMiddleware, async (req, res) => {
     });
     return;
   }
-  try {
-    await spendCredits(userId, 1, "interview_prep", { source: "interview_prep_generate" });
-  } catch (spendErr) {
-    logger.error({ spendErr, userId }, "Credit spend failed before interview prep AI call");
+  const spendResult = await spendCredits(userId, 1, "interview_prep", { source: "interview_prep_generate" });
+  if (!spendResult.success) {
+    logger.warn({ userId }, "Interview prep credit deduction failed (race or insufficient balance)");
     res.status(402).json({
-      error: "Failed to deduct credits. Please try again.",
-      code: "CREDIT_DEDUCTION_FAILED",
+      error: "Not enough credits to generate interview prep. Upgrade to Pro or unlock a CV.",
+      code: "INSUFFICIENT_CREDITS",
     });
     return;
   }
