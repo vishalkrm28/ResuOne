@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { authedFetch } from "@/lib/authed-fetch";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 import {
   MapPin,
   Building2,
@@ -58,24 +59,6 @@ interface DiscoverResponse {
   sourceBreakdown: Record<string, number>;
   errors?: string[];
 }
-
-// ─── Country options ──────────────────────────────────────────────────────────
-
-const COUNTRY_OPTIONS = [
-  { code: "", label: "All countries" },
-  { code: "se", label: "Sweden" },
-  { code: "us", label: "United States" },
-  { code: "gb", label: "United Kingdom" },
-  { code: "de", label: "Germany" },
-  { code: "nl", label: "Netherlands" },
-  { code: "dk", label: "Denmark" },
-  { code: "no", label: "Norway" },
-  { code: "fi", label: "Finland" },
-  { code: "au", label: "Australia" },
-  { code: "ca", label: "Canada" },
-  { code: "sg", label: "Singapore" },
-  { code: "fr", label: "France" },
-];
 
 // ─── Source badge ─────────────────────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -588,25 +589,9 @@ export default function JobRecommendations() {
                   onChange={(e) => setCountry(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <option value="gb">United Kingdom</option>
-                  <option value="us">United States</option>
-                  <option value="au">Australia</option>
-                  <option value="ca">Canada</option>
-                  <option value="de">Germany</option>
-                  <option value="fr">France</option>
-                  <option value="nl">Netherlands</option>
-                  <option value="be">Belgium</option>
-                  <option value="at">Austria</option>
-                  <option value="ch">Switzerland</option>
-                  <option value="es">Spain</option>
-                  <option value="it">Italy</option>
-                  <option value="pl">Poland</option>
-                  <option value="sg">Singapore</option>
-                  <option value="in">India</option>
-                  <option value="nz">New Zealand</option>
-                  <option value="za">South Africa</option>
-                  <option value="br">Brazil</option>
-                  <option value="mx">Mexico</option>
+                  {COUNTRY_OPTIONS.filter(c => c.code !== "").map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
                 </select>
               </div>
 
