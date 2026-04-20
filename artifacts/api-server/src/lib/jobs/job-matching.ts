@@ -97,12 +97,14 @@ export async function matchDiscoveredJobsWithAI({
     remotePreferred: remoteOnly,
   };
 
-  // Pre-score and take top 25 for AI ranking
-  const topJobs = preScoreDiscoveredJobs(jobs, signals, remoteOnly, 25);
+  // Pre-score and take top 50 for AI ranking (matches the default return limit
+  // so every job shown in the UI receives analysis).
+  const topJobs = preScoreDiscoveredJobs(jobs, signals, remoteOnly, 50);
 
   if (!topJobs.length) return [];
 
-  // Build compact job representations for AI (avoid sending huge raw payloads)
+  // Build compact job representations for AI (avoid sending huge raw payloads).
+  // Description is trimmed to 500 chars so the total prompt stays reasonable at 50 jobs.
   const compactJobs = topJobs.map((j) => ({
     canonical_key: (j.metadata?.canonicalKey as string) ?? j.externalId,
     title: j.title,
@@ -112,8 +114,8 @@ export async function matchDiscoveredJobsWithAI({
     remote: j.remote,
     employment_type: j.employmentType,
     seniority: j.seniority,
-    description: j.description.slice(0, 800),
-    skills: j.skills.slice(0, 10),
+    description: j.description.slice(0, 500),
+    skills: j.skills.slice(0, 8),
   }));
 
   // Build compact candidate profile
@@ -139,7 +141,7 @@ export async function matchDiscoveredJobsWithAI({
       model: AI_MODEL,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
-      max_completion_tokens: 3000,
+      max_completion_tokens: 5000,
     });
     rawResponse = completion.choices[0]?.message?.content ?? "";
   } catch (err) {
