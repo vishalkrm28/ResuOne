@@ -76,6 +76,8 @@ interface CompletedResult {
   missingCount: number;
   jobTitle: string;
   company: string;
+  interviewRecommendation?: string;
+  recruiterHeadline?: string;
 }
 
 type PageView = "session" | "results";
@@ -236,6 +238,24 @@ function ScoreLabel({ score }: { score: number }) {
   return <span className="text-xs font-semibold text-red-600">Weak match</span>;
 }
 
+// ─── Interview verdict badge ──────────────────────────────────────────────────
+
+const VERDICT_CONFIG: Record<string, { label: string; cls: string }> = {
+  strong_yes: { label: "Strong Yes", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  yes:        { label: "Yes",         cls: "bg-blue-100 text-blue-800 border-blue-200" },
+  maybe:      { label: "Maybe",       cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  no:         { label: "No",          cls: "bg-red-100 text-red-800 border-red-200" },
+};
+
+function VerdictBadge({ verdict }: { verdict: string }) {
+  const cfg = VERDICT_CONFIG[verdict] ?? VERDICT_CONFIG.maybe;
+  return (
+    <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border", cfg.cls)}>
+      {cfg.label}
+    </span>
+  );
+}
+
 // ─── Results list view ────────────────────────────────────────────────────────
 
 interface ResultsViewProps {
@@ -314,7 +334,15 @@ function ResultsView({ results, onBack, onViewDetail }: ResultsViewProps) {
 
                   {/* File info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{result.fileName}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold truncate">{result.fileName}</p>
+                      {result.interviewRecommendation && (
+                        <VerdictBadge verdict={result.interviewRecommendation} />
+                      )}
+                    </div>
+                    {result.recruiterHeadline && (
+                      <p className="text-xs text-muted-foreground truncate mt-0.5 max-w-xs">{result.recruiterHeadline}</p>
+                    )}
                     <div className="flex items-center gap-3 mt-0.5">
                       <ScoreLabel score={result.score} />
                       <span className="text-muted-foreground text-xs">·</span>
@@ -577,6 +605,8 @@ export default function BulkSession() {
         missingCount: result.missingKeywords.length,
         jobTitle: jobTitle.trim() || "Bulk Analysis",
         company: company.trim() || "—",
+        interviewRecommendation: result.interviewRecommendation ?? undefined,
+        recruiterHeadline: result.recruiterSummary?.headline ?? undefined,
       });
     } catch (err: unknown) {
       const body = (err as any)?.response?.data as { error?: string } | undefined;

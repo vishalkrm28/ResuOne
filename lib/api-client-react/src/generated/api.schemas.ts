@@ -114,10 +114,23 @@ export interface ParsedCv {
   summary: string | null;
   work_experience: ParsedWorkExperience[];
   education: ParsedEducation[];
+  total_years_experience?: number | null;
   skills: string[];
+  tools?: string[];
   certifications: string[];
   languages: string[];
 }
+
+export type ApplicationInterviewRecommendation =
+  | (typeof ApplicationInterviewRecommendation)[keyof typeof ApplicationInterviewRecommendation]
+  | null;
+
+export const ApplicationInterviewRecommendation = {
+  strong_yes: "strong_yes",
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
 
 export type ApplicationStatus =
   (typeof ApplicationStatus)[keyof typeof ApplicationStatus];
@@ -160,6 +173,15 @@ export interface ScoringBreakdown {
   inputHash: string;
 }
 
+export interface RecruiterSummary {
+  headline: string;
+  topStrengths: string[];
+  keyRisks: string[];
+  recommendedRoles: string[];
+  seniorityGuess: string;
+  summary: string;
+}
+
 export interface Application {
   id: string;
   userId: string;
@@ -177,6 +199,8 @@ export interface Application {
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
   scoringBreakdownJson?: ScoringBreakdown | null;
+  interviewRecommendation?: ApplicationInterviewRecommendation;
+  recruiterSummaryJson?: RecruiterSummary | null;
   status: ApplicationStatus;
   createdAt: string;
   updatedAt: string;
@@ -219,8 +243,17 @@ export type AnalyzeApplicationBodyConfirmedAnswers = { [key: string]: string };
 
 export interface AnalyzeApplicationBody {
   confirmedAnswers?: AnalyzeApplicationBodyConfirmedAnswers;
-  isBulkSession?: boolean;
 }
+
+export type AnalysisResultInterviewRecommendation =
+  (typeof AnalysisResultInterviewRecommendation)[keyof typeof AnalysisResultInterviewRecommendation];
+
+export const AnalysisResultInterviewRecommendation = {
+  strong_yes: "strong_yes",
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
 
 export interface AnalysisResult {
   tailoredCvText: string;
@@ -229,6 +262,8 @@ export interface AnalysisResult {
   matchedKeywords: string[];
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
+  interviewRecommendation: AnalysisResultInterviewRecommendation;
+  recruiterSummary: RecruiterSummary;
 }
 
 export type GenerateCoverLetterBodyTone =

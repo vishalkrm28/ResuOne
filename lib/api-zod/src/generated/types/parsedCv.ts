@@ -16,7 +16,9 @@ export interface ParsedCv {
   summary: string | null;
   work_experience: ParsedWorkExperience[];
   education: ParsedEducation[];
+  total_years_experience?: number | null;
   skills: string[];
+  tools?: string[];
   certifications: string[];
   languages: string[];
 }

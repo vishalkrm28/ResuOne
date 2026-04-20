@@ -9,5 +9,4 @@ import type { AnalyzeApplicationBodyConfirmedAnswers } from "./analyzeApplicatio
 
 export interface AnalyzeApplicationBody {
   confirmedAnswers?: AnalyzeApplicationBodyConfirmedAnswers;
-  isBulkSession?: boolean;
 }

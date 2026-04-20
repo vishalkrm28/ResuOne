@@ -28,9 +28,11 @@ export const ParsedCvSchema = z.object({
   github: z.string().nullable().optional(),
   location: z.string().nullable(),
   summary: z.string().nullable(),
+  total_years_experience: z.number().nullable().optional(),
   work_experience: z.array(ParsedWorkExperienceSchema),
   education: z.array(ParsedEducationSchema),
   skills: z.array(z.string()),
+  tools: z.array(z.string()).optional(),
   certifications: z.array(z.string()),
   languages: z.array(z.string()),
 });
@@ -52,6 +54,19 @@ export const ParsedJobDescriptionSchema = z.object({
 
 export type ParsedJobDescription = z.infer<typeof ParsedJobDescriptionSchema>;
 
+// ─── Recruiter Summary ───────────────────────────────────────────────────────
+
+export const RecruiterSummarySchema = z.object({
+  headline: z.string(),
+  topStrengths: z.array(z.string()),
+  keyRisks: z.array(z.string()),
+  recommendedRoles: z.array(z.string()),
+  seniorityGuess: z.string(),
+  summary: z.string(),
+});
+
+export type RecruiterSummary = z.infer<typeof RecruiterSummarySchema>;
+
 // ─── Applications Table ──────────────────────────────────────────────────────
 
 export const applicationsTable = pgTable("applications", {
@@ -71,6 +86,8 @@ export const applicationsTable = pgTable("applications", {
   missingInfoQuestions: jsonb("missing_info_questions").$type<string[]>().default([]).notNull(),
   sectionSuggestions: jsonb("section_suggestions").$type<string[]>().default([]).notNull(),
   scoringBreakdownJson: jsonb("scoring_breakdown_json").$type<Record<string, unknown>>(),
+  interviewRecommendation: text("interview_recommendation"),
+  recruiterSummaryJson: jsonb("recruiter_summary_json").$type<RecruiterSummary>(),
   inputHash: text("input_hash"),
   status: text("status", { enum: ["draft", "analyzed", "exported"] }).default("draft").notNull(),
   identityFlagged: boolean("identity_flagged").default(false).notNull(),

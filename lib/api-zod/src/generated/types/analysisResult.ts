@@ -5,6 +5,8 @@
  * ParsePilot AI API specification
  * OpenAPI spec version: 0.2.0
  */
+import type { AnalysisResultInterviewRecommendation } from "./analysisResultInterviewRecommendation";
+import type { RecruiterSummary } from "./recruiterSummary";
 
 export interface AnalysisResult {
   tailoredCvText: string;
@@ -13,4 +15,6 @@ export interface AnalysisResult {
   matchedKeywords: string[];
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
+  interviewRecommendation: AnalysisResultInterviewRecommendation;
+  recruiterSummary: RecruiterSummary;
 }

@@ -2,6 +2,13 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import type { ParsedCv, ParsedJobDescription } from "@workspace/db";
 import { z } from "zod";
 
+// ─── Model abstraction ────────────────────────────────────────────────────────
+// Override via env vars: AI_MODEL_MAIN / AI_MODEL_FAST
+export const AI_MODELS = {
+  MAIN: process.env.AI_MODEL_MAIN ?? "gpt-5.2",
+  FAST: process.env.AI_MODEL_FAST ?? "gpt-5.2",
+} as const;
+
 // ─── Local Zod schemas (use "zod" not "zod/v4" for esbuild compat) ─────────
 
 const LocalParsedCvSchema = z.object({
@@ -12,6 +19,7 @@ const LocalParsedCvSchema = z.object({
   github: z.string().nullable().catch(null),
   location: z.string().nullable().catch(null),
   summary: z.string().nullable().catch(null),
+  total_years_experience: z.number().nullable().catch(null),
   work_experience: z
     .array(
       z.object({
@@ -35,6 +43,7 @@ const LocalParsedCvSchema = z.object({
     )
     .catch([]),
   skills: z.array(z.string()).catch([]),
+  tools: z.array(z.string()).catch([]),
   certifications: z.array(z.string()).catch([]),
   languages: z.array(z.string()).catch([]),
 });
@@ -50,10 +59,23 @@ const LocalParsedJdSchema = z.object({
   location_type: z.enum(["remote", "hybrid", "onsite"]).nullable().catch(null),
 });
 
+const RecruiterSummaryOutputSchema = z.object({
+  headline: z.string().catch(""),
+  topStrengths: z.array(z.string()).catch([]),
+  keyRisks: z.array(z.string()).catch([]),
+  recommendedRoles: z.array(z.string()).catch([]),
+  seniorityGuess: z.string().catch(""),
+  summary: z.string().catch(""),
+});
+
 const AnalysisOutputSchema = z.object({
   tailoredCvText: z.string().catch(""),
   missingInfoQuestions: z.array(z.string()).catch([]),
   sectionSuggestions: z.array(z.string()).catch([]),
+  interviewRecommendation: z.enum(["strong_yes", "yes", "maybe", "no"]).catch("maybe"),
+  recruiterSummary: RecruiterSummaryOutputSchema.catch({
+    headline: "", topStrengths: [], keyRisks: [], recommendedRoles: [], seniorityGuess: "", summary: "",
+  }),
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -79,9 +101,11 @@ ABSOLUTE RULES — violation is unacceptable:
 - Dates must be in the original format from the CV (e.g. "Jan 2021", "2019–2022", "Present")
 - For end_date: use null when the role is current/ongoing
 - bullets: extract each distinct achievement or responsibility as a separate string
-- skills: flat array of all technical and soft skills mentioned
-- certifications: only formal certifications/licences (not skills)
+- skills: flat array of technical and soft skills (programming languages, frameworks, methodologies, soft skills)
+- tools: flat array of software tools, platforms, and applications (e.g. Jira, Figma, Salesforce, Excel, Slack) — keep separate from skills
+- certifications: only formal certifications/licences (not skills or tools)
 - languages: human languages only (not programming languages)
+- total_years_experience: estimate total professional work experience in years as a number (e.g. 5.5). Calculate from work_experience dates. Use 0 if unclear.
 
 Return JSON matching this exact schema:
 {
@@ -92,9 +116,11 @@ Return JSON matching this exact schema:
   "github": "full GitHub URL or null (e.g. https://github.com/username)",
   "location": "city/country or null",
   "summary": "string or null",
+  "total_years_experience": 0,
   "work_experience": [{"company":"string","title":"string","start_date":"string","end_date":"string|null","bullets":["string"]}],
   "education": [{"institution":"string","degree":"string","field":"string|null","start_date":"string|null","end_date":"string|null"}],
   "skills": ["string"],
+  "tools": ["string"],
   "certifications": ["string"],
   "languages": ["string"]
 }`;
@@ -105,7 +131,7 @@ export async function parseCv(rawText: string): Promise<ParsedCv> {
   }
 
   const response = await openai.responses.create({
-    model: "gpt-5.2",
+    model: AI_MODELS.MAIN,
     instructions: CV_PARSE_INSTRUCTIONS,
     input: [
       {
@@ -176,7 +202,7 @@ export async function parseJobDescription(jobDescription: string): Promise<Parse
   }
 
   const response = await openai.responses.create({
-    model: "gpt-5.2",
+    model: AI_MODELS.FAST,
     instructions: JD_PARSE_INSTRUCTIONS,
     input: [
       {
@@ -213,10 +239,21 @@ export interface AnalysisInput {
   confirmedAnswers?: Record<string, string>;
 }
 
+export interface RecruiterSummaryOutput {
+  headline: string;
+  topStrengths: string[];
+  keyRisks: string[];
+  recommendedRoles: string[];
+  seniorityGuess: string;
+  summary: string;
+}
+
 export interface AnalysisOutput {
   tailoredCvText: string;
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
+  interviewRecommendation: "strong_yes" | "yes" | "maybe" | "no";
+  recruiterSummary: RecruiterSummaryOutput;
 }
 
 export async function analyzeCvForJob(input: AnalysisInput): Promise<AnalysisOutput> {
@@ -287,8 +324,24 @@ Return ONLY valid JSON matching this schema:
 {
   "tailoredCvText": "complete ATS-formatted CV using original CV content and any candidate-confirmed facts",
   "missingInfoQuestions": ["questions only for topics the candidate has NOT confirmed — skip any already answered above"],
-  "sectionSuggestions": ["concrete structural improvements to the CV — only based on existing or confirmed content"]
-}`;
+  "sectionSuggestions": ["concrete structural improvements to the CV — only based on existing or confirmed content"],
+  "interviewRecommendation": "strong_yes | yes | maybe | no — your honest hiring verdict based on CV vs. job requirements",
+  "recruiterSummary": {
+    "headline": "one-line candidate descriptor (e.g. 'Senior Full-Stack Engineer — 8 yrs, React/Node focus')",
+    "topStrengths": ["2–4 commercially relevant strengths from the CV"],
+    "keyRisks": ["1–3 honest risks or gaps a hiring manager should know about"],
+    "recommendedRoles": ["2–3 roles this candidate would suit based on their background"],
+    "seniorityGuess": "junior | mid | senior | lead | director | executive",
+    "summary": "2–3 sentence recruiter-focused summary — businesslike, direct, no fluff"
+  }
+}
+
+INTERVIEW RECOMMENDATION RULES:
+- strong_yes: Strong match (≥80% keyword coverage, relevant experience, no major gaps)
+- yes: Good match (60–79% coverage, mostly relevant, minor gaps acceptable)
+- maybe: Partial match (40–59% coverage, some relevance but significant gaps or mismatches)
+- no: Poor match (<40% coverage, missing critical requirements, or fundamental misalignment)
+Be commercially realistic — a flattering verdict helps no one.`;
 
   const USER_PROMPT = `JOB TITLE: ${input.jobTitle}
 COMPANY: ${input.company}
@@ -302,11 +355,11 @@ ${input.originalCvText}${confirmedSection}
 Analyze the CV against the job description. Return JSON.`;
 
   const response = await openai.responses.create({
-    model: "gpt-5.2",
+    model: AI_MODELS.MAIN,
     instructions: SYSTEM_PROMPT,
     input: [{ role: "user", content: USER_PROMPT }],
     text: { format: { type: "json_object" } },
-    max_output_tokens: 8192,
+    max_output_tokens: 10000,
   });
 
   const raw = parseJsonResponse(response.output_text, "CV analysis");
@@ -349,13 +402,29 @@ Analyze the CV against the job description. Return JSON.`;
     return isAlreadyAnswered(q) || isRedundantEducationQuestion(q);
   }
 
+  const defaultRecruiterSummary: RecruiterSummaryOutput = {
+    headline: "", topStrengths: [], keyRisks: [], recommendedRoles: [], seniorityGuess: "", summary: "",
+  };
+
   if (!result.success) {
     const r = raw as Record<string, unknown>;
     const questions = Array.isArray(r.missingInfoQuestions) ? (r.missingInfoQuestions as string[]) : [];
+    const rawRec = r.recruiterSummary as Record<string, unknown> | undefined;
     return {
       tailoredCvText: (r.tailoredCvText as string) ?? "",
       missingInfoQuestions: questions.filter(q => !shouldFilterQuestion(q)),
       sectionSuggestions: Array.isArray(r.sectionSuggestions) ? (r.sectionSuggestions as string[]) : [],
+      interviewRecommendation: (["strong_yes", "yes", "maybe", "no"].includes(r.interviewRecommendation as string)
+        ? r.interviewRecommendation
+        : "maybe") as "strong_yes" | "yes" | "maybe" | "no",
+      recruiterSummary: rawRec ? {
+        headline: (rawRec.headline as string) ?? "",
+        topStrengths: Array.isArray(rawRec.topStrengths) ? rawRec.topStrengths as string[] : [],
+        keyRisks: Array.isArray(rawRec.keyRisks) ? rawRec.keyRisks as string[] : [],
+        recommendedRoles: Array.isArray(rawRec.recommendedRoles) ? rawRec.recommendedRoles as string[] : [],
+        seniorityGuess: (rawRec.seniorityGuess as string) ?? "",
+        summary: (rawRec.summary as string) ?? "",
+      } : defaultRecruiterSummary,
     };
   }
   return {
@@ -478,7 +547,7 @@ ${input.additionalContext ? `\nADDITIONAL CONTEXT PROVIDED BY CANDIDATE: ${input
 Write the cover letter following the exact format specified.`;
 
   const response = await openai.responses.create({
-    model: "gpt-5.2",
+    model: AI_MODELS.MAIN,
     instructions: SYSTEM_PROMPT,
     input: [{ role: "user", content: USER_PROMPT }],
     max_output_tokens: 2048,

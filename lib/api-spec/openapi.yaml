@@ -641,7 +641,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ParsedEducation"
+        total_years_experience:
+          type: number
+          nullable: true
         skills:
+          type: array
+          items:
+            type: string
+        tools:
           type: array
           items:
             type: string
@@ -719,6 +726,15 @@ components:
           nullable: true
           oneOf:
             - $ref: "#/components/schemas/ScoringBreakdown"
+            - type: 'null'
+        interviewRecommendation:
+          type: string
+          nullable: true
+          enum: [strong_yes, yes, maybe, no]
+        recruiterSummaryJson:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/RecruiterSummary"
             - type: 'null'
         status:
           type: string
@@ -815,6 +831,35 @@ components:
           additionalProperties:
             type: string
 
+    RecruiterSummary:
+      type: object
+      properties:
+        headline:
+          type: string
+        topStrengths:
+          type: array
+          items:
+            type: string
+        keyRisks:
+          type: array
+          items:
+            type: string
+        recommendedRoles:
+          type: array
+          items:
+            type: string
+        seniorityGuess:
+          type: string
+        summary:
+          type: string
+      required:
+        - headline
+        - topStrengths
+        - keyRisks
+        - recommendedRoles
+        - seniorityGuess
+        - summary
+
     AnalysisResult:
       type: object
       properties:
@@ -838,6 +883,11 @@ components:
           type: array
           items:
             type: string
+        interviewRecommendation:
+          type: string
+          enum: [strong_yes, yes, maybe, no]
+        recruiterSummary:
+          $ref: "#/components/schemas/RecruiterSummary"
       required:
         - tailoredCvText
         - keywordMatchScore
@@ -845,6 +895,8 @@ components:
         - matchedKeywords
         - missingInfoQuestions
         - sectionSuggestions
+        - interviewRecommendation
+        - recruiterSummary
 
     GenerateCoverLetterBody:
       type: object

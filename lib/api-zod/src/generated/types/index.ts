@@ -7,11 +7,13 @@
  */
 
 export * from "./analysisResult";
+export * from "./analysisResultInterviewRecommendation";
 export * from "./analyzeApplicationBody";
 export * from "./analyzeApplicationBodyConfirmedAnswers";
 export * from "./apiError";
 export * from "./apiErrorDetailsItem";
 export * from "./application";
+export * from "./applicationInterviewRecommendation";
 export * from "./applicationStatus";
 export * from "./authorizationSessionHeaderParameter";
 export * from "./authUser";
@@ -35,6 +37,7 @@ export * from "./parsedJobDescription";
 export * from "./parsedJobDescriptionJobType";
 export * from "./parsedJobDescriptionLocationType";
 export * from "./parsedWorkExperience";
+export * from "./recruiterSummary";
 export * from "./saveCoverLetterBody";
 export * from "./saveTailoredCvBody";
 export * from "./scoringBreakdown";

@@ -123,7 +123,9 @@ export const ListApplicationsResponseItem = zod.object({
             end_date: zod.string().nullish(),
           }),
         ),
+        total_years_experience: zod.number().nullish(),
         skills: zod.array(zod.string()),
+        tools: zod.array(zod.string()).optional(),
         certifications: zod.array(zod.string()),
         languages: zod.array(zod.string()),
       }),
@@ -199,6 +201,22 @@ export const ListApplicationsResponseItem = zod.object({
       zod.null(),
     ])
     .nullish(),
+  interviewRecommendation: zod
+    .enum(["strong_yes", "yes", "maybe", "no"])
+    .nullish(),
+  recruiterSummaryJson: zod
+    .union([
+      zod.object({
+        headline: zod.string(),
+        topStrengths: zod.array(zod.string()),
+        keyRisks: zod.array(zod.string()),
+        recommendedRoles: zod.array(zod.string()),
+        seniorityGuess: zod.string(),
+        summary: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
   status: zod.enum(["draft", "analyzed", "exported"]),
   createdAt: zod.date(),
   updatedAt: zod.date(),
@@ -240,7 +258,9 @@ export const CreateApplicationBody = zod.object({
             end_date: zod.string().nullish(),
           }),
         ),
+        total_years_experience: zod.number().nullish(),
         skills: zod.array(zod.string()),
+        tools: zod.array(zod.string()).optional(),
         certifications: zod.array(zod.string()),
         languages: zod.array(zod.string()),
       }),
@@ -289,7 +309,9 @@ export const GetApplicationResponse = zod.object({
             end_date: zod.string().nullish(),
           }),
         ),
+        total_years_experience: zod.number().nullish(),
         skills: zod.array(zod.string()),
+        tools: zod.array(zod.string()).optional(),
         certifications: zod.array(zod.string()),
         languages: zod.array(zod.string()),
       }),
@@ -365,6 +387,22 @@ export const GetApplicationResponse = zod.object({
       zod.null(),
     ])
     .nullish(),
+  interviewRecommendation: zod
+    .enum(["strong_yes", "yes", "maybe", "no"])
+    .nullish(),
+  recruiterSummaryJson: zod
+    .union([
+      zod.object({
+        headline: zod.string(),
+        topStrengths: zod.array(zod.string()),
+        keyRisks: zod.array(zod.string()),
+        recommendedRoles: zod.array(zod.string()),
+        seniorityGuess: zod.string(),
+        summary: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
   status: zod.enum(["draft", "analyzed", "exported"]),
   createdAt: zod.date(),
   updatedAt: zod.date(),
@@ -408,7 +446,9 @@ export const UpdateApplicationBody = zod.object({
             end_date: zod.string().nullish(),
           }),
         ),
+        total_years_experience: zod.number().nullish(),
         skills: zod.array(zod.string()),
+        tools: zod.array(zod.string()).optional(),
         certifications: zod.array(zod.string()),
         languages: zod.array(zod.string()),
       }),
@@ -457,7 +497,9 @@ export const UpdateApplicationResponse = zod.object({
             end_date: zod.string().nullish(),
           }),
         ),
+        total_years_experience: zod.number().nullish(),
         skills: zod.array(zod.string()),
+        tools: zod.array(zod.string()).optional(),
         certifications: zod.array(zod.string()),
         languages: zod.array(zod.string()),
       }),
@@ -529,6 +571,22 @@ export const UpdateApplicationResponse = zod.object({
         missingKeywords: zod.array(zod.string()),
         detectedIndustry: zod.string(),
         inputHash: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
+  interviewRecommendation: zod
+    .enum(["strong_yes", "yes", "maybe", "no"])
+    .nullish(),
+  recruiterSummaryJson: zod
+    .union([
+      zod.object({
+        headline: zod.string(),
+        topStrengths: zod.array(zod.string()),
+        keyRisks: zod.array(zod.string()),
+        recommendedRoles: zod.array(zod.string()),
+        seniorityGuess: zod.string(),
+        summary: zod.string(),
       }),
       zod.null(),
     ])
@@ -589,7 +647,9 @@ export const SaveTailoredCvResponse = zod.object({
             end_date: zod.string().nullish(),
           }),
         ),
+        total_years_experience: zod.number().nullish(),
         skills: zod.array(zod.string()),
+        tools: zod.array(zod.string()).optional(),
         certifications: zod.array(zod.string()),
         languages: zod.array(zod.string()),
       }),
@@ -661,6 +721,22 @@ export const SaveTailoredCvResponse = zod.object({
         missingKeywords: zod.array(zod.string()),
         detectedIndustry: zod.string(),
         inputHash: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
+  interviewRecommendation: zod
+    .enum(["strong_yes", "yes", "maybe", "no"])
+    .nullish(),
+  recruiterSummaryJson: zod
+    .union([
+      zod.object({
+        headline: zod.string(),
+        topStrengths: zod.array(zod.string()),
+        keyRisks: zod.array(zod.string()),
+        recommendedRoles: zod.array(zod.string()),
+        seniorityGuess: zod.string(),
+        summary: zod.string(),
       }),
       zod.null(),
     ])
@@ -714,7 +790,9 @@ export const SaveCoverLetterResponse = zod.object({
             end_date: zod.string().nullish(),
           }),
         ),
+        total_years_experience: zod.number().nullish(),
         skills: zod.array(zod.string()),
+        tools: zod.array(zod.string()).optional(),
         certifications: zod.array(zod.string()),
         languages: zod.array(zod.string()),
       }),
@@ -790,6 +868,22 @@ export const SaveCoverLetterResponse = zod.object({
       zod.null(),
     ])
     .nullish(),
+  interviewRecommendation: zod
+    .enum(["strong_yes", "yes", "maybe", "no"])
+    .nullish(),
+  recruiterSummaryJson: zod
+    .union([
+      zod.object({
+        headline: zod.string(),
+        topStrengths: zod.array(zod.string()),
+        keyRisks: zod.array(zod.string()),
+        recommendedRoles: zod.array(zod.string()),
+        seniorityGuess: zod.string(),
+        summary: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
   status: zod.enum(["draft", "analyzed", "exported"]),
   createdAt: zod.date(),
   updatedAt: zod.date(),
@@ -804,7 +898,6 @@ export const AnalyzeApplicationParams = zod.object({
 
 export const AnalyzeApplicationBody = zod.object({
   confirmedAnswers: zod.record(zod.string(), zod.string()).optional(),
-  isBulkSession: zod.boolean().optional(),
 });
 
 export const AnalyzeApplicationResponse = zod.object({
@@ -814,6 +907,15 @@ export const AnalyzeApplicationResponse = zod.object({
   matchedKeywords: zod.array(zod.string()),
   missingInfoQuestions: zod.array(zod.string()),
   sectionSuggestions: zod.array(zod.string()),
+  interviewRecommendation: zod.enum(["strong_yes", "yes", "maybe", "no"]),
+  recruiterSummary: zod.object({
+    headline: zod.string(),
+    topStrengths: zod.array(zod.string()),
+    keyRisks: zod.array(zod.string()),
+    recommendedRoles: zod.array(zod.string()),
+    seniorityGuess: zod.string(),
+    summary: zod.string(),
+  }),
 });
 
 /**
@@ -871,7 +973,9 @@ export const ParseCvResponse = zod.object({
         end_date: zod.string().nullish(),
       }),
     ),
+    total_years_experience: zod.number().nullish(),
     skills: zod.array(zod.string()),
+    tools: zod.array(zod.string()).optional(),
     certifications: zod.array(zod.string()),
     languages: zod.array(zod.string()),
   }),
@@ -914,7 +1018,9 @@ export const UploadCvResponse = zod.object({
             end_date: zod.string().nullish(),
           }),
         ),
+        total_years_experience: zod.number().nullish(),
         skills: zod.array(zod.string()),
+        tools: zod.array(zod.string()).optional(),
         certifications: zod.array(zod.string()),
         languages: zod.array(zod.string()),
       }),

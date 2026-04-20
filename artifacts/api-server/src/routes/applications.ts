@@ -572,6 +572,8 @@ router.post("/applications/:id/analyze", async (req, res) => {
         missingInfoQuestions: result.missingInfoQuestions,
         sectionSuggestions: result.sectionSuggestions,
         scoringBreakdownJson: scoring as unknown as Record<string, unknown>,
+        interviewRecommendation: result.interviewRecommendation ?? null,
+        recruiterSummaryJson: result.recruiterSummary ?? null,
         inputHash: scoring.inputHash,
         parsedJdJson: parsedJd as any,
         status: "analyzed",

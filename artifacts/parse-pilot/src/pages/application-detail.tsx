@@ -32,6 +32,10 @@ import {
   ArrowLeft,
   Users,
   Info,
+  Brain,
+  TrendingUp,
+  AlertCircle,
+  Briefcase,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -247,9 +251,144 @@ function LockedExportBar() {
   );
 }
 
+// ─── Recruiter AI Panel ──────────────────────────────────────────────────────
+
+const VERDICT_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
+  strong_yes: { label: "Strong Yes — Recommend for interview",   bg: "bg-emerald-50", text: "text-emerald-800", border: "border-emerald-300" },
+  yes:        { label: "Yes — Good candidate, proceed",          bg: "bg-blue-50",    text: "text-blue-800",   border: "border-blue-300" },
+  maybe:      { label: "Maybe — Has potential, needs review",    bg: "bg-amber-50",   text: "text-amber-800",  border: "border-amber-300" },
+  no:         { label: "No — Not a strong fit for this role",    bg: "bg-red-50",     text: "text-red-800",    border: "border-red-300" },
+};
+
+function RecruiterAIPanel({ app }: { app: any }) {
+  const verdict = app.interviewRecommendation;
+  const rs = app.recruiterSummaryJson;
+  const hasData = verdict || rs?.headline;
+
+  if (!hasData) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-16 px-8 text-muted-foreground">
+        <Brain className="w-12 h-12 mb-4 opacity-20" />
+        <p className="font-medium mb-1">No recruiter analysis yet</p>
+        <p className="text-sm">Run an analysis to generate the interview verdict and recruiter summary.</p>
+      </div>
+    );
+  }
+
+  const cfg = verdict ? VERDICT_CONFIG[verdict] ?? VERDICT_CONFIG.maybe : null;
+
+  return (
+    <div className="space-y-5">
+      {/* Interview verdict */}
+      {cfg && (
+        <div className={cn("rounded-2xl border-2 p-5 flex items-start gap-4", cfg.bg, cfg.border)}>
+          <Brain className={cn("w-6 h-6 mt-0.5 shrink-0", cfg.text)} />
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Interview Verdict</p>
+            <p className={cn("text-lg font-extrabold", cfg.text)}>{cfg.label}</p>
+          </div>
+        </div>
+      )}
+
+      {rs && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Left: headline + summary */}
+          <div className="lg:col-span-2 space-y-4">
+            {rs.headline && (
+              <Card>
+                <CardContent className="p-5">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Candidate Headline</p>
+                  <p className="text-base font-semibold text-foreground">{rs.headline}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {rs.summary && (
+              <Card>
+                <CardContent className="p-5">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Recruiter Summary</p>
+                  <p className="text-sm text-foreground leading-relaxed">{rs.summary}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {rs.topStrengths?.length > 0 && (
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" />
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Top Strengths</p>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {rs.topStrengths.map((s: string, i: number) => (
+                        <li key={i} className="text-sm flex items-start gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {rs.keyRisks?.length > 0 && (
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Risks</p>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {rs.keyRisks.map((r: string, i: number) => (
+                        <li key={i} className="text-sm flex items-start gap-2">
+                          <XCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+
+          {/* Right: seniority + recommended roles */}
+          <div className="space-y-4">
+            {rs.seniorityGuess && (
+              <Card>
+                <CardContent className="p-5">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Seniority Level</p>
+                  <p className="text-lg font-extrabold capitalize text-foreground">{rs.seniorityGuess}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {rs.recommendedRoles?.length > 0 && (
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Briefcase className="w-4 h-4 text-primary" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Recommended Roles</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {rs.recommendedRoles.map((role: string, i: number) => (
+                      <li key={i} className="text-sm font-medium text-foreground bg-muted/60 rounded-lg px-3 py-2">{role}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
-type TabId = "cv" | "keywords" | "missing" | "cover" | "suggestions";
+type TabId = "cv" | "keywords" | "missing" | "cover" | "suggestions" | "recruiter";
 
 export default function ApplicationDetail() {
   const { id } = useParams<{ id: string }>();
@@ -453,6 +592,7 @@ export default function ApplicationDetail() {
     },
     { id: "suggestions", label: "Suggestions", icon: Lightbulb, count: app.sectionSuggestions?.length || 0 },
     { id: "cover", label: "Cover Letter", icon: PenTool, locked: !isPro && !(isUnlockedResult && !!app.coverLetterText) },
+    { id: "recruiter", label: "Recruiter AI", icon: Brain },
   ];
 
   return (
@@ -1373,6 +1513,10 @@ export default function ApplicationDetail() {
                   </div>
                 )}
               </>
+            )}
+
+            {activeTab === "recruiter" && (
+              <RecruiterAIPanel app={app} />
             )}
           </motion.div>
         </AnimatePresence>

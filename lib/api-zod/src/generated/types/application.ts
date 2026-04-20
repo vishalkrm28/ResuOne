@@ -5,9 +5,11 @@
  * ParsePilot AI API specification
  * OpenAPI spec version: 0.2.0
  */
+import type { ApplicationInterviewRecommendation } from "./applicationInterviewRecommendation";
 import type { ApplicationStatus } from "./applicationStatus";
 import type { ParsedCv } from "./parsedCv";
 import type { ParsedJobDescription } from "./parsedJobDescription";
+import type { RecruiterSummary } from "./recruiterSummary";
 import type { ScoringBreakdown } from "./scoringBreakdown";
 
 export interface Application {
@@ -27,6 +29,8 @@ export interface Application {
   missingInfoQuestions: string[];
   sectionSuggestions: string[];
   scoringBreakdownJson?: ScoringBreakdown | null;
+  interviewRecommendation?: ApplicationInterviewRecommendation;
+  recruiterSummaryJson?: RecruiterSummary | null;
   status: ApplicationStatus;
   createdAt: Date;
   updatedAt: Date;
