@@ -1,0 +1,367 @@
+MILESTONE 32 — RESUONE RECRUITER RANKING DASHBOARD
+
+GOAL
+Build the recruiter workflow where an institution or recruiter can:
+1. Create or paste one job description
+2. Upload multiple candidate CVs
+3. Parse all CVs
+4. Match every candidate against the same job
+5. Rank candidates automatically
+6. Filter by score, missing skills, seniority, and recommendation
+7. Open a candidate comparison view
+8. Shortlist / reject / mark for interview
+9. Export ranked results later
+
+WHY THIS MILESTONE
+This milestone turns Resuone from “single CV analyzer” into an actual recruiter product.
+
+MAIN USER FLOW
+1. Recruiter creates a job
+2. Recruiter uploads 5–100 CVs
+3. System extracts text from every file
+4. System parses each CV using Claude
+5. System runs candidate-vs-job analysis for each candidate
+6. System stores normalized results in Supabase
+7. Recruiter sees:
+   - ranking table
+   - score
+   - strengths
+   - concerns
+   - missing skills
+   - interview recommendation
+8. Recruiter clicks into a candidate comparison screen
+9. Recruiter updates candidate status
+
+STACK
+- Next.js App Router
+- Supabase Postgres
+- Supabase Storage
+- Anthropic Claude API
+- Zod validation
+- Queue-ready async structure
+- Recharts or plain table UI for analytics later
+
+NEW DATABASE TABLES
+
+create table if not exists recruiter_jobs (
+  id uuid primary key default gen_random_uuid(),
+  recruiter_user_id uuid not null,
+  title text not null,
+  company text,
+  location text,
+  raw_description text not null,
+  normalized_requirements jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+create table if not exists recruiter_candidates (
+  id uuid primary key default gen_random_uuid(),
+  recruiter_job_id uuid references recruiter_jobs(id) on delete cascade,
+  candidate_document_id uuid references candidate_documents(id) on delete set null,
+  full_name text,
+  email text,
+  current_title text,
+  current_location text,
+  parsed_cv jsonb default '{}'::jsonb,
+  status text default 'new',
+  created_at timestamptz default now()
+);
+
+create table if not exists recruiter_candidate_matches (
+  id uuid primary key default gen_random_uuid(),
+  recruiter_job_id uuid references recruiter_jobs(id) on delete cascade,
+  recruiter_candidate_id uuid references recruiter_candidates(id) on delete cascade,
+  overall_score integer not null,
+  interview_recommendation text,
+  matching_skills jsonb default '[]'::jsonb,
+  missing_skills jsonb default '[]'::jsonb,
+  strengths jsonb default '[]'::jsonb,
+  concerns jsonb default '[]'::jsonb,
+  recruiter_summary text,
+  model_name text,
+  rank_position integer,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_recruiter_jobs_user on recruiter_jobs(recruiter_user_id);
+create index if not exists idx_recruiter_candidates_job on recruiter_candidates(recruiter_job_id);
+create index if not exists idx_recruiter_matches_job on recruiter_candidate_matches(recruiter_job_id);
+
+STATUS VALUES
+Use:
+- new
+- shortlisted
+- interview
+- rejected
+- hired
+
+NEW ROUTES
+Create:
+
+app/api/recruiter/jobs/create/route.ts
+app/api/recruiter/jobs/list/route.ts
+app/api/recruiter/jobs/[id]/route.ts
+app/api/recruiter/candidates/upload-batch/route.ts
+app/api/recruiter/candidates/run-batch-analysis/route.ts
+app/api/recruiter/candidates/rank/route.ts
+app/api/recruiter/candidates/update-status/route.ts
+app/api/recruiter/candidates/compare/route.ts
+
+NEW UI PAGES
+Create:
+
+app/recruiter/jobs/page.tsx
+app/recruiter/jobs/[id]/page.tsx
+app/recruiter/jobs/[id]/ranking/page.tsx
+app/recruiter/jobs/[id]/compare/page.tsx
+
+RECRUITER JOB CREATION
+Create one recruiter job record from pasted job description.
+
+The backend should:
+1. Save raw description
+2. Call Claude to normalize requirements into JSON
+3. Save normalized requirements for later fast matching
+
+NORMALIZED REQUIREMENTS JSON SHOULD LOOK LIKE:
+
+{
+  "job_title": "",
+  "company": "",
+  "location": "",
+  "seniority_level": "",
+  "must_have_skills": [],
+  "nice_to_have_skills": [],
+  "required_tools": [],
+  "soft_skills": [],
+  "years_experience_required": 0,
+  "education_preferences": [],
+  "keywords": []
+}
+
+CREATE NEW PROMPT FUNCTION
+In lib/ai/prompts.ts add:
+
+export function buildNormalizeJobPrompt(jobText: string) {
+  return `
+You are Resuone AI.
+
+TASK:
+Convert this job description into clean structured JSON.
+
+RULES:
+- Return valid JSON only
+- Do not use markdown
+- Do not invent requirements
+- Keep arrays concise
+- Distinguish must-have vs nice-to-have when possible
+
+OUTPUT:
+{
+  "job_title": "",
+  "company": "",
+  "location": "",
+  "seniority_level": "",
+  "must_have_skills": [],
+  "nice_to_have_skills": [],
+  "required_tools": [],
+  "soft_skills": [],
+  "years_experience_required": 0,
+  "education_preferences": [],
+  "keywords": []
+}
+
+JOB DESCRIPTION:
+${jobText}
+`;
+}
+
+BATCH CANDIDATE UPLOAD
+For upload batch route:
+- accept multiple files
+- extract text from each
+- store each file metadata
+- parse each CV
+- create recruiter_candidates rows
+
+IMPORTANT
+Do NOT do all heavy work in one huge request forever.
+Split the flow:
+1. upload-batch = upload + store pending records
+2. run-batch-analysis = process in smaller chunks
+
+CHUNKING RULE
+Process candidates in chunks of 5 first.
+This is safer for Replit and API stability.
+
+RUN-BATCH-ANALYSIS ROUTE
+Input:
+{
+  "recruiterJobId": "...",
+  "candidateIds": ["..."]
+}
+
+For each candidate:
+1. get parsed_cv
+2. get recruiter_jobs.normalized_requirements
+3. build match prompt
+4. call Claude
+5. validate JSON
+6. insert recruiter_candidate_matches row
+
+RANKING LOGIC
+After all matches exist, run rank route:
+- sort by overall_score descending
+- second sort by recommendation priority:
+  strong_yes > yes > maybe > no
+- third sort by missing_skills count ascending
+- assign rank_position
+
+Add helper:
+lib/ai/scoring.ts
+
+export function recommendationWeight(value: string) {
+  if (value === "strong_yes") return 4;
+  if (value === "yes") return 3;
+  if (value === "maybe") return 2;
+  return 1;
+}
+
+export function rankCandidates(matches: any[]) {
+  return matches
+    .sort((a, b) => {
+      if (b.overall_score !== a.overall_score) {
+        return b.overall_score - a.overall_score;
+      }
+
+      const recDiff =
+        recommendationWeight(b.interview_recommendation) -
+        recommendationWeight(a.interview_recommendation);
+
+      if (recDiff !== 0) return recDiff;
+
+      return (a.missing_skills?.length || 0) - (b.missing_skills?.length || 0);
+    })
+    .map((item, index) => ({
+      ...item,
+      rank_position: index + 1
+    }));
+}
+
+COMPARE SCREEN
+The recruiter compare page should show 2–4 selected candidates side by side:
+
+Columns:
+- Name
+- Current title
+- Years experience
+- Score
+- Recommendation
+- Top matching skills
+- Missing skills
+- Strengths
+- Concerns
+- Recruiter summary
+
+FILTERS IN RANKING UI
+Add filters:
+- minimum score
+- recommendation
+- shortlisted only
+- missing skill contains
+- location
+- seniority guess
+
+STATUS UPDATE ROUTE
+Allow recruiter to mark:
+- shortlisted
+- interview
+- rejected
+- hired
+
+BASIC API CONTRACTS
+
+POST /api/recruiter/jobs/create
+Body:
+{
+  "recruiterUserId": "...",
+  "title": "Warehouse Operations Manager",
+  "company": "Example AB",
+  "location": "Stockholm",
+  "rawDescription": "..."
+}
+
+POST /api/recruiter/candidates/upload-batch
+FormData:
+- recruiterJobId
+- recruiterUserId
+- files[]
+
+POST /api/recruiter/candidates/run-batch-analysis
+Body:
+{
+  "recruiterJobId": "...",
+  "candidateIds": ["id1", "id2", "id3"]
+}
+
+POST /api/recruiter/candidates/rank
+Body:
+{
+  "recruiterJobId": "..."
+}
+
+POST /api/recruiter/candidates/update-status
+Body:
+{
+  "candidateId": "...",
+  "status": "shortlisted"
+}
+
+CLAUDE MODEL USAGE
+Use:
+- Haiku for job normalization and fast recruiter summaries
+- Sonnet for final candidate-vs-job scoring
+
+TOKEN CONTROL
+To reduce cost:
+- parse CV once, save parsed_cv
+- normalize job once, save normalized_requirements
+- for ranking use compact JSON, not full raw text again
+- only rerun scoring if recruiter edits job description
+
+UI TABLE COLUMNS
+On ranking page show:
+- Rank
+- Candidate
+- Score
+- Recommendation
+- Missing skills count
+- Status
+- Actions
+
+ACTIONS
+- Open profile
+- Compare
+- Shortlist
+- Reject
+- Mark interview
+
+SUCCESS CRITERIA
+This milestone is complete when:
+- recruiter can create a job
+- recruiter can upload multiple CVs
+- all candidates are parsed and analyzed
+- candidates are ranked
+- recruiter can filter ranked table
+- recruiter can compare selected candidates
+- recruiter can update candidate statuses
+- all results persist in Supabase
+
+AFTER THIS MILESTONE
+Next:
+- export CSV/PDF
+- email invite workflow
+- interview scheduling
+- exam invitation flow
+- recruiter notes
+- team collaboration
