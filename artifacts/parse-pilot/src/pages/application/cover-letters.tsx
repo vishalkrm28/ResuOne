@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { listCoverLetters, type CoverLetterSummary } from "@/lib/application-api";
-import { buildCoverLetterPrintHtml, openPrintWindow } from "@/lib/pdf-export";
+import { buildCoverLetterPrintHtml, openPrintWindow, downloadDocx } from "@/lib/pdf-export";
 import {
   MailOpen,
   Sparkles,
@@ -59,6 +59,9 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function ExpandedLetter({ letter }: { letter: CoverLetterSummary }) {
+  const { toast } = useToast();
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
+
   function handleExport() {
     const blob = new Blob([letter.coverLetterText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -77,6 +80,20 @@ function ExpandedLetter({ letter }: { letter: CoverLetterSummary }) {
     openPrintWindow(html, `${safeName}.pdf`);
   }
 
+  async function handleExportDocx() {
+    setDownloadingDocx(true);
+    try {
+      const label = [letter.jobTitle, letter.jobCompany].filter(Boolean).join("_") || "cover-letter";
+      const safeName = label.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      await downloadDocx(`/export/cover-letter/${letter.id}/docx`, `${safeName}.docx`);
+      toast({ title: "Downloaded successfully" });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Export failed", description: err?.message });
+    } finally {
+      setDownloadingDocx(false);
+    }
+  }
+
   return (
     <div className="mt-4 pt-4 border-t border-border">
       <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap mb-3 max-h-72 overflow-y-auto">
@@ -91,6 +108,14 @@ function ExpandedLetter({ letter }: { letter: CoverLetterSummary }) {
         <Button variant="outline" size="sm" onClick={handleExportPdf}>
           <FileText className="w-3.5 h-3.5 mr-1.5" />
           Export PDF
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleExportDocx} disabled={downloadingDocx}>
+          {downloadingDocx ? (
+            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+          )}
+          Export .docx
         </Button>
         {letter.tailoredCvId && (
           <Link href={`/application/tailored-cvs/${letter.tailoredCvId}?action=cover-letter`}>

@@ -14,7 +14,7 @@ import {
   exportAssets,
   type TailoredCvDetail,
 } from "@/lib/application-api";
-import { buildCvPrintHtml, openPrintWindow } from "@/lib/pdf-export";
+import { buildCvPrintHtml, openPrintWindow, downloadDocx } from "@/lib/pdf-export";
 import {
   FileText,
   User,
@@ -85,6 +85,7 @@ export default function TailoredCvDetailPage() {
   const [showCoverLetterPanel, setShowCoverLetterPanel] = useState(false);
   const [generatedLetter, setGeneratedLetter] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportingDocx, setExportingDocx] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -159,6 +160,20 @@ export default function TailoredCvDetailPage() {
     const html = buildCvPrintHtml(cv.tailoredCvJson, cv.versionName);
     const safeName = (cv.versionName ?? "tailored-cv").replace(/[^a-z0-9]/gi, "_").toLowerCase();
     openPrintWindow(html, `${safeName}.pdf`);
+  }
+
+  async function handleExportDocx() {
+    if (!id || !cv) return;
+    setExportingDocx(true);
+    try {
+      const safeName = (cv.versionName ?? "tailored-cv").replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      await downloadDocx(`/export/tailored-cv/${id}/docx`, `${safeName}.docx`);
+      toast({ title: "Downloaded successfully" });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Export failed", description: err?.message });
+    } finally {
+      setExportingDocx(false);
+    }
   }
 
   if (loading) {
@@ -251,6 +266,19 @@ export default function TailoredCvDetailPage() {
             >
               <FileText className="w-3.5 h-3.5 mr-1.5" />
               Export PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportDocx}
+              disabled={exportingDocx}
+            >
+              {exportingDocx ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              Export .docx
             </Button>
             <Button
               size="sm"

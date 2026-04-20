@@ -1,4 +1,5 @@
 import type { TailoredCvJson } from "./application-api";
+import { authedFetch } from "./authed-fetch";
 
 // ─── CV PDF ───────────────────────────────────────────────────────────────────
 
@@ -227,6 +228,28 @@ export function openPrintWindow(html: string, filename: string): void {
   }
   // Revoke after a delay so the window has time to load
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+// ─── DOCX download via authenticated fetch ────────────────────────────────────
+
+const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_URL ?? "/api";
+
+export async function downloadDocx(path: string, filename: string): Promise<void> {
+  const res = await authedFetch(`${API_BASE}${path}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? "Export failed");
+  }
+  const buffer = await res.arrayBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 // ─── HTML escape ──────────────────────────────────────────────────────────────

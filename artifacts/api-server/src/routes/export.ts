@@ -1,13 +1,15 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, applicationsTable } from "@workspace/db";
+import { db, applicationsTable, tailoredCvsTable, coverLettersTable } from "@workspace/db";
 import { buildDocxBuffer, buildPrintHtml } from "../services/exporter.js";
 import { logger } from "../lib/logger.js";
 import { userCanAccessFullResult } from "../lib/billing.js";
+import { tailoredCvJsonToText } from "../lib/application/export.js";
+import type { TailoredCvJson } from "../lib/ai/tailoring-schemas.js";
 
 const router: IRouter = Router();
 
-// ─── DOCX Export (Pro or one-time unlock) ────────────────────────────────────
+// ─── DOCX Export — legacy applications table ──────────────────────────────────
 
 router.get("/export/application/:id/docx", async (req, res) => {
   if (!req.user) {
@@ -29,13 +31,11 @@ router.get("/export/application/:id/docx", async (req, res) => {
       return;
     }
 
-    // ── Ownership check ───────────────────────────────────────────────────────
     if (app.userId !== req.user.id) {
       res.status(403).json({ error: "Access denied", code: "FORBIDDEN" });
       return;
     }
 
-    // ── Access gate: Pro subscription OR one-time unlock for this result ──────
     const canAccess = await userCanAccessFullResult(req.user.id, id);
     if (!canAccess) {
       res.status(403).json({
@@ -85,9 +85,115 @@ router.get("/export/application/:id/docx", async (req, res) => {
   }
 });
 
-// ─── PDF Export (Pro or one-time unlock) ─────────────────────────────────────
+// ─── DOCX Export — tailored_cvs table ────────────────────────────────────────
+
+router.get("/export/tailored-cv/:id/docx", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    return;
+  }
+
+  const { id } = req.params;
+
+  try {
+    const [tcv] = await db
+      .select()
+      .from(tailoredCvsTable)
+      .where(eq(tailoredCvsTable.id, id));
+
+    if (!tcv) {
+      res.status(404).json({ error: "Tailored CV not found" });
+      return;
+    }
+
+    if (tcv.userId !== req.user.id) {
+      res.status(403).json({ error: "Access denied", code: "FORBIDDEN" });
+      return;
+    }
+
+    if (!tcv.tailoredCvJson) {
+      res.status(400).json({ error: "No CV data to export.", code: "NO_CONTENT" });
+      return;
+    }
+
+    const cvJson = tcv.tailoredCvJson as TailoredCvJson;
+    const cvText = tailoredCvJsonToText(cvJson);
+    const safeName = (tcv.versionName ?? cvJson.full_name ?? "tailored-cv")
+      .replace(/[^a-z0-9]/gi, "_")
+      .toLowerCase();
+
+    const buffer = await buildDocxBuffer(cvText, tcv.jobTitle ?? "", tcv.jobCompany ?? "");
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}.docx"`);
+    res.send(buffer);
+  } catch (err) {
+    logger.error({ err, id }, "Tailored CV DOCX export failed");
+    res.status(500).json({ error: "Export failed. Please try again.", code: "EXPORT_ERROR" });
+  }
+});
+
+// ─── DOCX Export — cover_letters table ────────────────────────────────────────
+
+router.get("/export/cover-letter/:id/docx", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    return;
+  }
+
+  const { id } = req.params;
+
+  try {
+    const [cl] = await db
+      .select()
+      .from(coverLettersTable)
+      .where(eq(coverLettersTable.id, id));
+
+    if (!cl) {
+      res.status(404).json({ error: "Cover letter not found" });
+      return;
+    }
+
+    if (cl.userId !== req.user.id) {
+      res.status(403).json({ error: "Access denied", code: "FORBIDDEN" });
+      return;
+    }
+
+    if (!cl.coverLetterText) {
+      res.status(400).json({ error: "No cover letter text to export.", code: "NO_CONTENT" });
+      return;
+    }
+
+    const safeName = [cl.jobTitle, cl.jobCompany]
+      .filter(Boolean)
+      .join("_")
+      .replace(/[^a-z0-9]/gi, "_")
+      .toLowerCase() || "cover-letter";
+
+    const buffer = await buildDocxBuffer(
+      cl.coverLetterText,
+      cl.jobTitle ?? "",
+      cl.jobCompany ?? "",
+      cl.coverLetterText,
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}.docx"`);
+    res.send(buffer);
+  } catch (err) {
+    logger.error({ err, id }, "Cover letter DOCX export failed");
+    res.status(500).json({ error: "Export failed. Please try again.", code: "EXPORT_ERROR" });
+  }
+});
+
+// ─── PDF Export — legacy applications table ────────────────────────────────────
 // Returns print-optimized HTML that auto-triggers window.print().
-// Users save as PDF from the browser's print dialog.
 
 router.get("/export/application/:id/pdf", async (req, res) => {
   if (!req.user) {
@@ -109,13 +215,11 @@ router.get("/export/application/:id/pdf", async (req, res) => {
       return;
     }
 
-    // ── Ownership check ───────────────────────────────────────────────────────
     if (app.userId !== req.user.id) {
       res.status(403).send("<h1>403 — Access denied</h1>");
       return;
     }
 
-    // ── Access gate: Pro subscription OR one-time unlock for this result ──────
     const canAccess = await userCanAccessFullResult(req.user.id, id);
     if (!canAccess) {
       res.status(403).send(`
