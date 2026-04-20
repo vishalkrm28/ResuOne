@@ -52,6 +52,9 @@ import AppDetailPage from "@/pages/tracker/app-detail";
 import InterviewPrepsPage from "@/pages/tracker/interview-preps";
 import InterviewPrepDetailPage from "@/pages/tracker/interview-prep-detail";
 import GenerateInterviewPrepPage from "@/pages/tracker/generate-interview-prep";
+import EmailsPage from "@/pages/emails/index";
+import MockInterviewListPage from "@/pages/mock-interview/index";
+import MockInterviewSessionPage from "@/pages/mock-interview/session";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
@@ -128,6 +131,9 @@ function AppRouter() {
       <Route path="/tracker/interview-preps" component={InterviewPrepsPage} />
       <Route path="/tracker/:id" component={AppDetailPage} />
       <Route path="/tracker" component={TrackerPipeline} />
+      <Route path="/emails" component={EmailsPage} />
+      <Route path="/mock-interview/:id" component={MockInterviewSessionPage} />
+      <Route path="/mock-interview" component={MockInterviewListPage} />
       <Route component={NotFound} />
     </Switch>
   );

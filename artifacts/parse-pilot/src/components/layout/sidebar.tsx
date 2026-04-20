@@ -14,6 +14,8 @@ import {
   FileText,
   MailOpen,
   Bookmark,
+  Mail,
+  Mic,
 } from "lucide-react";
 import { LogoBrand } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,8 @@ const trackerItems = [
   { href: "/tracker", label: "Pipeline", icon: LayoutGrid },
   { href: "/tracker/saved", label: "Saved Jobs", icon: Bookmark },
   { href: "/tracker/interview-preps", label: "Interview Preps", icon: Sparkles },
+  { href: "/emails", label: "Email Drafts", icon: Mail },
+  { href: "/mock-interview", label: "Mock Interviews", icon: Mic },
 ];
 
 const recruiterItems = [

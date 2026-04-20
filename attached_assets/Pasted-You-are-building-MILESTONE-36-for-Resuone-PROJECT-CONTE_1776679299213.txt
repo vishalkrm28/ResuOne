@@ -1,0 +1,681 @@
+You are building MILESTONE 36 for Resuone.
+
+PROJECT CONTEXT
+Resuone already has or is implementing:
+- Next.js App Router
+- Supabase
+- Anthropic Claude integration
+- CV parsing
+- CV vs job analysis
+- recruiter workflows
+- open job recommendations
+- tailored CV generation
+- cover letter generation
+- application tracker
+- saved jobs
+- interview prep
+
+Now build the next practical execution layer so Resuone helps the user after they apply and before the interview.
+
+PRIMARY GOAL
+Create a workflow where the user can:
+1. generate follow-up emails for applications
+2. generate thank-you emails after interviews
+3. schedule and track interview events
+4. prepare for interviews with mock questions
+5. answer mock questions in-app
+6. get AI feedback on their answers
+7. keep all communication and prep linked to the application
+
+USER JOURNEY
+1. User opens an application in Resuone
+2. User sees actions like:
+   - Generate follow-up email
+   - Generate thank-you email
+   - Schedule interview
+   - Start mock interview
+3. User saves an email draft or copies it
+4. User adds interview date/time
+5. User runs a mock interview session for that job
+6. User writes answers to generated questions
+7. Resuone evaluates the answers and gives feedback
+8. User improves answers before the real interview
+
+IMPORTANT RULES
+- Never invent facts about the user
+- Never fabricate achievements
+- Email drafts must be grounded in the application stage and actual job
+- Mock interview questions must be grounded in the job and candidate profile
+- Feedback should be practical, professional, and honest
+- All AI calls must happen server-side
+- Save all drafts, sessions, answers, and feedback in Supabase
+- Keep email generation separate from actual sending
+- Keep calendar/interview scheduling internal to the product first
+- Build architecture so Google Calendar / Outlook can be added later
+
+TECH STACK
+- Next.js App Router
+- TypeScript
+- Supabase
+- Anthropic Claude
+- Zod
+- Existing Resuone UI system
+
+BUILD THE FOLLOWING
+
+1) DATABASE TABLES
+Create and use these Supabase tables:
+
+application_email_drafts
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- application_id uuid references applications(id) on delete cascade
+- draft_type text not null
+- subject text not null
+- body_text text not null
+- tone text default 'professional'
+- status text default 'draft'
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+application_interviews
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- application_id uuid references applications(id) on delete cascade
+- interview_type text default 'general'
+- title text not null
+- scheduled_at timestamptz not null
+- timezone text
+- location text
+- meeting_url text
+- notes text
+- status text default 'scheduled'
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+mock_interview_sessions
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- application_id uuid references applications(id) on delete cascade
+- interview_prep_id uuid references interview_preps(id) on delete set null
+- session_type text default 'role_specific'
+- session_title text
+- status text default 'active'
+- created_at timestamptz default now()
+- completed_at timestamptz
+
+mock_interview_questions
+- id uuid primary key default gen_random_uuid()
+- session_id uuid references mock_interview_sessions(id) on delete cascade
+- user_id uuid not null
+- question text not null
+- answer_type text default 'general'
+- why_it_matters text
+- suggested_points jsonb default '[]'::jsonb
+- display_order integer default 0
+- created_at timestamptz default now()
+
+mock_interview_answers
+- id uuid primary key default gen_random_uuid()
+- session_id uuid references mock_interview_sessions(id) on delete cascade
+- question_id uuid references mock_interview_questions(id) on delete cascade
+- user_id uuid not null
+- answer_text text default ''
+- ai_feedback jsonb default '{}'::jsonb
+- score integer
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Add indexes where appropriate on:
+- user_id
+- application_id
+- scheduled_at
+- status
+- created_at
+
+2) ENUM / VALUE MODELS
+
+Allowed draft_type values:
+- follow_up
+- thank_you
+- networking
+- interview_confirmation
+
+Allowed email draft status values:
+- draft
+- copied
+- archived
+
+Allowed interview_type values:
+- recruiter_screen
+- hiring_manager
+- technical
+- case_study
+- final_round
+- general
+
+Allowed interview status values:
+- scheduled
+- completed
+- cancelled
+
+Allowed mock session status values:
+- active
+- completed
+- archived
+
+Allowed session_type values:
+- role_specific
+- behavioral
+- technical
+- mixed
+
+Allowed answer_type values:
+- behavioral
+- technical
+- role_fit
+- motivation
+- culture
+- leadership
+- experience
+- communication
+
+Create Zod enums for all of these.
+
+3) NEW FILES AND FOLDERS
+Create:
+
+lib/email/email-schemas.ts
+lib/email/email-prompts.ts
+lib/email/email-helpers.ts
+
+lib/interview/interview-schemas.ts
+lib/interview/interview-prompts.ts
+lib/interview/interview-helpers.ts
+lib/interview/mock-feedback.ts
+
+app/api/emails/generate-draft/route.ts
+app/api/emails/list-drafts/route.ts
+app/api/emails/update-draft-status/route.ts
+
+app/api/interviews/create/route.ts
+app/api/interviews/list/route.ts
+app/api/interviews/update/route.ts
+
+app/api/mock-interview/create-session/route.ts
+app/api/mock-interview/list-sessions/route.ts
+app/api/mock-interview/[id]/route.ts
+app/api/mock-interview/save-answer/route.ts
+app/api/mock-interview/evaluate-answer/route.ts
+app/api/mock-interview/complete-session/route.ts
+
+app/emails/page.tsx
+app/emails/[id]/page.tsx
+app/interviews/page.tsx
+app/mock-interview/page.tsx
+app/mock-interview/[id]/page.tsx
+
+4) EMAIL DRAFT JSON / INPUT MODELS
+Create schema for email draft generation input.
+
+Email draft generation route:
+POST /api/emails/generate-draft
+
+Input:
+{
+  "userId": "...",
+  "applicationId": "...",
+  "draftType": "follow_up",
+  "tone": "professional",
+  "extraContext": "I applied 6 days ago and want to politely follow up."
+}
+
+Allowed tone values:
+- professional
+- warm
+- concise
+- confident
+
+Output:
+{
+  "subject": "",
+  "body_text": ""
+}
+
+5) EMAIL DRAFT PROMPTS
+Create in lib/email/email-prompts.ts:
+
+A) buildFollowUpEmailPrompt({
+  application,
+  tailoredCv,
+  coverLetter,
+  extraContext,
+  tone
+})
+
+B) buildThankYouEmailPrompt({
+  application,
+  interview,
+  extraContext,
+  tone
+})
+
+C) buildNetworkingEmailPrompt({
+  application,
+  extraContext,
+  tone
+})
+
+D) buildInterviewConfirmationPrompt({
+  application,
+  interview,
+  extraContext,
+  tone
+})
+
+EMAIL RULES
+- sound natural and professional
+- concise enough to actually send
+- specific to the role/company if known
+- do not sound robotic
+- do not invent conversations or experiences
+- include a clear but polite CTA when appropriate
+- default length:
+  - follow-up: 120–180 words
+  - thank-you: 120–200 words
+  - networking: 90–160 words
+  - interview confirmation: 60–120 words
+
+6) EMAIL DRAFT ROUTES
+Create:
+app/api/emails/generate-draft/route.ts
+app/api/emails/list-drafts/route.ts
+app/api/emails/update-draft-status/route.ts
+
+Generation flow:
+1. resolve application
+2. resolve linked tailored CV if relevant
+3. resolve cover letter if relevant
+4. resolve latest interview if needed
+5. choose correct prompt by draftType
+6. call Claude
+7. validate output
+8. save application_email_drafts row
+9. return saved draft
+
+Update status route input:
+{
+  "draftId": "...",
+  "status": "copied"
+}
+
+7) INTERVIEW SCHEDULING
+Create:
+app/api/interviews/create/route.ts
+app/api/interviews/list/route.ts
+app/api/interviews/update/route.ts
+
+Create interview input:
+{
+  "userId": "...",
+  "applicationId": "...",
+  "interviewType": "hiring_manager",
+  "title": "Hiring Manager Interview",
+  "scheduledAt": "2026-05-03T13:00:00.000Z",
+  "timezone": "Europe/Stockholm",
+  "location": "Microsoft Teams",
+  "meetingUrl": "",
+  "notes": "Focus on operational ownership and vendor management."
+}
+
+Rules:
+- save interview under application
+- create timeline event automatically for interview scheduled
+- update application stage to interview when an interview is scheduled, unless already beyond that
+- allow interview updates
+- when interview is completed, create timeline event
+
+8) MOCK INTERVIEW SESSION CREATION
+Create:
+app/api/mock-interview/create-session/route.ts
+
+Input:
+{
+  "userId": "...",
+  "applicationId": "...",
+  "interviewPrepId": "...",
+  "sessionType": "mixed",
+  "questionCount": 8
+}
+
+Flow:
+1. resolve application
+2. resolve job snapshot / job description
+3. resolve interview prep if present
+4. resolve tailored CV / candidate profile if present
+5. build mock interview prompt
+6. call Claude
+7. create mock_interview_sessions row
+8. create mock_interview_questions rows
+9. return session with questions
+
+9) MOCK INTERVIEW QUESTION OUTPUT SHAPE
+Create schema in lib/interview/interview-schemas.ts:
+
+{
+  "session_title": "",
+  "questions": [
+    {
+      "question": "",
+      "answer_type": "behavioral",
+      "why_it_matters": "",
+      "suggested_points": []
+    }
+  ]
+}
+
+Question count should support:
+- 5
+- 8
+- 10
+
+10) MOCK INTERVIEW PROMPTS
+Create in lib/interview/interview-prompts.ts:
+
+A) buildMockInterviewPrompt({
+  application,
+  interviewPrep,
+  tailoredCv,
+  candidateProfile,
+  sessionType,
+  questionCount
+})
+
+B) buildAnswerFeedbackPrompt({
+  question,
+  answerText,
+  application,
+  tailoredCv,
+  interviewPrep
+})
+
+MOCK INTERVIEW QUESTION RULES
+- grounded in actual job
+- grounded in actual candidate context
+- realistic for the interview type
+- no gimmicky questions
+- strong mix when sessionType = mixed
+- include behavior, motivation, role-fit, and job-specific questions
+- technical only if role clearly requires it
+
+11) ANSWER FEEDBACK OUTPUT SHAPE
+Create schema for answer evaluation:
+
+{
+  "score": 0,
+  "strengths": [],
+  "weaknesses": [],
+  "missing_points": [],
+  "improved_answer": "",
+  "delivery_tips": [],
+  "overall_feedback": ""
+}
+
+Scoring:
+- integer 1 to 10
+
+Feedback rules:
+- constructive and direct
+- improve content, not fake it
+- improved_answer must stay truthful and based on provided answer
+- do not invent background
+- if answer is too weak, clearly say what is missing
+
+12) ANSWER SAVE + EVALUATE ROUTES
+Create:
+app/api/mock-interview/save-answer/route.ts
+app/api/mock-interview/evaluate-answer/route.ts
+
+Save answer input:
+{
+  "sessionId": "...",
+  "questionId": "...",
+  "userId": "...",
+  "answerText": "..."
+}
+
+Evaluate answer input:
+{
+  "sessionId": "...",
+  "questionId": "...",
+  "userId": "...",
+  "answerText": "..."
+}
+
+Evaluate flow:
+1. resolve session + question
+2. resolve application
+3. resolve tailored CV if available
+4. resolve interview prep if available
+5. build answer feedback prompt
+6. call Claude
+7. validate JSON
+8. save ai_feedback and score into mock_interview_answers
+9. return feedback
+
+13) COMPLETE SESSION ROUTE
+Create:
+app/api/mock-interview/complete-session/route.ts
+
+Input:
+{
+  "sessionId": "...",
+  "userId": "..."
+}
+
+Behavior:
+- mark session completed
+- set completed_at
+- optionally add timeline event like:
+  - event_type: mock_interview_completed
+  - title: Mock interview session completed
+
+14) EMAILS PAGE
+Build:
+app/emails/page.tsx
+
+Show:
+- all drafts
+- draft type
+- related application/company
+- subject
+- tone
+- status
+- created date
+- actions
+
+Actions:
+- open
+- copy
+- mark copied
+- archive
+
+15) EMAIL DETAIL PAGE
+Build:
+app/emails/[id]/page.tsx
+
+Show:
+- subject
+- body
+- related application
+- draft type
+- tone
+- created date
+- copy button
+- mark copied button
+- archive button
+
+Add quick actions from application page:
+- generate follow-up
+- generate thank-you
+
+16) INTERVIEWS PAGE
+Build:
+app/interviews/page.tsx
+
+Show:
+- upcoming interviews
+- interview title
+- company
+- related application
+- scheduled date/time
+- timezone
+- location or meeting URL
+- status
+- actions
+
+Actions:
+- open application
+- mark completed
+- reschedule
+
+Add empty state for:
+- no upcoming interviews
+
+17) MOCK INTERVIEW LIST PAGE
+Build:
+app/mock-interview/page.tsx
+
+Show:
+- session title
+- related application
+- company
+- session type
+- number of questions
+- status
+- created date
+- actions
+
+Actions:
+- open session
+- continue
+- archive
+
+18) MOCK INTERVIEW DETAIL PAGE
+Build:
+app/mock-interview/[id]/page.tsx
+
+Show:
+A) session header
+- title
+- related application
+- session type
+- status
+
+B) questions list
+For each question:
+- question text
+- why it matters
+- suggested points
+- answer textarea
+- save answer button
+- evaluate answer button
+
+C) feedback section per question
+- score
+- strengths
+- weaknesses
+- missing points
+- improved answer
+- delivery tips
+- overall feedback
+
+D) session controls
+- complete session
+- return to application
+
+19) APPLICATION PAGE INTEGRATION
+On app/applications/[id]/page.tsx add:
+- generate follow-up email
+- generate thank-you email
+- schedule interview
+- list linked interviews
+- start mock interview
+- show latest mock interview session
+
+20) HELPER FUNCTIONS
+Create in lib/email/email-helpers.ts:
+- buildEmailDraftTitle()
+- defaultSubjectForDraftType()
+- trimEmailOutput()
+
+Create in lib/interview/interview-helpers.ts:
+- buildMockSessionTitle()
+- normalizeQuestionCount()
+- sortQuestionsByOrder()
+- shouldMoveApplicationToInterview()
+
+Create in lib/interview/mock-feedback.ts:
+- feedbackJsonToScore()
+- sessionProgress()
+- averageSessionScore()
+
+21) COST CONTROL
+- reuse application/job snapshots
+- reuse tailored CV and interview prep
+- only generate mock sessions on demand
+- only evaluate answers on demand
+- save all feedback persistently
+- do not rerun expensive generation unnecessarily
+
+22) SECURITY + VALIDATION
+- backend only for AI routes
+- validate all Claude JSON with Zod
+- restrict reads/writes to user-owned records
+- validate timestamps and enum values
+- rate limit AI-heavy routes
+- do not render unsafe HTML
+- treat body_text as plain text
+
+23) QUALITY REQUIREMENTS
+- keep API routes thin
+- move prompt logic to helper files
+- move schemas to helper files
+- reuse Supabase utilities
+- reuse timeline event helper from prior milestones
+- add loading states
+- add empty states
+- keep code consistent with earlier milestones
+
+24) SUCCESS CRITERIA
+This milestone is complete when:
+- user can generate follow-up and thank-you email drafts
+- drafts are saved and viewable
+- user can schedule interviews
+- interviews appear in list view
+- application timeline reflects interview scheduling
+- user can create a mock interview session
+- questions are saved
+- user can answer questions
+- user can get AI feedback on answers
+- session can be completed
+- everything persists in Supabase
+
+25) FUTURE-READY NOTES
+Keep architecture ready for:
+- Gmail integration
+- Google Calendar integration
+- Outlook calendar sync
+- voice-based mock interview mode
+- spoken answer analysis
+- recruiter contact tracking
+- one-click email sending
+- automatic reminder automation
+
+NOW DO THE FOLLOWING
+- Generate all required code files
+- Show code file by file
+- Do not skip important implementation pieces
+- Keep naming consistent with Resuone
+- Keep architecture aligned with previous milestones
+- Do not only explain — actually output the implementation
