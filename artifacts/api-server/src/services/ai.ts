@@ -80,6 +80,64 @@ const AnalysisOutputSchema = z.object({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// ─── Normalized job requirements schema ──────────────────────────────────────
+
+const NormalizedRequirementsSchema = z.object({
+  job_title: z.string().catch(""),
+  company: z.string().catch(""),
+  location: z.string().catch(""),
+  seniority_level: z.string().catch(""),
+  must_have_skills: z.array(z.string()).catch([]),
+  nice_to_have_skills: z.array(z.string()).catch([]),
+  required_tools: z.array(z.string()).catch([]),
+  soft_skills: z.array(z.string()).catch([]),
+  years_experience_required: z.number().catch(0),
+  education_preferences: z.array(z.string()).catch([]),
+  keywords: z.array(z.string()).catch([]),
+});
+
+export type NormalizedRequirements = z.infer<typeof NormalizedRequirementsSchema>;
+
+const NORMALIZE_JOB_INSTRUCTIONS = `You are Resuone AI, a job description analysis engine.
+Convert the job description into clean structured JSON.
+Return ONLY valid JSON. No markdown, no explanation.
+Do not invent requirements. Keep arrays concise.
+Distinguish must-have vs nice-to-have when possible.`;
+
+export async function normalizeJobDescription(jobText: string): Promise<NormalizedRequirements> {
+  const response = await openai.responses.create({
+    model: AI_MODELS.FAST,
+    instructions: NORMALIZE_JOB_INSTRUCTIONS,
+    input: [
+      {
+        role: "user",
+        content: `Convert this job description to structured JSON with these exact keys:
+{
+  "job_title": "",
+  "company": "",
+  "location": "",
+  "seniority_level": "",
+  "must_have_skills": [],
+  "nice_to_have_skills": [],
+  "required_tools": [],
+  "soft_skills": [],
+  "years_experience_required": 0,
+  "education_preferences": [],
+  "keywords": []
+}
+
+JOB DESCRIPTION:
+${jobText.slice(0, 20000)}`,
+      },
+    ],
+    text: { format: { type: "json_object" } },
+    max_output_tokens: 1024,
+  });
+
+  const raw = parseJsonResponse(response.output_text, "job normalization");
+  return NormalizedRequirementsSchema.parse(raw);
+}
+
 function parseJsonResponse<T>(content: string | null | undefined, label: string): unknown {
   if (!content) throw new Error(`AI returned empty response for ${label}`);
   try {

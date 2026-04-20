@@ -31,6 +31,9 @@ import RecruiterPipeline from "@/pages/recruiter/pipeline";
 import CandidateDetail from "@/pages/recruiter/candidate-detail";
 import RecruiterPricing from "@/pages/recruiter/pricing";
 import TeamJoin from "@/pages/recruiter/team-join";
+import RecruiterJobs from "@/pages/recruiter/jobs";
+import RecruiterJobDetail from "@/pages/recruiter/job-detail";
+import RecruiterJobRanking from "@/pages/recruiter/job-ranking";
 import InviteResponse from "@/pages/invite-response";
 import CvMatchScore from "@/pages/seo/cv-match-score";
 import AtsResumeChecker from "@/pages/seo/ats-resume-checker";
@@ -101,6 +104,9 @@ function AppRouter() {
       <Route path="/recruiter/dashboard" component={RecruiterDashboard} />
       <Route path="/recruiter/pipeline" component={RecruiterPipeline} />
       <Route path="/recruiter/pricing" component={RecruiterPricing} />
+      <Route path="/recruiter/jobs/:jobId/ranking" component={RecruiterJobRanking} />
+      <Route path="/recruiter/jobs/:jobId" component={RecruiterJobDetail} />
+      <Route path="/recruiter/jobs" component={RecruiterJobs} />
       <Route path="/candidate/:id" component={CandidateDetail} />
       <Route component={NotFound} />
     </Switch>

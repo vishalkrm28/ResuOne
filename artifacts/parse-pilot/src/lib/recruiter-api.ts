@@ -205,3 +205,75 @@ export async function acceptTeamInvite(token: string) {
   if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to accept"); }
   return res.json();
 }
+
+// ─── Recruiter Jobs (Ranking Dashboard) ──────────────────────────────────────
+
+export async function listRecruiterJobs() {
+  const res = await authedFetch(`${BASE}/recruiter/jobs`);
+  if (!res.ok) throw new Error("Failed to load jobs");
+  return res.json();
+}
+
+export async function createRecruiterJob(data: { title: string; company?: string; location?: string; rawDescription: string }) {
+  const res = await authedFetch(`${BASE}/recruiter/jobs`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to create job"); }
+  return res.json();
+}
+
+export async function getRecruiterJob(jobId: string) {
+  const res = await authedFetch(`${BASE}/recruiter/jobs/${jobId}`);
+  if (!res.ok) throw new Error("Failed to load job");
+  return res.json();
+}
+
+export async function deleteRecruiterJob(jobId: string) {
+  const res = await authedFetch(`${BASE}/recruiter/jobs/${jobId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete job");
+}
+
+export async function uploadCandidateFiles(jobId: string, files: File[]) {
+  const form = new FormData();
+  files.forEach(f => form.append("files", f));
+  const res = await authedFetch(`${BASE}/recruiter/jobs/${jobId}/upload`, { method: "POST", body: form });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Upload failed"); }
+  return res.json();
+}
+
+export async function analyzeCandidates(jobId: string, candidateIds?: string[]) {
+  const res = await authedFetch(`${BASE}/recruiter/jobs/${jobId}/analyze`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ candidateIds }),
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Analysis failed"); }
+  return res.json();
+}
+
+export async function rankCandidates(jobId: string) {
+  const res = await authedFetch(`${BASE}/recruiter/jobs/${jobId}/rank`, { method: "POST" });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Ranking failed"); }
+  return res.json();
+}
+
+export async function getJobRanking(jobId: string, filters?: { minScore?: number; recommendation?: string; status?: string; missingSkill?: string }) {
+  const params = new URLSearchParams();
+  if (filters?.minScore != null) params.set("minScore", String(filters.minScore));
+  if (filters?.recommendation) params.set("recommendation", filters.recommendation);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.missingSkill) params.set("missingSkill", filters.missingSkill);
+  const qs = params.toString();
+  const res = await authedFetch(`${BASE}/recruiter/jobs/${jobId}/ranking${qs ? `?${qs}` : ""}`);
+  if (!res.ok) throw new Error("Failed to load ranking");
+  return res.json();
+}
+
+export async function updateJobCandidateStatus(jobId: string, candidateId: string, status: string) {
+  const res = await authedFetch(`${BASE}/recruiter/jobs/${jobId}/candidates/${candidateId}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed to update status"); }
+  return res.json();
+}

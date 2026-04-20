@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, real, jsonb, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, real, jsonb, uuid, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -78,3 +78,63 @@ export const recruiterTeamInvitesTable = pgTable("recruiter_team_invites", {
 });
 
 export type RecruiterTeamInvite = typeof recruiterTeamInvitesTable.$inferSelect;
+
+// ─── Recruiter Jobs ───────────────────────────────────────────────────────────
+
+export const recruiterJobsTable = pgTable("recruiter_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recruiterUserId: text("recruiter_user_id").notNull(),
+  title: text("title").notNull(),
+  company: text("company"),
+  location: text("location"),
+  rawDescription: text("raw_description").notNull(),
+  normalizedRequirements: jsonb("normalized_requirements").$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertRecruiterJobSchema = createInsertSchema(recruiterJobsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type RecruiterJob = typeof recruiterJobsTable.$inferSelect;
+export type InsertRecruiterJob = z.infer<typeof insertRecruiterJobSchema>;
+
+// ─── Recruiter Job Candidates ─────────────────────────────────────────────────
+
+export const recruiterJobCandidatesTable = pgTable("recruiter_job_candidates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recruiterJobId: uuid("recruiter_job_id").notNull(),
+  fullName: text("full_name"),
+  email: text("email"),
+  currentTitle: text("current_title"),
+  rawCvText: text("raw_cv_text").notNull(),
+  parsedCvJson: jsonb("parsed_cv_json").$type<Record<string, unknown>>().default({}),
+  fileName: text("file_name"),
+  status: text("status", { enum: ["new", "shortlisted", "interview", "rejected", "hired"] }).default("new").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertRecruiterJobCandidateSchema = createInsertSchema(recruiterJobCandidatesTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type RecruiterJobCandidate = typeof recruiterJobCandidatesTable.$inferSelect;
+export type InsertRecruiterJobCandidate = z.infer<typeof insertRecruiterJobCandidateSchema>;
+
+// ─── Recruiter Candidate Matches ──────────────────────────────────────────────
+
+export const recruiterCandidateMatchesTable = pgTable("recruiter_candidate_matches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recruiterJobId: uuid("recruiter_job_id").notNull(),
+  recruiterCandidateId: uuid("recruiter_candidate_id").notNull(),
+  overallScore: integer("overall_score").notNull().default(0),
+  interviewRecommendation: text("interview_recommendation"),
+  matchingSkills: jsonb("matching_skills").$type<string[]>().default([]).notNull(),
+  missingSkills: jsonb("missing_skills").$type<string[]>().default([]).notNull(),
+  strengths: jsonb("strengths").$type<string[]>().default([]).notNull(),
+  concerns: jsonb("concerns").$type<string[]>().default([]).notNull(),
+  recruiterSummary: text("recruiter_summary"),
+  scoringBreakdownJson: jsonb("scoring_breakdown_json"),
+  rankPosition: integer("rank_position"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertRecruiterCandidateMatchSchema = createInsertSchema(recruiterCandidateMatchesTable).omit({ id: true, createdAt: true });
+export type RecruiterCandidateMatch = typeof recruiterCandidateMatchesTable.$inferSelect;
+export type InsertRecruiterCandidateMatch = z.infer<typeof insertRecruiterCandidateMatchSchema>;

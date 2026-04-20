@@ -108,6 +108,9 @@ export default function RecruiterDashboard() {
               <Link href="/recruiter/pipeline" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border/40 rounded-lg px-3 py-1.5">
                 <LayoutGrid className="w-3.5 h-3.5" /> Pipeline
               </Link>
+              <Link href="/recruiter/jobs" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-primary/40 rounded-lg px-3 py-1.5 bg-primary/5">
+                <BarChart3 className="w-3.5 h-3.5 text-primary" /> Ranking
+              </Link>
               <button onClick={() => setAnalysesImportOpen(true)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border/40 rounded-lg px-3 py-1.5 hover:border-primary/30 transition-colors">
                 <Download className="w-3.5 h-3.5" /> From Analyses
               </button>
