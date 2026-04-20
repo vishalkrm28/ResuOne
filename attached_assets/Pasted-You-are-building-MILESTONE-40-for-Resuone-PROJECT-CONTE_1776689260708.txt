@@ -1,0 +1,753 @@
+You are building MILESTONE 40 for Resuone.
+
+PROJECT CONTEXT
+Resuone already has or is implementing:
+- Next.js App Router
+- Supabase
+- Anthropic Claude integration
+- CV parsing
+- CV vs job analysis
+- open job recommendations
+- recruiter workflows
+- application tracker
+- billing and credits
+- marketing pages
+
+CURRENT PRODUCT PROBLEM
+Existing direct job-board APIs are not globally reliable enough.
+Coverage is inconsistent across countries like Sweden and many others.
+
+NEW PRODUCT GOAL
+Build Resuone into a GLOBAL JOB DISCOVERY ENGINE that:
+1. finds jobs across countries, including Sweden
+2. works for local jobs, global jobs, and remote jobs
+3. uses search-discovery + ATS ingestion, not only narrow board APIs
+4. normalizes jobs into one schema
+5. deduplicates jobs from multiple sources
+6. ranks jobs against the user’s CV/profile
+7. caches and stores results for speed and cost control
+8. stays modular so more sources can be added later
+
+PRODUCT POSITIONING SHIFT
+Resuone is NOT a job board.
+Resuone is a global job discovery and matching engine.
+
+IMPORTANT RULES
+- Do not rely on one country-limited job API
+- Use multiple source types:
+  a) Google Jobs search discovery
+  b) ATS-native sources (Greenhouse, Lever)
+  c) remote-first sources later if useful
+- Keep all sources behind modular adapters
+- Normalize all jobs into one shared schema
+- Deduplication is mandatory
+- AI ranking happens only AFTER aggregation
+- Store jobs and search results in Supabase
+- Claude should only be used for reranking/matching, not for ordinary scraping
+- Keep source adapters isolated from database logic
+- Keep architecture ready for future ATS connectors like Workday and SmartRecruiters
+
+TECH STACK
+- Next.js App Router
+- TypeScript
+- Supabase
+- Anthropic Claude
+- Zod
+
+ENV VARIABLES
+Add these environment variables:
+
+SERPAPI_API_KEY=
+JOB_DISCOVERY_DEFAULT_COUNTRY=se
+JOB_DISCOVERY_CACHE_HOURS=12
+JOB_DISCOVERY_MAX_RESULTS=100
+
+If ATS catalogs or seeds are added:
+GREENHOUSE_BOARD_TOKENS_JSON=
+LEVER_COMPANIES_JSON=
+
+--------------------------------------------------
+1) DATABASE TABLES
+
+Create and use these tables:
+
+jobs
+- id uuid primary key default gen_random_uuid()
+- source text not null
+- source_type text not null
+- external_id text
+- canonical_key text not null
+- title text not null
+- company text
+- location text
+- country text
+- remote boolean default false
+- employment_type text
+- seniority text
+- salary_min numeric
+- salary_max numeric
+- currency text
+- description text
+- apply_url text
+- company_careers_url text
+- posted_at timestamptz
+- expires_at timestamptz
+- discovered_at timestamptz default now()
+- fetched_at timestamptz default now()
+- skills jsonb default '[]'::jsonb
+- metadata jsonb default '{}'::jsonb
+- raw_payload jsonb default '{}'::jsonb
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+job_source_registry
+- id uuid primary key default gen_random_uuid()
+- source text not null
+- source_type text not null
+- display_name text not null
+- base_url text
+- country_scope text
+- is_active boolean default true
+- config jsonb default '{}'::jsonb
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+job_search_cache
+- id uuid primary key default gen_random_uuid()
+- query text not null
+- country text
+- remote_only boolean default false
+- filters jsonb default '{}'::jsonb
+- cache_key text not null unique
+- result_job_ids jsonb default '[]'::jsonb
+- result_count integer default 0
+- created_at timestamptz default now()
+- expires_at timestamptz not null
+
+job_match_results
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- candidate_profile_id uuid references candidate_profiles(id) on delete set null
+- job_id uuid references jobs(id) on delete cascade
+- match_score integer not null
+- fit_reasons jsonb default '[]'::jsonb
+- missing_requirements jsonb default '[]'::jsonb
+- recommendation_summary text
+- created_at timestamptz default now()
+
+job_discovery_runs
+- id uuid primary key default gen_random_uuid()
+- user_id uuid
+- query text not null
+- country text
+- remote_only boolean default false
+- source_breakdown jsonb default '{}'::jsonb
+- discovered_count integer default 0
+- deduped_count integer default 0
+- cached boolean default false
+- created_at timestamptz default now()
+
+Add indexes:
+- unique(source, external_id) where external_id is not null
+- unique(canonical_key)
+- country
+- remote
+- source
+- source_type
+- created_at
+- cache_key
+- user_id on job_match_results
+
+--------------------------------------------------
+2) UNIFIED JOB SCHEMA
+
+Create:
+lib/jobs/job-schema.ts
+
+Define Zod schema:
+
+{
+  source: string,
+  sourceType: "google_jobs" | "greenhouse" | "lever" | "manual_seed" | "other",
+  externalId: string,
+  title: string,
+  company: string,
+  location: string,
+  country: string,
+  remote: boolean,
+  employmentType: string,
+  seniority: string,
+  salaryMin: number | null,
+  salaryMax: number | null,
+  currency: string,
+  description: string,
+  applyUrl: string,
+  companyCareersUrl: string,
+  postedAt: string | null,
+  expiresAt: string | null,
+  skills: string[],
+  metadata: Record<string, any>,
+  rawPayload: Record<string, any>
+}
+
+Also create:
+- GoogleDiscoveredJobSchema
+- GreenhouseJobSchema
+- LeverJobSchema
+
+ALL connectors must map into the unified schema before returning.
+
+--------------------------------------------------
+3) SOURCE STRATEGY
+
+Implement 3 primary source layers:
+
+A) GOOGLE JOBS DISCOVERY VIA SERPAPI
+Purpose:
+- broad, global job discovery
+- country and location coverage
+- catch jobs from many domains via Google Jobs
+
+B) GREENHOUSE INGESTION
+Purpose:
+- fetch public ATS jobs from Greenhouse boards
+- useful for reliable company career page ingestion
+
+C) LEVER INGESTION
+Purpose:
+- fetch public ATS jobs from Lever postings/XML feeds
+- useful for reliable company career page ingestion
+
+IMPORTANT
+Google Jobs is your broad discovery layer.
+Greenhouse and Lever are your high-confidence structured ATS layers.
+
+--------------------------------------------------
+4) FILES AND FOLDERS
+
+Create:
+
+lib/jobs/job-schema.ts
+lib/jobs/job-query.ts
+lib/jobs/job-normalize.ts
+lib/jobs/job-dedup.ts
+lib/jobs/job-store.ts
+lib/jobs/job-cache.ts
+lib/jobs/job-ranking.ts
+lib/jobs/job-sources.ts
+lib/jobs/job-matching.ts
+
+lib/jobs/sources/google-jobs-serpapi.ts
+lib/jobs/sources/greenhouse.ts
+lib/jobs/sources/lever.ts
+
+app/api/jobs/discover/route.ts
+app/api/jobs/match-discovered/route.ts
+app/api/jobs/sources/route.ts
+app/jobs/discover/page.tsx
+
+--------------------------------------------------
+5) GOOGLE JOBS DISCOVERY CONNECTOR
+
+Create:
+lib/jobs/sources/google-jobs-serpapi.ts
+
+Build a connector using SerpApi.
+
+Primary responsibilities:
+- query Google Jobs / Google jobs listing endpoints
+- support query + country + location intent + remote intent
+- normalize Google Jobs results to unified schema
+- preserve raw payload for debugging
+
+Input:
+{
+  query: string,
+  country?: string,
+  location?: string,
+  remoteOnly?: boolean,
+  limit?: number
+}
+
+Implementation notes:
+- build search query intelligently
+- examples:
+  - "backend developer Stockholm"
+  - "operations manager Sweden"
+  - "product manager remote"
+- include country and remote modifiers in query when relevant
+- map Google Jobs fields such as title, company, location, link, description snippets if present
+- keep metadata such as discovery source and any provider URLs returned
+
+IMPORTANT
+Do not hardcode one country.
+The connector must work for any country code / location string combination.
+
+--------------------------------------------------
+6) GREENHOUSE CONNECTOR
+
+Create:
+lib/jobs/sources/greenhouse.ts
+
+Support public Greenhouse Job Board ingestion.
+
+Primary responsibilities:
+- fetch jobs from public Greenhouse boards
+- normalize into unified schema
+- support ingest from multiple board tokens
+
+Input:
+{
+  boardTokens: string[]
+}
+
+Implementation notes:
+- Greenhouse public job boards expose published jobs in JSON
+- use one adapter per board token
+- store board token in metadata
+- capture office/location, job title, absolute application URL, departments if available
+
+Also create helper:
+getDefaultGreenhouseBoardTokens(query?: string, country?: string)
+
+This helper can initially:
+- return seeded board tokens from env/config
+- later be extended to use discovered company registries
+
+IMPORTANT
+Do not assume Greenhouse alone is global coverage.
+It is an ATS source layer, not the whole engine.
+
+--------------------------------------------------
+7) LEVER CONNECTOR
+
+Create:
+lib/jobs/sources/lever.ts
+
+Support public Lever postings ingestion.
+
+Primary responsibilities:
+- fetch jobs from Lever postings endpoints or XML feeds
+- normalize into unified schema
+- support ingest from multiple company handles
+
+Input:
+{
+  companies: string[]
+}
+
+Implementation notes:
+- store company handle in metadata
+- normalize team/location/workplace type where available
+- capture public apply URL
+
+Also create helper:
+getDefaultLeverCompanies(query?: string, country?: string)
+
+This helper can initially:
+- return seeded company handles from env/config
+- later be extended using discovered company registries
+
+--------------------------------------------------
+8) QUERY BUILDER
+
+Create:
+lib/jobs/job-query.ts
+
+Add helpers:
+- buildDiscoveryQuery()
+- buildGoogleJobsQuery()
+- normalizeCountryInput()
+- shouldUseRemoteModifier()
+- buildCountryAwareSearchPhrases()
+
+Example behaviors:
+- user query: "software engineer"
+  country: "se"
+  location: "Stockholm"
+  remoteOnly: false
+  => "software engineer Stockholm Sweden"
+
+- user query: "product manager"
+  remoteOnly: true
+  => "product manager remote"
+
+Support:
+- explicit country
+- explicit city/location
+- remote-only
+- broad global query fallback when country missing
+
+--------------------------------------------------
+9) NORMALIZATION
+
+Create:
+lib/jobs/job-normalize.ts
+
+Add helpers:
+- normalizeLocation()
+- inferRemoteFlag()
+- inferEmploymentType()
+- inferCountry()
+- inferSeniority()
+- sanitizeDescription()
+- buildCanonicalKey()
+
+canonical_key should use a normalized combination of:
+- title
+- company
+- location
+or source + external id when that is stronger
+
+--------------------------------------------------
+10) DEDUPLICATION
+
+Create:
+lib/jobs/job-dedup.ts
+
+Rules:
+1. Same source + externalId => duplicate
+2. Same canonical_key => duplicate
+3. Similar title + same company + similar location => duplicate
+4. Prefer richer record when duplicates conflict:
+   - longer description
+   - has apply_url
+   - has salary
+   - has posted_at
+
+Export:
+- dedupeJobs()
+- choosePreferredJobRecord()
+
+--------------------------------------------------
+11) SOURCE ORCHESTRATION
+
+Create:
+lib/jobs/job-sources.ts
+
+This should orchestrate all discovery sources.
+
+Export:
+async function discoverJobsFromSources({
+  query,
+  country,
+  location,
+  remoteOnly,
+  limit
+})
+
+Flow:
+1. call Google Jobs connector
+2. call Greenhouse connector
+3. call Lever connector
+4. gather results safely
+5. tolerate partial failure
+6. return:
+{
+  jobs: [],
+  sourceBreakdown: {
+    google_jobs: 0,
+    greenhouse: 0,
+    lever: 0
+  },
+  errors: []
+}
+
+IMPORTANT
+One source failure must not break the whole search.
+
+--------------------------------------------------
+12) STORAGE + CACHE
+
+Create:
+lib/jobs/job-store.ts
+lib/jobs/job-cache.ts
+
+job-store helpers:
+- upsertDiscoveredJobs()
+- getJobsByIds()
+- saveDiscoveryRun()
+
+job-cache helpers:
+- buildSearchCacheKey()
+- getCachedSearchResult()
+- saveCachedSearchResult()
+- isCacheFresh()
+
+Rules:
+- cache by query + country + remoteOnly + location + filters
+- default cache lifetime from env, e.g. 12 hours
+- store result job ids, not huge blobs
+- use jobs table as canonical storage
+
+--------------------------------------------------
+13) DISCOVERY API
+
+Create:
+app/api/jobs/discover/route.ts
+
+Input:
+{
+  "userId": "...",
+  "query": "operations manager",
+  "country": "se",
+  "location": "Stockholm",
+  "remoteOnly": false,
+  "limit": 50
+}
+
+Flow:
+1. validate input
+2. check cache
+3. if cache valid:
+   - return cached jobs
+   - record discovery run with cached=true
+4. otherwise:
+   - build source queries
+   - call discoverJobsFromSources()
+   - normalize results
+   - dedupe results
+   - upsert jobs into DB
+   - save cache
+   - record discovery run
+   - return results
+
+Response:
+{
+  "jobs": [...],
+  "sourceBreakdown": {...},
+  "cached": false,
+  "errors": []
+}
+
+--------------------------------------------------
+14) AI MATCHING / RERANKING
+
+Create:
+lib/jobs/job-matching.ts
+lib/jobs/job-ranking.ts
+
+Use Claude only after discovery and local filtering.
+
+Flow:
+1. local pre-score discovered jobs
+2. take top 20–30
+3. send compact candidate profile + compact job list to Claude
+4. receive ranked recommendations
+
+Create prompt helper in existing prompt file or new helper:
+buildDiscoveredJobsRankingPrompt(candidateProfileJson, jobsJson)
+
+Expected output:
+{
+  "recommendations": [
+    {
+      "job_canonical_key": "",
+      "match_score": 0,
+      "fit_reasons": [],
+      "missing_requirements": [],
+      "recommendation_summary": ""
+    }
+  ]
+}
+
+IMPORTANT RULES
+- no flattering nonsense
+- realistic ranking
+- penalize obvious mismatch
+- prefer relevant title, location, skills, seniority
+- if remoteOnly=true, prioritize remote roles
+
+Local pre-score factors:
+- title overlap
+- skill overlap
+- location match
+- remote match
+- seniority compatibility
+
+--------------------------------------------------
+15) MATCHING API
+
+Create:
+app/api/jobs/match-discovered/route.ts
+
+Input:
+{
+  "userId": "...",
+  "candidateProfileId": "...",
+  "jobIds": ["..."],
+  "remoteOnly": false
+}
+
+Flow:
+1. fetch candidate profile
+2. fetch jobs by ids
+3. local pre-score jobs
+4. send top subset to Claude
+5. save job_match_results rows
+6. return ranked jobs
+
+Response:
+{
+  "recommendations": [...]
+}
+
+--------------------------------------------------
+16) SOURCE REGISTRY API
+
+Create:
+app/api/jobs/sources/route.ts
+
+Purpose:
+- list configured source types
+- show if source is active
+- provide internal observability
+
+Response example:
+[
+  {
+    "source": "google_jobs_serpapi",
+    "sourceType": "google_jobs",
+    "displayName": "Google Jobs via SerpApi",
+    "isActive": true
+  }
+]
+
+--------------------------------------------------
+17) UI PAGE
+
+Create:
+app/jobs/discover/page.tsx
+
+Build a serious job discovery page.
+
+Required UI:
+- query input
+- country input/select
+- location input
+- remote-only toggle
+- search button
+
+Results area:
+- source count summary
+- discovered jobs count
+- ranked jobs section
+- regular discovered jobs section
+
+Each job card:
+- title
+- company
+- location
+- country
+- remote badge
+- source badge
+- short description snippet
+- salary if available
+- apply button
+- "match to my CV" button
+
+Add:
+- empty state
+- loading state
+- no results state
+- partial-source-failure warning if some sources fail
+
+--------------------------------------------------
+18) CREDIT / COST CONTROL
+
+Integrate with existing billing system conceptually:
+- job discovery itself should be low/no AI cost
+- AI reranking should consume credits
+- do not call Claude during ordinary discovery
+- cache discovered jobs aggressively
+- cache matching results where possible
+
+Recommended credit model:
+- discover jobs = 0 or 1 credit
+- rerank discovered jobs against CV = 2 or 3 credits
+
+--------------------------------------------------
+19) SEEDS / CONFIG
+
+Create helper configuration so initial ATS coverage can be bootstrapped.
+
+Examples:
+- seeded Greenhouse board tokens
+- seeded Lever companies
+- future registry expansion
+
+Do NOT hardcode everything in routes.
+Keep seeds in config helpers.
+
+This milestone should work even if only SerpApi is configured.
+Greenhouse and Lever ingestion should layer on top when seeds exist.
+
+--------------------------------------------------
+20) ERROR TOLERANCE
+
+Important:
+- if SerpApi fails, return ATS-only results if possible
+- if Greenhouse fails, continue
+- if Lever fails, continue
+- collect errors in response
+- never crash full discovery due to one source
+
+--------------------------------------------------
+21) SECURITY + VALIDATION
+
+- validate all input with Zod
+- keep all source keys server-side
+- do not expose raw provider secrets
+- rate-limit discovery and matching routes
+- sanitize descriptions for rendering
+- restrict match-saving to the authenticated user’s records
+
+--------------------------------------------------
+22) SUCCESS CRITERIA
+
+This milestone is complete when:
+- users can search jobs with country + location + remote filters
+- Sweden works
+- broad international searches work
+- discovery uses Google Jobs via SerpApi
+- ATS ingestion works for Greenhouse and Lever
+- jobs normalize into one schema
+- duplicates are removed
+- jobs are stored in Supabase
+- search results are cached
+- AI reranking works against candidate profile
+- UI shows usable global job results
+
+--------------------------------------------------
+23) FUTURE-READY NOTES
+
+Keep architecture ready for:
+- Workday ingestion
+- SmartRecruiters ingestion
+- company-domain discovery
+- visa sponsorship tagging
+- job alerts
+- saved search subscriptions
+- daily digest emails
+- location/language-aware search expansion
+- multilingual job discovery
+
+--------------------------------------------------
+24) IMPLEMENTATION QUALITY
+
+- keep API routes thin
+- isolate connectors
+- isolate normalization
+- isolate deduplication
+- isolate matching
+- keep Supabase writes in helper files
+- output practical file-by-file implementation
+- do not only explain — actually generate implementation
+
+NOW DO THE FOLLOWING
+- Generate all required code files
+- Show code file by file
+- Do not skip important implementation pieces
+- Keep naming consistent with Resuone
+- Keep architecture aligned with previous milestones
+- Actually output the implementation
