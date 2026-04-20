@@ -312,11 +312,12 @@ router.post("/jobs/recommend", authMiddleware, async (req, res) => {
     }
   }
 
-  // Always try The Muse as a fallback/supplementary source (works without API key)
-  if (rawJobs.length < 40) {
+  // The Muse is a last-resort fallback ONLY when Adzuna returns nothing at all.
+  // Do NOT mix Muse jobs in with Adzuna results — Muse has no country filter
+  // and would contaminate country-specific searches with global (often US) jobs.
+  if (rawJobs.length === 0) {
     const museCategory = mapRoleToMuseCategory(topRoles[0] ?? "");
-    const musePages = rawJobs.length === 0 ? [1, 2] : [1];
-    for (const page of musePages) {
+    for (const page of [1, 2]) {
       try {
         const museResults = await fetchMuseJobs({ category: museCategory, page });
         rawJobs.push(...museResults.map(normalizeMuseJob));
