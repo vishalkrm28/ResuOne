@@ -139,7 +139,7 @@ export async function matchDiscoveredJobsWithAI({
       model: AI_MODEL,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
-      max_tokens: 3000,
+      max_completion_tokens: 3000,
     });
     rawResponse = completion.choices[0]?.message?.content ?? "";
   } catch (err) {

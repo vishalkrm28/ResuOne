@@ -267,8 +267,7 @@ function cityLookup(phrase: string): string | undefined {
 }
 
 export function inferCountry(location: string, queryCountry = ""): string {
-  if (queryCountry) return queryCountry;
-  if (!location) return "";
+  if (!location) return queryCountry; // empty location → fall back to query country
 
   const loc = location.toLowerCase().trim();
 
@@ -306,7 +305,8 @@ export function inferCountry(location: string, queryCountry = ""): string {
   // 4. US state abbreviation fallback ("Jacksonville, FL")
   if (US_STATE_ABBREV.test(location)) return "us";
 
-  return "";
+  // 5. Nothing matched — use the query country as last resort
+  return queryCountry;
 }
 
 // ─── Seniority ────────────────────────────────────────────────────────────────

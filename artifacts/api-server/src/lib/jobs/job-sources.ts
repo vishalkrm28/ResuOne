@@ -107,13 +107,18 @@ export async function discoverJobsFromSources(
     errors.push(`greenhouse: ${msg}`);
   }
 
+  // Apply country filter to Google Jobs.
+  // SerpApi doesn't guarantee strict geo-filtering, and inferCountry now correctly
+  // infers country from location text (queryCountry is only a fallback, not an override).
+  const googleFiltered = country ? filterByCountry(googleJobs, country) : googleJobs;
+
   // Apply title-keyword filter then country filter for Greenhouse
   const greenhouseFiltered = filterByTitleQuery(greenhouseRaw, query);
   const greenhouseJobs = country
     ? filterByCountry(greenhouseFiltered, country)
     : greenhouseFiltered;
 
-  const jobs = [...googleJobs, ...greenhouseJobs];
+  const jobs = [...googleFiltered, ...greenhouseJobs];
 
   return {
     jobs,
