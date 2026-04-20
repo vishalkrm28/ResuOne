@@ -1,0 +1,454 @@
+You are building MILESTONE 34 for Resuone.
+
+PROJECT CONTEXT
+Resuone already has or is implementing:
+- Next.js App Router
+- Supabase
+- Anthropic Claude integration
+- CV parsing
+- CV vs job analysis
+- recruiter ranking workflow
+- open job recommendations based on user CV
+
+Now build a candidate-side execution layer where the user can:
+1. Pick a recommended job
+2. Tailor their CV specifically for that job
+3. Generate a job-specific cover letter
+4. Save multiple tailored versions
+5. Export or copy the outputs easily
+
+PRIMARY GOAL
+Turn Resuone from “analysis only” into “actionable application assistant”.
+
+The user journey should be:
+1. User uploads CV or uses saved parsed CV
+2. User opens a recommended job or any pasted job description
+3. User clicks:
+   - Tailor CV
+   - Generate Cover Letter
+4. System creates:
+   - tailored professional summary
+   - improved skills emphasis
+   - rewritten experience bullets aligned to job
+   - ATS keyword enhancement suggestions
+   - full cover letter
+5. User reviews output
+6. User can save versions and export/copy them
+
+IMPORTANT RULES
+- Never invent fake experience or fake achievements
+- Never add skills the candidate clearly does not have
+- Tailoring must stay truthful
+- Improvement should come from reframing, emphasis, clarity, and better positioning
+- All AI calls must happen server-side
+- Save each generated output as a version
+- Keep original parsed CV untouched
+- Tailored CV data must be stored separately from original CV data
+- Use structured JSON for tailored CV output
+- Validate model outputs with Zod
+
+TECH STACK
+- Next.js App Router
+- TypeScript
+- Supabase
+- Anthropic Claude
+- Zod
+- Existing Resuone UI system
+
+BUILD THE FOLLOWING
+
+1) DATABASE TABLES
+Create and use these Supabase tables:
+
+tailored_cvs
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- source_candidate_document_id uuid references candidate_documents(id) on delete set null
+- candidate_profile_id uuid references candidate_profiles(id) on delete set null
+- external_jobs_cache_id uuid references external_jobs_cache(id) on delete set null
+- source_job_description_id uuid references job_descriptions(id) on delete set null
+- version_name text
+- original_parsed_cv jsonb not null
+- tailored_cv_json jsonb not null
+- ats_keywords_added jsonb default '[]'::jsonb
+- tailoring_summary text
+- created_at timestamptz default now()
+
+cover_letters
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- tailored_cv_id uuid references tailored_cvs(id) on delete set null
+- source_candidate_document_id uuid references candidate_documents(id) on delete set null
+- external_jobs_cache_id uuid references external_jobs_cache(id) on delete set null
+- source_job_description_id uuid references job_descriptions(id) on delete set null
+- tone text default 'professional'
+- cover_letter_text text not null
+- created_at timestamptz default now()
+
+application_assets
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null
+- tailored_cv_id uuid references tailored_cvs(id) on delete cascade
+- cover_letter_id uuid references cover_letters(id) on delete cascade
+- asset_type text not null
+- title text
+- content jsonb default '{}'::jsonb
+- created_at timestamptz default now()
+
+Add indexes where appropriate.
+
+2) NEW FILES AND ROUTES
+Create:
+
+lib/ai/tailoring-prompts.ts
+lib/ai/tailoring-schemas.ts
+lib/application/export.ts
+lib/application/versioning.ts
+
+app/api/application/tailor-cv/route.ts
+app/api/application/generate-cover-letter/route.ts
+app/api/application/list-tailored-cvs/route.ts
+app/api/application/list-cover-letters/route.ts
+app/api/application/save-version-name/route.ts
+app/api/application/export-assets/route.ts
+
+app/application/tailored-cvs/page.tsx
+app/application/tailored-cvs/[id]/page.tsx
+app/application/cover-letters/page.tsx
+
+3) TAILORED CV OUTPUT SHAPE
+Create Zod schema for tailored CV output.
+
+Expected JSON structure:
+{
+  "full_name": "",
+  "headline": "",
+  "location": "",
+  "email": "",
+  "phone": "",
+  "linkedin": "",
+  "portfolio": "",
+  "professional_summary": "",
+  "core_skills": [],
+  "ats_keywords_added": [],
+  "tailored_experience": [
+    {
+      "title": "",
+      "company": "",
+      "start_date": "",
+      "end_date": "",
+      "bullets": []
+    }
+  ],
+  "education": [
+    {
+      "degree": "",
+      "institution": "",
+      "year": ""
+    }
+  ],
+  "certifications": [],
+  "projects": [],
+  "notes": {
+    "tailoring_strategy": "",
+    "risk_flags": []
+  }
+}
+
+RULES FOR TAILORED CV
+- Preserve truthfulness
+- Reframe existing experience only
+- Improve bullet phrasing
+- Highlight relevant skills
+- Include ATS-relevant keywords only when genuinely supported by CV
+- Do not fabricate metrics
+- Do not fabricate employers, dates, roles, or tools
+
+4) PROMPT HELPERS
+Create prompt helpers in lib/ai/tailoring-prompts.ts
+
+A) buildTailorCVPrompt(parsedCVJson: string, jobJsonOrText: string)
+Goal:
+Generate a truthful tailored CV JSON for a specific job.
+
+B) buildCoverLetterPrompt(parsedCVJson: string, tailoredCVJson: string, jobJsonOrText: string, tone: string)
+Goal:
+Generate a strong tailored cover letter.
+
+C) buildATSImprovementPrompt(parsedCVJson: string, jobJsonOrText: string)
+Goal:
+Generate ATS improvement suggestions without rewriting whole CV.
+
+5) TAILOR CV ROUTE
+Create:
+app/api/application/tailor-cv/route.ts
+
+Input:
+{
+  "userId": "...",
+  "sourceCandidateDocumentId": "...",
+  "candidateProfileId": "...",
+  "externalJobId": "...", 
+  "externalJobsCacheId": "...",
+  "jobDescriptionId": "...",
+  "jobText": "...",
+  "versionName": "Tailored for Operations Manager"
+}
+
+Flow:
+1. Resolve original parsed CV
+2. Resolve job source
+   - use external_jobs_cache if selected recommended job
+   - otherwise use jobDescription text/pasted job
+3. Build tailor prompt
+4. Call Claude
+5. Validate tailored CV JSON
+6. Save tailored_cvs row
+7. Return saved tailored CV
+
+IMPORTANT
+If job exists in external_jobs_cache, use normalized job fields plus job description.
+If job is pasted manually, use provided jobText.
+
+6) GENERATE COVER LETTER ROUTE
+Create:
+app/api/application/generate-cover-letter/route.ts
+
+Input:
+{
+  "userId": "...",
+  "tailoredCvId": "...",
+  "sourceCandidateDocumentId": "...",
+  "externalJobsCacheId": "...",
+  "jobDescriptionId": "...",
+  "jobText": "...",
+  "tone": "professional"
+}
+
+Allowed tone values:
+- professional
+- confident
+- warm
+- concise
+
+Flow:
+1. Resolve tailored CV if provided
+2. Resolve original parsed CV if needed
+3. Resolve job info
+4. Build cover letter prompt
+5. Call Claude
+6. Save to cover_letters
+7. Return cover letter text
+
+COVER LETTER RULES
+- sound human and convincing
+- specific to the role
+- do not be cheesy
+- do not invent experience
+- keep it ready to send with minimal edits
+- default length around 250 to 400 words unless concise tone selected
+
+7) ATS IMPROVEMENT SUPPORT
+Add optional helper route or internal function to generate:
+- missing keywords
+- weak phrasing suggestions
+- summary rewrite suggestions
+- bullet improvement suggestions
+
+If you create route, use:
+app/api/application/ats-improvements/route.ts
+
+Expected output:
+{
+  "missing_keywords": [],
+  "summary_suggestions": [],
+  "bullet_improvements": [],
+  "format_notes": []
+}
+
+8) VERSIONING
+Create lib/application/versioning.ts
+
+Add helper functions to:
+- generate default version names
+- duplicate a tailored CV as a new version
+- rename version
+- sort newest first
+
+Default naming examples:
+- Tailored CV v1
+- Tailored CV for Product Manager
+- Cover Letter for Microsoft
+- Cover Letter v2
+
+9) EXPORT SUPPORT
+Create lib/application/export.ts
+
+Initial export scope:
+- plain text export
+- structured JSON export
+- easy copy payloads for frontend
+
+Do NOT overcomplicate with DOCX/PDF generation yet.
+But structure code so PDF/DOCX export can be added later.
+
+Export route:
+app/api/application/export-assets/route.ts
+
+Input:
+{
+  "tailoredCvId": "...",
+  "coverLetterId": "..."
+}
+
+Return:
+{
+  "tailored_cv_text": "...",
+  "cover_letter_text": "...",
+  "tailored_cv_json": {...}
+}
+
+10) UI PAGES
+
+A) app/application/tailored-cvs/page.tsx
+Show:
+- saved tailored CV versions
+- version name
+- linked job/company
+- created date
+- actions:
+  - open
+  - duplicate
+  - rename
+  - export
+  - generate cover letter
+
+B) app/application/tailored-cvs/[id]/page.tsx
+Show detailed tailored CV preview:
+- header/contact section
+- headline
+- professional summary
+- core skills
+- tailored experience bullets
+- education
+- certifications
+- ATS keywords added
+- tailoring summary
+- actions:
+  - rename version
+  - copy summary
+  - copy experience bullets
+  - export
+  - generate cover letter
+
+C) app/application/cover-letters/page.tsx
+Show saved cover letters:
+- title/version
+- related job/company
+- tone
+- preview snippet
+- actions:
+  - open/copy
+  - regenerate
+  - export
+
+11) UX REQUIREMENTS
+The experience should feel premium and practical.
+
+On a recommended job card or job details screen, add buttons:
+- Tailor CV
+- Generate Cover Letter
+
+Tailor CV flow:
+- choose original CV
+- choose version name or auto-generate
+- generate tailored version
+- open preview page
+
+Generate Cover Letter flow:
+- select tone
+- generate letter
+- copy instantly
+
+Add loading states:
+- tailoring CV...
+- generating cover letter...
+- exporting assets...
+
+Add empty states:
+- no tailored CVs yet
+- no cover letters yet
+- no linked job found
+
+12) CLAUDE MODEL USAGE
+Use:
+- Sonnet for tailored CV generation
+- Haiku for smaller ATS improvement suggestions if quality is enough
+- Sonnet for cover letters by default
+
+Cost control:
+- use compact parsed CV JSON, not raw text if unnecessary
+- use compact job summary when possible
+- do not rerun tailoring unless user requests new version
+- save outputs and reuse them
+
+13) VALIDATION + SECURITY
+- validate all model JSON with Zod
+- never trust model output directly
+- backend only AI calls
+- restrict access to user-owned tailored CVs and cover letters
+- do not render unsafe HTML
+- add rate limiting to application routes
+
+14) HELPER LOGIC
+Create helpers so code stays modular:
+
+In lib/application/export.ts add:
+- tailoredCvJsonToText()
+- coverLetterToText()
+- buildCombinedExportPayload()
+
+In lib/application/versioning.ts add:
+- buildDefaultTailoredCvVersionName()
+- buildDefaultCoverLetterVersionName()
+- duplicateTailoredCvVersion()
+
+15) IMPLEMENTATION QUALITY
+- keep routes thin
+- move prompt logic into helper files
+- move schemas into helper files
+- reuse existing Supabase admin/client utilities
+- reuse existing AI client
+- reuse existing rate limit and logging utilities
+- add comments where useful
+- keep code production-minded
+- use file-by-file implementation output
+
+16) SUCCESS CRITERIA
+This milestone is complete when:
+- user can create a tailored CV version for a selected job
+- tailored CV stays truthful and structured
+- ATS keywords added are visible
+- user can generate a cover letter from tailored CV or original CV + job
+- all versions are saved in Supabase
+- user can list/open/export tailored CVs and cover letters
+- UI supports practical application workflow
+- groundwork exists for future DOCX/PDF export
+
+17) FUTURE-READY NOTES
+Keep architecture ready for next additions:
+- one-click DOCX export
+- PDF export
+- LinkedIn profile rewrite
+- interview answer generation
+- auto-apply workflow assistant
+- saved application tracker
+- email draft generation
+
+NOW DO THE FOLLOWING
+- Generate all required code files
+- Show code file by file
+- Do not skip important implementation pieces
+- Keep naming consistent with Resuone
+- Keep it aligned with existing milestone architecture
+- Do not only explain — actually output implementation
