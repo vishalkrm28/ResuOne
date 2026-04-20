@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { authedFetch } from "@/lib/authed-fetch";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
+import { TailorCvModal } from "@/components/application/tailor-cv-modal";
 import {
   MapPin,
   Building2,
@@ -22,6 +23,9 @@ import {
   ChevronUp,
   AlertCircle,
   Bookmark,
+  BookmarkCheck,
+  FileText,
+  MailOpen,
 } from "lucide-react";
 import { saveJob } from "@/lib/tracker-api";
 
@@ -60,159 +64,13 @@ interface DiscoverResponse {
   errors?: string[];
 }
 
-// ─── Source badge ─────────────────────────────────────────────────────────────
-
-function SourceBadge({ source }: { source: string }) {
-  const labels: Record<string, string> = {
-    google_jobs_serpapi: "Google Jobs",
-    greenhouse: "Greenhouse",
-    lever: "Lever",
-  };
-  const label = labels[source] ?? source;
-  return (
-    <Badge variant="secondary" className="text-xs">
-      {label}
-    </Badge>
-  );
+interface Application {
+  id: string;
+  jobTitle: string;
+  company: string;
 }
 
-// ─── Salary display ───────────────────────────────────────────────────────────
-
-function SalaryDisplay({ min, max, currency }: { min: string | null; max: string | null; currency: string | null }) {
-  if (!min && !max) return null;
-  const fmt = (n: string) =>
-    parseInt(n, 10).toLocaleString("en", { notation: "compact", compactDisplay: "short" });
-  const cur = currency || "";
-  const range = min && max ? `${cur}${fmt(min)} – ${cur}${fmt(max)}` : min ? `From ${cur}${fmt(min)}` : `Up to ${cur}${fmt(max!)}`;
-  return <span className="text-sm text-green-600 font-medium">{range}</span>;
-}
-
-// ─── Job Card ─────────────────────────────────────────────────────────────────
-
-function JobCard({
-  job,
-  onSave,
-  saved,
-}: {
-  job: DiscoveredJob;
-  onSave: (job: DiscoveredJob) => void;
-  saved: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const desc = job.description ?? "";
-  const shortDesc = desc.slice(0, 250);
-  const hasMore = desc.length > 250;
-
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-base leading-snug line-clamp-2">
-              {job.title}
-            </CardTitle>
-            <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
-              <Building2 className="h-3.5 w-3.5 shrink-0" />
-              <span className="font-medium truncate">{job.company || "Unknown company"}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              title={saved ? "Saved" : "Save job"}
-              onClick={() => onSave(job)}
-              disabled={saved}
-            >
-              <Bookmark className={`h-4 w-4 ${saved ? "fill-primary text-primary" : ""}`} />
-            </Button>
-            {job.applyUrl && (
-              <Button asChild size="sm" variant="outline">
-                <a href={job.applyUrl} target="_blank" rel="noopener noreferrer">
-                  Apply <ExternalLink className="ml-1 h-3.5 w-3.5" />
-                </a>
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-3 pt-0">
-        {/* Meta row */}
-        <div className="flex flex-wrap items-center gap-2">
-          {job.location && (
-            <span className="flex items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              {job.location}
-            </span>
-          )}
-          {job.remote && (
-            <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
-              Remote
-            </Badge>
-          )}
-          {job.employmentType && (
-            <Badge variant="outline" className="text-xs capitalize">
-              {job.employmentType}
-            </Badge>
-          )}
-          {job.seniority && (
-            <Badge variant="outline" className="text-xs capitalize">
-              {job.seniority}
-            </Badge>
-          )}
-          <SalaryDisplay min={job.salaryMin} max={job.salaryMax} currency={job.currency} />
-        </div>
-
-        {/* Skills */}
-        {job.skills && job.skills.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {job.skills.slice(0, 6).map((skill) => (
-              <Badge key={skill} variant="secondary" className="text-xs">
-                {skill}
-              </Badge>
-            ))}
-            {job.skills.length > 6 && (
-              <Badge variant="secondary" className="text-xs text-muted-foreground">
-                +{job.skills.length - 6} more
-              </Badge>
-            )}
-          </div>
-        )}
-
-        {/* Description */}
-        {desc && (
-          <div className="text-sm text-muted-foreground leading-relaxed">
-            <p>{expanded ? desc : shortDesc}{!expanded && hasMore ? "…" : ""}</p>
-            {hasMore && (
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="flex items-center gap-1 text-xs text-primary mt-1 hover:underline"
-              >
-                {expanded ? (
-                  <><ChevronUp className="h-3 w-3" /> Show less</>
-                ) : (
-                  <><ChevronDown className="h-3 w-3" /> Show more</>
-                )}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-1 border-t">
-          <SourceBadge source={job.source} />
-          {job.postedAt && (
-            <span className="text-xs text-muted-foreground">
-              {formatRelative(job.postedAt)}
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatRelative(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -222,6 +80,195 @@ function formatRelative(iso: string): string {
   if (d < 7) return `${d} days ago`;
   if (d < 30) return `${Math.floor(d / 7)}w ago`;
   return `${Math.floor(d / 30)}mo ago`;
+}
+
+function sourceLabel(source: string) {
+  const map: Record<string, string> = {
+    google_jobs_serpapi: "Google Jobs",
+    greenhouse: "Greenhouse",
+    lever: "Lever",
+  };
+  return map[source] ?? source;
+}
+
+// ─── Job Card ─────────────────────────────────────────────────────────────────
+
+function JobCard({
+  job,
+  applications,
+  onTailor,
+  saved,
+  saving,
+  onSave,
+}: {
+  job: DiscoveredJob;
+  applications: Application[];
+  onTailor: (job: DiscoveredJob, mode: "tailor" | "cover-letter") => void;
+  saved: boolean;
+  saving: boolean;
+  onSave: (job: DiscoveredJob) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const salaryText =
+    job.salaryMin && job.salaryMax
+      ? `${Number(job.salaryMin).toLocaleString()}–${Number(job.salaryMax).toLocaleString()} ${job.currency ?? ""}`
+      : job.salaryMin
+      ? `From ${Number(job.salaryMin).toLocaleString()} ${job.currency ?? ""}`
+      : null;
+
+  const cleanDesc = job.description
+    ? job.description.replace(/<[^>]+>/g, "").trim()
+    : null;
+
+  return (
+    <Card className="border border-border hover:shadow-md transition-shadow">
+      <CardContent className="p-5">
+        {/* Title + meta row */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-base text-foreground leading-tight line-clamp-2">
+              {job.title}
+            </h3>
+            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
+              {job.company && (
+                <span className="flex items-center gap-1">
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
+                  {job.company}
+                </span>
+              )}
+              {job.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  {job.location}
+                </span>
+              )}
+              {job.remote && (
+                <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                  Remote
+                </Badge>
+              )}
+              {job.employmentType && (
+                <Badge variant="outline" className="text-xs capitalize">
+                  {job.employmentType}
+                </Badge>
+              )}
+              {job.seniority && (
+                <Badge variant="outline" className="text-xs capitalize">
+                  {job.seniority}
+                </Badge>
+              )}
+              {salaryText && (
+                <span className="text-xs font-medium text-foreground/80">{salaryText}</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Expandable details */}
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
+        >
+          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {expanded ? "Hide details" : "Show details"}
+        </button>
+
+        {expanded && (
+          <div className="space-y-3 mt-2">
+            {job.skills && job.skills.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-1.5">Skills</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {job.skills.map((skill) => (
+                    <Badge key={skill} variant="secondary" className="text-xs">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {cleanDesc && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-1">About the role</p>
+                <p className="text-xs text-foreground/70 leading-relaxed line-clamp-6">
+                  {cleanDesc}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-2.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>via {sourceLabel(job.source)}</span>
+              {job.postedAt && (
+                <>
+                  <span>·</span>
+                  <span>{formatRelative(job.postedAt)}</span>
+                </>
+              )}
+            </div>
+            {job.applyUrl && (
+              <a
+                href={job.applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                Apply now
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 text-xs h-8"
+              onClick={() => onTailor(job, "tailor")}
+              disabled={applications.length === 0}
+              title={applications.length === 0 ? "Analyse a CV first" : "Tailor your CV for this role"}
+            >
+              <FileText className="w-3.5 h-3.5 mr-1.5" />
+              Tailor CV
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 text-xs h-8"
+              onClick={() => onTailor(job, "cover-letter")}
+              disabled={applications.length === 0}
+              title={applications.length === 0 ? "Analyse a CV first" : "Generate a cover letter"}
+            >
+              <MailOpen className="w-3.5 h-3.5 mr-1.5" />
+              Cover Letter
+            </Button>
+            <Button
+              size="sm"
+              variant={saved ? "default" : "outline"}
+              className="text-xs h-8 px-3"
+              onClick={() => onSave(job)}
+              disabled={saving || saved}
+              title="Save job to tracker"
+            >
+              {saving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : saved ? (
+                <BookmarkCheck className="w-3.5 h-3.5" />
+              ) : (
+                <Bookmark className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -237,7 +284,28 @@ export default function GlobalJobDiscover() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DiscoverResponse | null>(null);
+
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [savingJobId, setSavingJobId] = useState<string | null>(null);
+
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [modalJob, setModalJob] = useState<DiscoveredJob | null>(null);
+  const [modalMode, setModalMode] = useState<"tailor" | "cover-letter">("tailor"); // captured for future use
+
+  // Fetch user applications for Tailor CV / Cover Letter modal
+  useEffect(() => {
+    authedFetch(`${BASE}/applications`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data) => {
+        const apps: Application[] = Array.isArray(data.applications)
+          ? data.applications
+          : Array.isArray(data)
+          ? data
+          : [];
+        setApplications(apps);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSearch = useCallback(
     async (e: React.FormEvent) => {
@@ -290,41 +358,73 @@ export default function GlobalJobDiscover() {
 
   const handleSave = useCallback(
     async (job: DiscoveredJob) => {
-      if (savedJobIds.has(job.id)) return;
+      if (savedJobIds.has(job.id) || savingJobId === job.id) return;
+      setSavingJobId(job.id);
       try {
-        await saveJob({
+        const { alreadySaved } = await saveJob({
+          externalJobCacheId: job.id,
           jobTitle: job.title,
-          company: job.company ?? "",
-          location: job.location ?? "",
-          applyUrl: job.applyUrl ?? job.companyCareersUrl ?? "",
-          jobSnapshot: { source: job.source, description: job.description?.slice(0, 500) ?? "" },
+          company: job.company ?? null,
+          location: job.location ?? null,
+          employmentType: job.employmentType ?? null,
+          remoteType: job.remote ? "remote" : null,
+          salaryMin: job.salaryMin ? Number(job.salaryMin) : null,
+          salaryMax: job.salaryMax ? Number(job.salaryMax) : null,
+          currency: job.currency ?? null,
+          applyUrl: job.applyUrl ?? job.companyCareersUrl ?? null,
+          jobSnapshot: job as unknown as Record<string, unknown>,
         });
         setSavedJobIds((prev) => new Set([...prev, job.id]));
-        toast({ title: "Job saved to tracker" });
+        toast({ title: alreadySaved ? "Already saved" : "Job saved to tracker", description: "View it in Saved Jobs." });
       } catch (err: any) {
         toast({ title: "Could not save job", description: err.message, variant: "destructive" });
+      } finally {
+        setSavingJobId(null);
       }
     },
-    [savedJobIds, toast],
+    [savedJobIds, savingJobId, toast],
   );
+
+  function handleTailor(job: DiscoveredJob, mode: "tailor" | "cover-letter") {
+    setModalJob(job);
+    setModalMode(mode);
+  }
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      {modalJob && (
+        <TailorCvModal
+          applications={applications}
+          jobTitle={modalJob.title}
+          jobCompany={modalJob.company ?? undefined}
+          externalJobCacheId={modalJob.id}
+          onClose={() => setModalJob(null)}
+        />
+      )}
+
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {/* Header */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Globe className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Global Job Discovery</h1>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Globe className="h-6 w-6 text-primary" />
+              Global Job Discovery
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Search across Google Jobs, Greenhouse, and Lever in one unified engine.
+            </p>
           </div>
-          <p className="text-muted-foreground text-sm">
-            Search across Google Jobs, Greenhouse, and Lever in one unified engine.
-          </p>
         </div>
 
         {/* Search form */}
         <Card>
-          <CardContent className="pt-5">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              Search Jobs
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
             <form onSubmit={handleSearch} className="space-y-4">
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -345,7 +445,7 @@ export default function GlobalJobDiscover() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Country</Label>
                   <select
@@ -362,7 +462,7 @@ export default function GlobalJobDiscover() {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">City / region (optional)</Label>
+                  <Label className="text-xs text-muted-foreground">City / region</Label>
                   <Input
                     placeholder="e.g. Stockholm, London"
                     value={location}
@@ -401,19 +501,19 @@ export default function GlobalJobDiscover() {
           </CardContent>
         </Card>
 
-        {/* Loading state */}
+        {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm">Searching Google Jobs, Greenhouse & Lever…</p>
+            <p className="text-sm">Searching Google Jobs, Greenhouse &amp; Lever…</p>
           </div>
         )}
 
         {/* Results */}
         {result && !loading && (
           <div className="space-y-4">
-            {/* Result summary */}
-            <div className="flex items-center justify-between">
+            {/* Result summary bar */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium">
                   {result.jobs.length} results
@@ -432,7 +532,6 @@ export default function GlobalJobDiscover() {
                   </Badge>
                 )}
               </div>
-
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {Object.entries(result.sourceBreakdown).map(([src, count]) => {
                   const labels: Record<string, string> = {
@@ -441,11 +540,7 @@ export default function GlobalJobDiscover() {
                     lever: "Lever",
                   };
                   if (!count) return null;
-                  return (
-                    <span key={src}>
-                      {labels[src] ?? src}: {count}
-                    </span>
-                  );
+                  return <span key={src}>{labels[src] ?? src}: {count}</span>;
                 })}
               </div>
             </div>
@@ -464,20 +559,23 @@ export default function GlobalJobDiscover() {
                 <JobCard
                   key={job.id}
                   job={job}
-                  onSave={handleSave}
+                  applications={applications}
+                  onTailor={handleTailor}
                   saved={savedJobIds.has(job.id)}
+                  saving={savingJobId === job.id}
+                  onSave={handleSave}
                 />
               ))}
             </div>
           </div>
         )}
 
-        {/* Empty state before search */}
+        {/* Empty state */}
         {!result && !loading && (
           <div className="text-center py-20 text-muted-foreground space-y-3">
             <Globe className="h-12 w-12 mx-auto opacity-20" />
             <p className="text-sm">Search across multiple job boards in one place.</p>
-            <p className="text-xs opacity-70">Powered by Google Jobs, Greenhouse ATS & Lever ATS</p>
+            <p className="text-xs opacity-70">Powered by Google Jobs, Greenhouse ATS &amp; Lever ATS</p>
           </div>
         )}
       </div>
