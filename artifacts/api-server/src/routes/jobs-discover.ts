@@ -27,7 +27,7 @@ const DiscoverBodySchema = z.object({
   applicationId: z.string().optional(),
 });
 
-router.post("/jobs/discover", async (req, res) => {
+router.post("/jobs/discover", authMiddleware, async (req, res) => {
   // ── Parse & validate input ────────────────────────────────────────────────
   const result = DiscoverBodySchema.safeParse(req.body);
   if (!result.success) {
@@ -45,20 +45,8 @@ router.post("/jobs/discover", async (req, res) => {
     applicationId,
   } = result.data;
 
-  // Resolve authenticated user (optional auth)
-  let userId: string | undefined;
-  try {
-    const token = req.headers.authorization?.replace("Bearer ", "");
-    if (token) {
-      const { verifyToken } = await import("@clerk/backend");
-      const payload = await verifyToken(token, {
-        secretKey: process.env.CLERK_SECRET_KEY!,
-      });
-      userId = payload.sub;
-    }
-  } catch {
-    // Continue as anonymous
-  }
+  // Resolve authenticated user via authMiddleware (optional — anonymous allowed)
+  const userId: string | undefined = req.user?.id;
 
   const defaultCountry =
     country || process.env.JOB_DISCOVERY_DEFAULT_COUNTRY || "";

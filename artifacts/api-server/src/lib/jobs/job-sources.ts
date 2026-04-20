@@ -28,15 +28,15 @@ function filterByTitleQuery(jobs: UnifiedJob[], query: string): UnifiedJob[] {
 }
 
 /**
- * Filter jobs by country code.
- * Keeps jobs whose inferred country matches the requested country.
- * Also keeps jobs with no inferred country (unknown) OR remote jobs
- * so we don't over-filter when country detection is uncertain.
+ * Filter jobs by country code — strict mode.
+ * Only keeps jobs that match the requested country OR are remote.
+ * Jobs with unknown/unrecognised country are excluded when a filter is active,
+ * because that "unknown" set is dominated by far-away results leaking through.
  */
 function filterByCountry(jobs: UnifiedJob[], country: string): UnifiedJob[] {
   if (!country) return jobs;
   return jobs.filter(
-    (job) => !job.country || job.country === country || job.country === "remote",
+    (job) => job.country === country || job.remote === true || job.country === "remote",
   );
 }
 
