@@ -1,0 +1,918 @@
+MILESTONE 31 — RESUONE + CLAUDE AI BACKEND (CV ANALYSIS + JOB MATCH + RECRUITER SUMMARY)
+
+GOAL
+Build the first Claude-powered AI layer for Resuone so users can:
+1. Upload CVs (PDF/DOCX/TXT)
+2. Paste a job description
+3. Receive:
+   - parsed candidate profile
+   - ATS-style match score
+   - strengths
+   - gaps
+   - recommended improvements
+   - recruiter summary
+4. Save all results in Supabase
+5. Use streaming responses in the UI for better UX
+6. Keep all Anthropic API calls on the backend only
+
+IMPORTANT RULES
+- NEVER call Anthropic directly from frontend
+- NEVER expose ANTHROPIC_API_KEY to browser
+- All AI analysis must go through backend API routes
+- Save every analysis result in database
+- Keep raw extraction separate from normalized structured output
+- Add rate limits on analysis routes
+- Add usage logging for every Claude request
+- Make the system modular so later I can swap Claude / OpenAI / Gemini if needed
+
+TECH STACK
+- Frontend: Next.js App Router
+- Backend: Next.js route handlers
+- Database: Supabase Postgres
+- Storage: Supabase Storage
+- Auth: existing Resuone auth flow
+- AI: Anthropic Claude via official SDK
+- Validation: Zod
+- File parsing:
+  - PDF text extraction
+  - DOCX text extraction
+  - plain text fallback
+- Streaming: server-side streaming from Claude to frontend
+- Queue-ready structure for future bulk analysis
+
+ENV VARIABLES
+Create/update these environment variables in Replit Secrets:
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL_FAST=claude-haiku-4-5
+ANTHROPIC_MODEL_MAIN=claude-sonnet-4-6
+APP_URL=
+MAX_FILE_SIZE_MB=8
+
+INSTALL PACKAGES
+Run:
+
+npm install @anthropic-ai/sdk @supabase/supabase-js zod mammoth pdf-parse uuid
+npm install -D @types/pdf-parse
+
+PROJECT STRUCTURE
+Create this structure:
+
+app/
+  api/
+    ai/
+      analyze-cv/route.ts
+      analyze-job-match/route.ts
+      recruiter-summary/route.ts
+      stream-analysis/route.ts
+  dashboard/
+    analysis/page.tsx
+components/
+  analysis/
+    cv-upload.tsx
+    job-input.tsx
+    analysis-result.tsx
+    streaming-panel.tsx
+lib/
+  ai/
+    anthropic.ts
+    prompts.ts
+    schemas.ts
+    scoring.ts
+  files/
+    extract-text.ts
+  supabase/
+    admin.ts
+    client.ts
+  utils/
+    rate-limit.ts
+    usage-log.ts
+types/
+  analysis.ts
+
+DATABASE CHANGES
+Create these tables in Supabase SQL editor:
+
+create table if not exists candidate_documents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  file_name text not null,
+  file_type text,
+  storage_path text,
+  extracted_text text,
+  created_at timestamptz default now()
+);
+
+create table if not exists job_descriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  title text,
+  company text,
+  raw_text text not null,
+  created_at timestamptz default now()
+);
+
+create table if not exists analyses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  candidate_document_id uuid references candidate_documents(id) on delete set null,
+  job_description_id uuid references job_descriptions(id) on delete set null,
+  analysis_type text not null,
+  model_name text,
+  input_tokens integer,
+  output_tokens integer,
+  status text default 'completed',
+  result_json jsonb not null,
+  created_at timestamptz default now()
+);
+
+create table if not exists ai_usage_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  route text not null,
+  model_name text,
+  input_tokens integer,
+  output_tokens integer,
+  success boolean default true,
+  error_message text,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_analyses_user_id on analyses(user_id);
+create index if not exists idx_candidate_documents_user_id on candidate_documents(user_id);
+create index if not exists idx_job_descriptions_user_id on job_descriptions(user_id);
+
+SUPABASE STORAGE
+Create bucket:
+- candidate-files
+
+RLS
+Enable RLS for all tables.
+Users can only read/write their own rows.
+Service role can insert/update all rows from backend.
+
+CREATE lib/ai/anthropic.ts
+Paste:
+
+import Anthropic from "@anthropic-ai/sdk";
+
+export const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
+
+export const AI_MODELS = {
+  FAST: process.env.ANTHROPIC_MODEL_FAST || "claude-haiku-4-5",
+  MAIN: process.env.ANTHROPIC_MODEL_MAIN || "claude-sonnet-4-6",
+};
+
+CREATE lib/ai/schemas.ts
+Paste:
+
+import { z } from "zod";
+
+export const ParsedCVSchema = z.object({
+  full_name: z.string().default(""),
+  email: z.string().default(""),
+  phone: z.string().default(""),
+  location: z.string().default(""),
+  linkedin: z.string().default(""),
+  portfolio: z.string().default(""),
+  summary: z.string().default(""),
+  total_years_experience: z.number().default(0),
+  skills: z.array(z.string()).default([]),
+  tools: z.array(z.string()).default([]),
+  certifications: z.array(z.string()).default([]),
+  education: z.array(
+    z.object({
+      degree: z.string().default(""),
+      institution: z.string().default(""),
+      year: z.string().default("")
+    })
+  ).default([]),
+  work_experience: z.array(
+    z.object({
+      title: z.string().default(""),
+      company: z.string().default(""),
+      start_date: z.string().default(""),
+      end_date: z.string().default(""),
+      responsibilities: z.array(z.string()).default([]),
+      achievements: z.array(z.string()).default([])
+    })
+  ).default([])
+});
+
+export const JobMatchSchema = z.object({
+  overall_score: z.number().min(0).max(100),
+  matching_skills: z.array(z.string()).default([]),
+  missing_skills: z.array(z.string()).default([]),
+  matching_keywords: z.array(z.string()).default([]),
+  missing_keywords: z.array(z.string()).default([]),
+  strengths: z.array(z.string()).default([]),
+  concerns: z.array(z.string()).default([]),
+  recruiter_summary: z.string().default(""),
+  candidate_summary: z.string().default(""),
+  interview_recommendation: z.enum(["strong_yes", "yes", "maybe", "no"]),
+  improvement_actions: z.array(z.string()).default([])
+});
+
+export type ParsedCV = z.infer<typeof ParsedCVSchema>;
+export type JobMatch = z.infer<typeof JobMatchSchema>;
+
+CREATE lib/ai/prompts.ts
+Paste:
+
+export function buildCVParsingPrompt(cvText: string) {
+  return `
+You are Resuone AI, an expert CV and recruiting analysis engine.
+
+TASK:
+Extract the CV into a clean structured JSON format.
+
+RULES:
+- Return valid JSON only
+- Do not include markdown
+- Do not invent facts
+- If a value is missing, use empty string, empty array, or 0
+- Normalize skill names where reasonable
+- Keep achievements concise
+- Preserve meaning of original CV
+
+OUTPUT KEYS:
+{
+  "full_name": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "linkedin": "",
+  "portfolio": "",
+  "summary": "",
+  "total_years_experience": 0,
+  "skills": [],
+  "tools": [],
+  "certifications": [],
+  "education": [
+    {
+      "degree": "",
+      "institution": "",
+      "year": ""
+    }
+  ],
+  "work_experience": [
+    {
+      "title": "",
+      "company": "",
+      "start_date": "",
+      "end_date": "",
+      "responsibilities": [],
+      "achievements": []
+    }
+  ]
+}
+
+CV TEXT:
+${cvText}
+`;
+}
+
+export function buildJobMatchPrompt(parsedCVJson: string, jobText: string) {
+  return `
+You are Resuone AI, an expert ATS and recruiter assistant.
+
+TASK:
+Compare the parsed CV against the job description and return strict JSON.
+
+SCORING RULES:
+- overall_score must be from 0 to 100
+- weigh relevance of experience, skills, tools, keywords, and seniority
+- do not over-score weak candidates
+- be commercially realistic, not flattering
+- recruiter_summary should help a hiring manager quickly decide
+- candidate_summary should help the candidate understand fit
+- interview_recommendation must be one of: strong_yes, yes, maybe, no
+
+OUTPUT KEYS:
+{
+  "overall_score": 0,
+  "matching_skills": [],
+  "missing_skills": [],
+  "matching_keywords": [],
+  "missing_keywords": [],
+  "strengths": [],
+  "concerns": [],
+  "recruiter_summary": "",
+  "candidate_summary": "",
+  "interview_recommendation": "maybe",
+  "improvement_actions": []
+}
+
+PARSED CV JSON:
+${parsedCVJson}
+
+JOB DESCRIPTION:
+${jobText}
+`;
+}
+
+export function buildRecruiterSummaryPrompt(parsedCVJson: string) {
+  return `
+You are Resuone AI acting as a recruiter assistant.
+
+TASK:
+Write a concise recruiter summary of this candidate.
+
+RULES:
+- Output JSON only
+- Keep it businesslike and direct
+- Focus on hiring relevance
+- No fluff
+- No markdown
+
+OUTPUT:
+{
+  "headline": "",
+  "top_strengths": [],
+  "key_risks": [],
+  "recommended_roles": [],
+  "seniority_guess": "",
+  "summary": ""
+}
+
+PARSED CV JSON:
+${parsedCVJson}
+`;
+}
+
+CREATE lib/files/extract-text.ts
+Paste:
+
+import pdfParse from "pdf-parse";
+import mammoth from "mammoth";
+
+export async function extractTextFromFile(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const name = file.name.toLowerCase();
+
+  if (name.endsWith(".pdf")) {
+    const parsed = await pdfParse(buffer);
+    return parsed.text || "";
+  }
+
+  if (name.endsWith(".docx")) {
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value || "";
+  }
+
+  if (name.endsWith(".txt")) {
+    return buffer.toString("utf-8");
+  }
+
+  throw new Error("Unsupported file type. Please upload PDF, DOCX, or TXT.");
+}
+
+CREATE lib/supabase/admin.ts
+Paste:
+
+import { createClient } from "@supabase/supabase-js";
+
+export const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+CREATE lib/utils/usage-log.ts
+Paste:
+
+import { supabaseAdmin } from "@/lib/supabase/admin";
+
+export async function logAIUsage({
+  userId,
+  route,
+  modelName,
+  inputTokens,
+  outputTokens,
+  success,
+  errorMessage
+}: {
+  userId?: string;
+  route: string;
+  modelName?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  success: boolean;
+  errorMessage?: string;
+}) {
+  await supabaseAdmin.from("ai_usage_logs").insert({
+    user_id: userId || null,
+    route,
+    model_name: modelName || null,
+    input_tokens: inputTokens || 0,
+    output_tokens: outputTokens || 0,
+    success,
+    error_message: errorMessage || null
+  });
+}
+
+CREATE lib/utils/rate-limit.ts
+Paste this simple placeholder first:
+
+const requestMap = new Map<string, { count: number; ts: number }>();
+
+export function basicRateLimit(key: string, limit = 10, windowMs = 60_000) {
+  const now = Date.now();
+  const existing = requestMap.get(key);
+
+  if (!existing || now - existing.ts > windowMs) {
+    requestMap.set(key, { count: 1, ts: now });
+    return true;
+  }
+
+  if (existing.count >= limit) {
+    return false;
+  }
+
+  existing.count += 1;
+  requestMap.set(key, existing);
+  return true;
+}
+
+CREATE app/api/ai/analyze-cv/route.ts
+Paste:
+
+import { NextRequest, NextResponse } from "next/server";
+import { anthropic, AI_MODELS } from "@/lib/ai/anthropic";
+import { buildCVParsingPrompt } from "@/lib/ai/prompts";
+import { ParsedCVSchema } from "@/lib/ai/schemas";
+import { extractTextFromFile } from "@/lib/files/extract-text";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { basicRateLimit } from "@/lib/utils/rate-limit";
+import { logAIUsage } from "@/lib/utils/usage-log";
+
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  if (!basicRateLimit(`analyze-cv:${ip}`, 8, 60_000)) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
+  try {
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+    const userId = String(formData.get("userId") || "");
+
+    if (!file) {
+      return NextResponse.json({ error: "File is required" }, { status: 400 });
+    }
+
+    const extractedText = await extractTextFromFile(file);
+
+    const completion = await anthropic.messages.create({
+      model: AI_MODELS.MAIN,
+      max_tokens: 3000,
+      temperature: 0.2,
+      messages: [
+        {
+          role: "user",
+          content: buildCVParsingPrompt(extractedText)
+        }
+      ]
+    });
+
+    const text = completion.content
+      .filter((c: any) => c.type === "text")
+      .map((c: any) => c.text)
+      .join("");
+
+    const parsed = ParsedCVSchema.parse(JSON.parse(text));
+
+    const docInsert = await supabaseAdmin
+      .from("candidate_documents")
+      .insert({
+        user_id: userId,
+        file_name: file.name,
+        file_type: file.type,
+        extracted_text: extractedText
+      })
+      .select("id")
+      .single();
+
+    const analysisInsert = await supabaseAdmin
+      .from("analyses")
+      .insert({
+        user_id: userId,
+        candidate_document_id: docInsert.data?.id ?? null,
+        analysis_type: "cv_parse",
+        model_name: AI_MODELS.MAIN,
+        input_tokens: completion.usage?.input_tokens ?? 0,
+        output_tokens: completion.usage?.output_tokens ?? 0,
+        result_json: parsed
+      })
+      .select("id")
+      .single();
+
+    await logAIUsage({
+      userId,
+      route: "/api/ai/analyze-cv",
+      modelName: AI_MODELS.MAIN,
+      inputTokens: completion.usage?.input_tokens ?? 0,
+      outputTokens: completion.usage?.output_tokens ?? 0,
+      success: true
+    });
+
+    return NextResponse.json({
+      ok: true,
+      candidateDocumentId: docInsert.data?.id,
+      analysisId: analysisInsert.data?.id,
+      extractedText,
+      parsed
+    });
+  } catch (error: any) {
+    await logAIUsage({
+      route: "/api/ai/analyze-cv",
+      success: false,
+      errorMessage: error.message
+    });
+
+    return NextResponse.json(
+      { error: error.message || "Failed to analyze CV" },
+      { status: 500 }
+    );
+  }
+}
+
+CREATE app/api/ai/analyze-job-match/route.ts
+Paste:
+
+import { NextRequest, NextResponse } from "next/server";
+import { anthropic, AI_MODELS } from "@/lib/ai/anthropic";
+import { buildJobMatchPrompt } from "@/lib/ai/prompts";
+import { JobMatchSchema } from "@/lib/ai/schemas";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { basicRateLimit } from "@/lib/utils/rate-limit";
+import { logAIUsage } from "@/lib/utils/usage-log";
+
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  if (!basicRateLimit(`job-match:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
+  try {
+    const body = await req.json();
+    const { userId, parsedCV, jobTitle, company, jobText, candidateDocumentId } = body;
+
+    if (!parsedCV || !jobText) {
+      return NextResponse.json({ error: "parsedCV and jobText are required" }, { status: 400 });
+    }
+
+    const jdInsert = await supabaseAdmin
+      .from("job_descriptions")
+      .insert({
+        user_id: userId,
+        title: jobTitle || null,
+        company: company || null,
+        raw_text: jobText
+      })
+      .select("id")
+      .single();
+
+    const completion = await anthropic.messages.create({
+      model: AI_MODELS.MAIN,
+      max_tokens: 3000,
+      temperature: 0.2,
+      messages: [
+        {
+          role: "user",
+          content: buildJobMatchPrompt(JSON.stringify(parsedCV), jobText)
+        }
+      ]
+    });
+
+    const text = completion.content
+      .filter((c: any) => c.type === "text")
+      .map((c: any) => c.text)
+      .join("");
+
+    const result = JobMatchSchema.parse(JSON.parse(text));
+
+    const analysisInsert = await supabaseAdmin
+      .from("analyses")
+      .insert({
+        user_id: userId,
+        candidate_document_id: candidateDocumentId || null,
+        job_description_id: jdInsert.data?.id ?? null,
+        analysis_type: "job_match",
+        model_name: AI_MODELS.MAIN,
+        input_tokens: completion.usage?.input_tokens ?? 0,
+        output_tokens: completion.usage?.output_tokens ?? 0,
+        result_json: result
+      })
+      .select("id")
+      .single();
+
+    await logAIUsage({
+      userId,
+      route: "/api/ai/analyze-job-match",
+      modelName: AI_MODELS.MAIN,
+      inputTokens: completion.usage?.input_tokens ?? 0,
+      outputTokens: completion.usage?.output_tokens ?? 0,
+      success: true
+    });
+
+    return NextResponse.json({
+      ok: true,
+      analysisId: analysisInsert.data?.id,
+      result
+    });
+  } catch (error: any) {
+    await logAIUsage({
+      route: "/api/ai/analyze-job-match",
+      success: false,
+      errorMessage: error.message
+    });
+
+    return NextResponse.json(
+      { error: error.message || "Failed to analyze job match" },
+      { status: 500 }
+    );
+  }
+}
+
+CREATE app/api/ai/recruiter-summary/route.ts
+Paste:
+
+import { NextRequest, NextResponse } from "next/server";
+import { anthropic, AI_MODELS } from "@/lib/ai/anthropic";
+import { buildRecruiterSummaryPrompt } from "@/lib/ai/prompts";
+import { basicRateLimit } from "@/lib/utils/rate-limit";
+
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  if (!basicRateLimit(`recruiter-summary:${ip}`, 12, 60_000)) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
+  try {
+    const body = await req.json();
+    const { parsedCV } = body;
+
+    const completion = await anthropic.messages.create({
+      model: AI_MODELS.FAST,
+      max_tokens: 1200,
+      temperature: 0.2,
+      messages: [
+        {
+          role: "user",
+          content: buildRecruiterSummaryPrompt(JSON.stringify(parsedCV))
+        }
+      ]
+    });
+
+    const text = completion.content
+      .filter((c: any) => c.type === "text")
+      .map((c: any) => c.text)
+      .join("");
+
+    return NextResponse.json({
+      ok: true,
+      result: JSON.parse(text)
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to generate recruiter summary" },
+      { status: 500 }
+    );
+  }
+}
+
+CREATE app/api/ai/stream-analysis/route.ts
+Paste:
+
+import { NextRequest } from "next/server";
+import { anthropic, AI_MODELS } from "@/lib/ai/anthropic";
+
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+  const { prompt } = body;
+
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const claudeStream = await anthropic.messages.stream({
+          model: AI_MODELS.MAIN,
+          max_tokens: 2500,
+          temperature: 0.3,
+          messages: [{ role: "user", content: prompt }]
+        });
+
+        for await (const text of claudeStream.textStream) {
+          controller.enqueue(encoder.encode(text));
+        }
+
+        controller.close();
+      } catch (err: any) {
+        controller.enqueue(encoder.encode(`ERROR: ${err.message}`));
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
+}
+
+CREATE app/dashboard/analysis/page.tsx
+Paste:
+
+"use client";
+
+import { useState } from "react";
+
+export default function AnalysisPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [jobText, setJobText] = useState("");
+  const [parsedCV, setParsedCV] = useState<any>(null);
+  const [jobResult, setJobResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const userId = "TEMP_USER_ID";
+
+  async function handleParseCV() {
+    if (!file) return;
+    setLoading(true);
+
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("userId", userId);
+
+    const res = await fetch("/api/ai/analyze-cv", {
+      method: "POST",
+      body: fd
+    });
+
+    const data = await res.json();
+    setParsedCV(data.parsed || null);
+    setLoading(false);
+  }
+
+  async function handleMatch() {
+    if (!parsedCV || !jobText) return;
+    setLoading(true);
+
+    const res = await fetch("/api/ai/analyze-job-match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId,
+        parsedCV,
+        jobText
+      })
+    });
+
+    const data = await res.json();
+    setJobResult(data.result || null);
+    setLoading(false);
+  }
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <h1 className="text-2xl font-bold">Resuone AI Analysis</h1>
+
+      <div className="space-y-2">
+        <label className="block font-medium">Upload CV</label>
+        <input
+          type="file"
+          accept=".pdf,.docx,.txt"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+        />
+        <button
+          className="px-4 py-2 rounded bg-black text-white"
+          onClick={handleParseCV}
+          disabled={!file || loading}
+        >
+          {loading ? "Parsing..." : "Parse CV"}
+        </button>
+      </div>
+
+      {parsedCV && (
+        <pre className="p-4 rounded border overflow-auto text-sm">
+          {JSON.stringify(parsedCV, null, 2)}
+        </pre>
+      )}
+
+      <div className="space-y-2">
+        <label className="block font-medium">Paste Job Description</label>
+        <textarea
+          className="w-full min-h-[220px] border rounded p-3"
+          value={jobText}
+          onChange={(e) => setJobText(e.target.value)}
+          placeholder="Paste full job description here..."
+        />
+        <button
+          className="px-4 py-2 rounded bg-black text-white"
+          onClick={handleMatch}
+          disabled={!parsedCV || !jobText || loading}
+        >
+          {loading ? "Analyzing..." : "Analyze Match"}
+        </button>
+      </div>
+
+      {jobResult && (
+        <pre className="p-4 rounded border overflow-auto text-sm">
+          {JSON.stringify(jobResult, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+IMMEDIATE UX GOAL
+The dashboard flow must be:
+1. User uploads CV
+2. User sees structured parse result
+3. User pastes JD
+4. User clicks Analyze Match
+5. User sees:
+   - score
+   - strengths
+   - missing skills
+   - recruiter summary
+   - improvement actions
+
+BUSINESS LOGIC DECISIONS
+Use Claude like this:
+- Claude Haiku:
+  - quick summaries
+  - low-cost recruiter snippets
+  - short transformations
+- Claude Sonnet:
+  - full CV parse
+  - CV + JD comparison
+  - premium analysis
+Do NOT use the most expensive model by default.
+Keep premium/deep analysis as a later upsell.
+
+IMPORTANT IMPROVEMENT
+If Claude returns invalid JSON:
+- retry once with a stricter “return valid JSON only” prompt
+- if still invalid, show a user-friendly error
+- log it in ai_usage_logs
+
+ADD JSON RETRY HELPER
+Create lib/ai/json.ts
+
+export async function safeParseJson<T>(raw: string): Promise<T> {
+  return JSON.parse(raw) as T;
+}
+
+Then later extend with cleanup if needed.
+
+SECURITY
+- block oversized files
+- reject unsupported MIME types
+- sanitize displayed AI output
+- do not render raw HTML from model output
+- never trust model output without schema validation
+- store only necessary data
+- later add deletion flow for candidate documents and analyses
+
+TEST CASES
+After implementation test these:
+1. PDF CV with strong formatting
+2. DOCX CV
+3. Minimal CV
+4. Job description with many requirements
+5. Job description with vague requirements
+6. Invalid file type upload
+7. Empty job description
+8. Claude timeout / API error
+9. Invalid JSON response fallback
+10. Re-run same CV against different jobs
+
+SUCCESS CRITERIA
+This milestone is complete when:
+- CV upload works
+- text extraction works for PDF/DOCX/TXT
+- Claude parses CV into structured JSON
+- Claude compares CV to job description
+- results are saved in Supabase
+- usage logs are saved
+- frontend shows results clearly
+- no Anthropic secret is exposed client-side
+
+AFTER THIS MILESTONE
+Next milestone should add:
+- bulk CV analysis
+- recruiter dashboard with candidate comparison
+- candidate ranking across one job
+- export to PDF / shareable report
+- credit-based billing for AI analysis
+- cached prompts and token optimization
+- background processing for large batch uploads
