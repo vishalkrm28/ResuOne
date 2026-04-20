@@ -1,0 +1,446 @@
+MILESTONE 33 — CV-BASED OPEN JOB RECOMMENDATIONS
+
+GOAL
+Build a user-facing feature where a candidate uploads their CV and gets recommended real open jobs that match their experience, skills, and location preferences.
+
+USER FLOW
+1. User uploads CV or uses already parsed CV from Resuone
+2. User selects:
+   - preferred location
+   - remote / hybrid / onsite
+   - role type
+   - salary expectation (optional)
+3. System extracts candidate profile
+4. System fetches live jobs from external APIs
+5. System ranks the jobs against the candidate profile
+6. User sees:
+   - best-fit jobs
+   - match score
+   - why this job fits
+   - what is missing
+   - direct apply link
+
+RECOMMENDED JOB DATA SOURCE
+Primary: Adzuna API
+Secondary/fallback: The Muse API
+
+WHY
+- Adzuna provides search endpoints and job categories
+- The Muse provides public developer access for jobs and companies
+- Build the source layer abstractly so more APIs can be added later
+
+ENV VARIABLES
+Add:
+
+ADZUNA_APP_ID=
+ADZUNA_APP_KEY=
+THE_MUSE_API_KEY=
+
+NEW DATABASE TABLES
+
+create table if not exists candidate_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  source_candidate_document_id uuid references candidate_documents(id) on delete set null,
+  parsed_cv jsonb not null,
+  normalized_profile jsonb not null,
+  created_at timestamptz default now()
+);
+
+create table if not exists external_jobs_cache (
+  id uuid primary key default gen_random_uuid(),
+  source text not null,
+  external_job_id text not null,
+  title text not null,
+  company text,
+  location text,
+  employment_type text,
+  remote_type text,
+  salary_min numeric,
+  salary_max numeric,
+  currency text,
+  description text,
+  apply_url text,
+  source_payload jsonb default '{}'::jsonb,
+  fetched_at timestamptz default now(),
+  unique(source, external_job_id)
+);
+
+create table if not exists job_recommendations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  candidate_profile_id uuid references candidate_profiles(id) on delete cascade,
+  external_jobs_cache_id uuid references external_jobs_cache(id) on delete cascade,
+  match_score integer not null,
+  fit_reasons jsonb default '[]'::jsonb,
+  missing_requirements jsonb default '[]'::jsonb,
+  recommendation_summary text,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_candidate_profiles_user on candidate_profiles(user_id);
+create index if not exists idx_external_jobs_cache_source on external_jobs_cache(source);
+create index if not exists idx_job_recommendations_user on job_recommendations(user_id);
+
+NEW FOLDERS
+Create:
+
+lib/jobs/
+  providers/
+    adzuna.ts
+    muse.ts
+  normalize.ts
+  search.ts
+  ranking.ts
+
+app/api/jobs/
+  fetch-open-jobs/route.ts
+  recommend-from-cv/route.ts
+  refresh-recommendations/route.ts
+
+app/jobs/recommendations/page.tsx
+
+NORMALIZED CANDIDATE PROFILE
+Create a compact candidate profile so you do not send full CV text every time.
+
+Shape:
+
+{
+  "candidate_name": "",
+  "target_roles": [],
+  "seniority_level": "",
+  "years_experience": 0,
+  "core_skills": [],
+  "tools": [],
+  "industries": [],
+  "preferred_locations": [],
+  "remote_preference": "",
+  "education_level": "",
+  "keywords": []
+}
+
+ADD PROMPT
+In lib/ai/prompts.ts add:
+
+export function buildCandidateProfilePrompt(parsedCVJson: string) {
+  return `
+You are Resuone AI.
+
+TASK:
+Convert this parsed CV into a compact job-matching profile.
+
+RULES:
+- Return valid JSON only
+- No markdown
+- Do not invent facts
+- Infer likely target roles conservatively from actual experience
+- Keep skills and keywords concise
+
+OUTPUT:
+{
+  "candidate_name": "",
+  "target_roles": [],
+  "seniority_level": "",
+  "years_experience": 0,
+  "core_skills": [],
+  "tools": [],
+  "industries": [],
+  "preferred_locations": [],
+  "remote_preference": "",
+  "education_level": "",
+  "keywords": []
+}
+
+PARSED CV JSON:
+${parsedCVJson}
+`;
+}
+
+JOB PROVIDER LAYER
+Create lib/jobs/providers/adzuna.ts
+
+export async function fetchAdzunaJobs({
+  country = "gb",
+  page = 1,
+  what,
+  where,
+}: {
+  country?: string;
+  page?: number;
+  what: string;
+  where?: string;
+}) {
+  const appId = process.env.ADZUNA_APP_ID!;
+  const appKey = process.env.ADZUNA_APP_KEY!;
+
+  const params = new URLSearchParams({
+    app_id: appId,
+    app_key: appKey,
+    what,
+    results_per_page: "20",
+  });
+
+  if (where) params.set("where", where);
+
+  const url = `https://api.adzuna.com/v1/api/jobs/${country}/search/${page}?${params.toString()}`;
+  const res = await fetch(url, { cache: "no-store" });
+
+  if (!res.ok) throw new Error("Failed to fetch Adzuna jobs");
+
+  return res.json();
+}
+
+Create lib/jobs/providers/muse.ts
+
+export async function fetchMuseJobs({ page = 1, category }: { page?: number; category?: string }) {
+  const apiKey = process.env.THE_MUSE_API_KEY!;
+  const params = new URLSearchParams({
+    page: String(page),
+    api_key: apiKey,
+  });
+
+  if (category) params.set("category", category);
+
+  const url = `https://www.themuse.com/api/public/jobs?${params.toString()}`;
+  const res = await fetch(url, { cache: "no-store" });
+
+  if (!res.ok) throw new Error("Failed to fetch The Muse jobs");
+
+  return res.json();
+}
+
+NORMALIZE EXTERNAL JOBS
+Create lib/jobs/normalize.ts
+
+export function normalizeAdzunaJob(job: any) {
+  return {
+    source: "adzuna",
+    external_job_id: String(job.id),
+    title: job.title || "",
+    company: job.company?.display_name || "",
+    location: job.location?.display_name || "",
+    employment_type: "",
+    remote_type: "",
+    salary_min: job.salary_min || null,
+    salary_max: job.salary_max || null,
+    currency: "GBP",
+    description: job.description || "",
+    apply_url: job.redirect_url || "",
+    source_payload: job
+  };
+}
+
+export function normalizeMuseJob(job: any) {
+  return {
+    source: "themuse",
+    external_job_id: String(job.id),
+    title: job.name || "",
+    company: job.company?.name || "",
+    location: Array.isArray(job.locations) ? job.locations.map((x: any) => x.name).join(", ") : "",
+    employment_type: job.type || "",
+    remote_type: "",
+    salary_min: null,
+    salary_max: null,
+    currency: "",
+    description: job.contents || "",
+    apply_url: job.refs?.landing_page || "",
+    source_payload: job
+  };
+}
+
+FETCH STRATEGY
+For each candidate profile:
+1. Take top 3 target_roles
+2. Search jobs for each role
+3. Search by preferred location if set
+4. Also search remote if requested
+5. Store all jobs in external_jobs_cache
+6. Deduplicate by source + external_job_id
+
+JOB RECOMMENDATION LOGIC
+Do NOT send 200 jobs to Claude at once.
+Use a 2-step ranking process:
+
+STEP 1 — local pre-filter
+Score quickly based on:
+- keyword overlap
+- skill overlap
+- title overlap
+- location preference match
+
+STEP 2 — AI reranking
+Take top 20 prefiltered jobs
+Send compact candidate profile + compact job objects to Claude
+Ask Claude to return top 10 ranked jobs with:
+- match score
+- reasons
+- missing requirements
+- summary
+
+ADD LOCAL PREFILTER
+Create lib/jobs/ranking.ts
+
+function overlapCount(a: string[] = [], b: string[] = []) {
+  const aa = new Set(a.map(x => x.toLowerCase()));
+  const bb = new Set(b.map(x => x.toLowerCase()));
+  let count = 0;
+  for (const item of aa) {
+    if (bb.has(item)) count++;
+  }
+  return count;
+}
+
+export function prefilterJobs(candidateProfile: any, jobs: any[]) {
+  return jobs
+    .map((job) => {
+      const text = `${job.title} ${job.description} ${job.company} ${job.location}`.toLowerCase();
+
+      const roleScore = (candidateProfile.target_roles || []).reduce((acc: number, role: string) => {
+        return acc + (text.includes(role.toLowerCase()) ? 8 : 0);
+      }, 0);
+
+      const skillScore = (candidateProfile.core_skills || []).reduce((acc: number, skill: string) => {
+        return acc + (text.includes(skill.toLowerCase()) ? 3 : 0);
+      }, 0);
+
+      const toolScore = (candidateProfile.tools || []).reduce((acc: number, tool: string) => {
+        return acc + (text.includes(tool.toLowerCase()) ? 2 : 0);
+      }, 0);
+
+      const locationScore =
+        candidateProfile.preferred_locations?.some((loc: string) =>
+          text.includes(loc.toLowerCase())
+        ) ? 6 : 0;
+
+      return {
+        ...job,
+        pre_score: roleScore + skillScore + toolScore + locationScore
+      };
+    })
+    .sort((a, b) => b.pre_score - a.pre_score);
+}
+
+ADD AI RERANK PROMPT
+In lib/ai/prompts.ts add:
+
+export function buildOpenJobsRecommendationPrompt(candidateProfileJson: string, jobsJson: string) {
+  return `
+You are Resuone AI.
+
+TASK:
+Rank these open jobs for this candidate.
+
+RULES:
+- Return valid JSON only
+- No markdown
+- Be realistic, not flattering
+- Prefer relevant titles, skills, seniority, and location fit
+- Penalize jobs with obvious missing must-have requirements
+- Return top 10 only
+
+OUTPUT:
+{
+  "recommendations": [
+    {
+      "external_job_id": "",
+      "source": "",
+      "match_score": 0,
+      "fit_reasons": [],
+      "missing_requirements": [],
+      "recommendation_summary": ""
+    }
+  ]
+}
+
+CANDIDATE PROFILE:
+${candidateProfileJson}
+
+OPEN JOBS:
+${jobsJson}
+`;
+}
+
+API ROUTE: RECOMMEND FROM CV
+POST /api/jobs/recommend-from-cv
+
+Input:
+{
+  "userId": "...",
+  "candidateProfileId": "...",
+  "preferredLocation": "Stockholm",
+  "country": "se"
+}
+
+Flow:
+1. get candidate_profile
+2. fetch external jobs from Adzuna using top roles
+3. optionally fetch The Muse jobs too
+4. normalize and cache jobs
+5. prefilter jobs locally
+6. take top 20
+7. call Claude reranker
+8. save top recommendations in job_recommendations
+9. return top 10 to UI
+
+UI PAGE
+Create page:
+app/jobs/recommendations/page.tsx
+
+The page should show:
+- candidate role summary
+- filters
+- recommended jobs cards
+
+Each card:
+- Job title
+- Company
+- Location
+- Salary if available
+- Match score
+- Why it fits
+- Missing requirements
+- Apply button
+
+FILTERS
+- country
+- city
+- remote only
+- minimum match score
+- seniority
+- job title keyword
+
+CACHE RULE
+Use external_jobs_cache to avoid re-fetching the same jobs repeatedly.
+Refresh cached jobs only if older than 12 hours.
+
+RATE LIMITS
+Add limits to:
+- recommendation generation
+- external provider fetches
+- refresh endpoint
+
+COST CONTROL
+- build candidate_profile once and reuse it
+- use local prefilter before Claude reranking
+- only send top 20 jobs to Claude
+- use Haiku first if response quality is enough
+- use Sonnet only for premium recommendations
+
+SUCCESS CRITERIA
+This milestone is complete when:
+- user can upload or reuse CV
+- user gets normalized candidate profile
+- app fetches real open jobs
+- app ranks jobs against candidate profile
+- user sees top 10 recommended jobs
+- each recommendation includes apply link and explanation
+- data is cached and stored in Supabase
+
+AFTER THIS MILESTONE
+Next:
+- saved jobs
+- one-click CV tailoring per job
+- cover letter generation per job
+- job alerts
+- recruiter direct outreach
+- application tracker
