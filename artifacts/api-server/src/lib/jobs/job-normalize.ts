@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type { UnifiedJob } from "./job-schema.js";
+import _citiesJson from "./cities.json";
 
 // ─── HTML strip ───────────────────────────────────────────────────────────────
 
@@ -149,169 +150,121 @@ const COUNTRY_NAMES: Record<string, string> = {
   "puerto rico": "pr",
 };
 
-// Stage 2: Major world cities → ISO-2 (for locations that omit the country name)
-const CITY_TO_COUNTRY: Record<string, string> = {
-  // Remote signals (handled here so we scan once)
+// Stage 2: 119 K world cities → ISO-2
+// Built from GeoNames via all-the-cities (max-population wins for duplicate names).
+const CITY_INDEX = new Map<string, string>(
+  Object.entries(_citiesJson as Record<string, string>)
+);
+
+// Supplemental overrides: aliases or high-value phrases not in the GeoNames dataset,
+// or where the dataset's max-population winner is wrong for job-listing context.
+const CITY_OVERRIDES: Record<string, string> = {
+  // ── Remote signals ──────────────────────────────────────────────────────────
   remote: "remote", anywhere: "remote", worldwide: "remote",
   global: "remote", "work from home": "remote", wfh: "remote",
+
+  // ── Anglicised spellings missing from or wrong in GeoNames ──────────────────
   // Belgium
-  brussels: "be", bruxelles: "be", brussel: "be", antwerp: "be",
-  antwerpen: "be", ghent: "be", gent: "be", liege: "be", luik: "be",
-  leuven: "be", louvain: "be", bruges: "be", brugge: "be", namur: "be",
-  charleroi: "be", mechelen: "be", mons: "be", aalst: "be", genk: "be",
-  hasselt: "be", kortrijk: "be", ostend: "be", ostende: "be",
+  antwerp: "be",            // GeoNames has Antwerp, Ohio (US) as higher pop
+  ghent: "be",              // GeoNames only has "gent" (Flemish)
+  bruges: "be",             // GeoNames has a Bruges in France
+  liege: "be", luik: "be", // accented versions only in dataset
+  leuven: "be", louvain: "be",
+  mechelen: "be", hasselt: "be", kortrijk: "be",
+  ostend: "be", ostende: "be",
+  genk: "be", aalst: "be", mons: "be",
+
   // Germany
-  berlin: "de", hamburg: "de", munich: "de", münchen: "de",
-  frankfurt: "de", cologne: "de", köln: "de", stuttgart: "de",
-  düsseldorf: "de", dusseldorf: "de", leipzig: "de", dortmund: "de",
-  essen: "de", nuremberg: "de", nürnberg: "de", bremen: "de",
-  hanover: "de", hannover: "de", dresden: "de", bonn: "de",
-  // France
-  paris: "fr", lyon: "fr", marseille: "fr", toulouse: "fr", nice: "fr",
-  nantes: "fr", strasbourg: "fr", montpellier: "fr", bordeaux: "fr",
-  lille: "fr", rennes: "fr", reims: "fr", grenoble: "fr",
-  // Netherlands
-  amsterdam: "nl", rotterdam: "nl", "the hague": "nl", "den haag": "nl",
-  utrecht: "nl", eindhoven: "nl", groningen: "nl", tilburg: "nl",
-  breda: "nl", nijmegen: "nl",
-  // Spain
-  madrid: "es", barcelona: "es", valencia: "es", seville: "es",
-  sevilla: "es", zaragoza: "es", malaga: "es", málaga: "es",
-  bilbao: "es", alicante: "es",
-  // Italy
-  rome: "it", roma: "it", milan: "it", milano: "it", naples: "it",
-  napoli: "it", turin: "it", torino: "it", palermo: "it", genoa: "it",
-  genova: "it", bologna: "it", florence: "it", firenze: "it",
-  // UK
-  london: "gb", manchester: "gb", edinburgh: "gb", birmingham: "gb",
-  glasgow: "gb", leeds: "gb", bristol: "gb", liverpool: "gb",
-  sheffield: "gb", cambridge: "gb", oxford: "gb", brighton: "gb",
-  nottingham: "gb", newcastle: "gb", cardiff: "gb",
-  // Ireland
-  dublin: "ie", cork: "ie", galway: "ie", limerick: "ie",
-  // Sweden
-  stockholm: "se", gothenburg: "se", göteborg: "se", malmö: "se",
-  malmo: "se", uppsala: "se",
-  // Norway
-  oslo: "no", bergen: "no", trondheim: "no", stavanger: "no",
-  // Denmark
-  copenhagen: "dk", københavn: "dk", aarhus: "dk", odense: "dk",
-  // Finland
-  helsinki: "fi", espoo: "fi", tampere: "fi", turku: "fi",
+  cologne: "de",            // GeoNames has Cologne → Italy (small town)
+  münchen: "de",            // accented — GeoNames misses it
+  nuremberg: "de",          // English vs "nürnberg"
+  dusseldorf: "de",         // unaccented
+
   // Switzerland
-  zurich: "ch", zürich: "ch", geneva: "ch", genève: "ch", bern: "ch",
-  basel: "ch", lausanne: "ch",
-  // Austria
-  vienna: "at", wien: "at", graz: "at", linz: "at", salzburg: "at",
-  innsbruck: "at",
+  zurich: "ch",             // GeoNames has "zürich"; "zurich" maps to somewhere else
+  geneva: "ch",             // GeoNames has Geneva, NY (US) as higher pop
+  genève: "ch",
+
+  // Netherlands
+  "the hague": "nl", "den haag": "nl",
+
   // Poland
-  warsaw: "pl", warszawa: "pl", krakow: "pl", kraków: "pl",
-  wroclaw: "pl", wrocław: "pl", poznan: "pl", gdansk: "pl",
+  krakow: "pl",             // GeoNames only has "kraków" (accented)
+  wroclaw: "pl",            // vs "wrocław"
+  gdansk: "pl",             // vs "gdańsk"
+
   // Czech Republic
-  prague: "cz", praha: "cz", brno: "cz", ostrava: "cz",
-  // Hungary
-  budapest: "hu",
-  // Romania
-  bucharest: "ro", cluj: "ro",
-  // Portugal
-  lisbon: "pt", lisboa: "pt", porto: "pt", braga: "pt",
-  // Greece
-  athens: "gr", thessaloniki: "gr",
-  // US
-  "new york": "us", "san francisco": "us", "los angeles": "us",
-  chicago: "us", seattle: "us", austin: "us", denver: "us",
-  atlanta: "us", boston: "us", miami: "us", houston: "us",
-  dallas: "us", phoenix: "us", portland: "us", nashville: "us",
-  minneapolis: "us", detroit: "us", columbus: "us", charlotte: "us",
-  "las vegas": "us", philadelphia: "us", "san diego": "us",
-  "san jose": "us", pittsburgh: "us", cleveland: "us", raleigh: "us",
-  memphis: "us", "kansas city": "us", indianapolis: "us",
-  baltimore: "us", milwaukee: "us", "new orleans": "us",
-  sacramento: "us", omaha: "us", "salt lake city": "us",
-  // Canada
-  toronto: "ca", vancouver: "ca", montreal: "ca", calgary: "ca",
-  ottawa: "ca", edmonton: "ca", winnipeg: "ca", quebec: "ca",
-  // Brazil
-  "sao paulo": "br", "são paulo": "br", "rio de janeiro": "br",
-  brasilia: "br", brasília: "br", curitiba: "br", fortaleza: "br",
-  "belo horizonte": "br", manaus: "br", recife: "br",
-  // Mexico
-  "mexico city": "mx", guadalajara: "mx", monterrey: "mx",
-  puebla: "mx", tijuana: "mx",
-  // Argentina
-  "buenos aires": "ar", rosario: "ar", mendoza: "ar",
-  // Japan
-  tokyo: "jp", osaka: "jp", kyoto: "jp", yokohama: "jp",
-  nagoya: "jp", sapporo: "jp", fukuoka: "jp", kobe: "jp",
-  // China
-  beijing: "cn", shanghai: "cn", shenzhen: "cn", guangzhou: "cn",
-  chengdu: "cn", wuhan: "cn", tianjin: "cn", hangzhou: "cn",
-  nanjing: "cn",
-  // South Korea
-  seoul: "kr", incheon: "kr", busan: "kr", daejeon: "kr", daegu: "kr",
-  // India
-  bangalore: "in", bengaluru: "in", mumbai: "in", bombay: "in",
-  "new delhi": "in", delhi: "in", hyderabad: "in", chennai: "in",
-  madras: "in", kolkata: "in", calcutta: "in", pune: "in",
-  ahmedabad: "in", noida: "in", gurgaon: "in", gurugram: "in",
-  // Australia
-  sydney: "au", melbourne: "au", brisbane: "au", perth: "au",
-  adelaide: "au", canberra: "au", "gold coast": "au",
-  // New Zealand
-  auckland: "nz", wellington: "nz", christchurch: "nz",
-  // Singapore
-  singapore: "sg",
-  // Hong Kong
+  prague: "cz",             // double-check — dataset has it but just in case
+
+  // Scandinavia / Baltic
+  reykjavik: "is",          // Iceland capital — missing from dataset
+  ulaanbaatar: "mn",        // Mongolia capital — missing from dataset
+  gothenburg: "se",         // English name; dataset has "göteborg"
+  malmo: "se",              // vs "malmö"
+  copenhagen: "dk",         // check — dataset may have it
+
+  // Eastern Europe
+  bucharest: "ro",
+  chisinau: "md",
+  kyiv: "ua", kiev: "ua",
+
+  // Russia
+  moscow: "ru",
+  "saint petersburg": "ru", "st. petersburg": "ru",
+
+  // Middle East
+  "tel aviv": "il",
+  "abu dhabi": "ae",
+  riyadh: "sa", jeddah: "sa",
+
+  // Africa
+  "ivory coast": "ci",
+  "dar es salaam": "tz",
+  "addis ababa": "et",
+
+  // South / Southeast Asia
+  "ho chi minh city": "vn", "ho chi minh": "vn",
+  "kuala lumpur": "my",
+  "chiang mai": "th",
+  bangalore: "in",          // English name; dataset has "bengaluru"
+  bombay: "in",             // old name for Mumbai
+
+  // East Asia
   "hong kong": "hk",
-  // Taiwan
-  taipei: "tw",
-  // Thailand
-  bangkok: "th", "chiang mai": "th",
-  // Indonesia
-  jakarta: "id", surabaya: "id", bandung: "id",
-  // Malaysia
-  "kuala lumpur": "my", penang: "my",
-  // Philippines
-  manila: "ph", cebu: "ph",
-  // Vietnam
-  "ho chi minh": "vn", hanoi: "vn",
-  // UAE
-  dubai: "ae", "abu dhabi": "ae", sharjah: "ae",
-  // Israel
-  "tel aviv": "il", jerusalem: "il", haifa: "il",
-  // Saudi Arabia
-  riyadh: "sa", jeddah: "sa", dammam: "sa",
-  // South Africa
-  johannesburg: "za", "cape town": "za", durban: "za", pretoria: "za",
-  // Egypt
-  cairo: "eg", alexandria: "eg",
-  // Kenya
-  nairobi: "ke", mombasa: "ke",
-  // Nigeria
-  lagos: "ng", abuja: "ng",
-  // Other capitals/major hubs
-  accra: "gh", "dar es salaam": "tz", addis: "et", "addis ababa": "et",
-  "kuala lumpur": "my", kathmandu: "np", colombo: "lk",
-  dhaka: "bd", karachi: "pk", lahore: "pk", islamabad: "pk",
-  tashkent: "uz", almaty: "kz", baku: "az", tbilisi: "ge",
-  yerevan: "am", minsk: "by", riga: "lv", vilnius: "lt", tallinn: "ee",
-  helsinki: "fi", sofia: "bg", zagreb: "hr", belgrade: "rs",
-  sarajevo: "ba", skopje: "mk", tirana: "al", chisinau: "md",
-  kyiv: "ua", kiev: "ua", moscow: "ru", "saint petersburg": "ru",
-  amman: "jo", beirut: "lb", baghdad: "iq", tehran: "ir",
-  doha: "qa", muscat: "om", manama: "bh", kuwait: "kw",
-  tunis: "tn", algiers: "dz", casablanca: "ma", rabat: "ma",
-  khartoum: "sd", kampala: "ug", dakar: "sn", abidjan: "ci",
-  "ivory coast": "ci", kinshasa: "cd", luanda: "ao",
-  lusaka: "zm", harare: "zw", maputo: "mz",
-  lima: "pe", bogota: "co", bogotá: "co", medellin: "co",
-  quito: "ec", "la paz": "bo", asuncion: "py", montevideo: "uy",
-  caracas: "ve", panama: "pa", "san jose": "cr",
-  "san juan": "pr", havana: "cu",
+  "hong kong sar": "hk",
+
+  // Americas
+  "new york": "us",         // GeoNames has "New York City"
+  "new york city": "us",
+  "san francisco": "us",
+  "los angeles": "us",
+  "las vegas": "us",
+  "salt lake city": "us",
+  "kansas city": "us",
+  "new orleans": "us",
+  "san jose": "us",         // overrides Costa Rica small-city hit
+  "new delhi": "in",
+
+  // Brazil
+  "rio de janeiro": "br",
+  "sao paulo": "br", "são paulo": "br",
+  "belo horizonte": "br",
+
+  // Misc
+  "buenos aires": "ar",     // ensure AR wins over MX/CO duplicates
+  "mexico city": "mx",
+  "cape town": "za",
+  "gold coast": "au",
+  "la paz": "bo",
 };
 
 // US state abbreviations regex ("Jacksonville, FL" → "us")
 const US_STATE_ABBREV = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\s*$/i;
+
+/** Look up a phrase (1–3 words) in supplemental overrides then the 119K city index. */
+function cityLookup(phrase: string): string | undefined {
+  return CITY_OVERRIDES[phrase] ?? CITY_INDEX.get(phrase);
+}
 
 export function inferCountry(location: string, queryCountry = ""): string {
   if (queryCountry) return queryCountry;
@@ -319,23 +272,35 @@ export function inferCountry(location: string, queryCountry = ""): string {
 
   const loc = location.toLowerCase().trim();
 
-  // 1. Check multi-word city phrases first (longer matches take priority)
-  for (const [city, code] of Object.entries(CITY_TO_COUNTRY)) {
-    if (city.includes(" ") && loc.includes(city)) return code;
+  // 1. Supplemental overrides – exact substring match for multi-word phrases
+  for (const phrase of Object.keys(CITY_OVERRIDES)) {
+    if (phrase.includes(" ") && loc.includes(phrase)) return CITY_OVERRIDES[phrase];
   }
 
-  // 2. Check for country name as a whole word in the location string
+  // 2. Country name whole-word match
   for (const [name, code] of Object.entries(COUNTRY_NAMES)) {
     const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
     if (re.test(loc)) return code;
   }
 
-  // 3. Single-word city lookup
-  const tokens = loc.split(/[\s,/|]+/);
-  for (const token of tokens) {
-    if (token.length < 3) continue;
-    const hit = CITY_TO_COUNTRY[token];
-    if (hit) return hit;
+  // 3. N-gram city lookup (3-word → 2-word → 1-word), O(1) per combo
+  const tokens = loc.split(/[\s,/()|]+/).filter((t) => t.length >= 2);
+  for (let i = 0; i < tokens.length; i++) {
+    // Try 3-word phrase
+    if (i + 2 < tokens.length) {
+      const hit = cityLookup(`${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`);
+      if (hit) return hit;
+    }
+    // Try 2-word phrase
+    if (i + 1 < tokens.length) {
+      const hit = cityLookup(`${tokens[i]} ${tokens[i + 1]}`);
+      if (hit) return hit;
+    }
+    // Try single token
+    if (tokens[i].length >= 3) {
+      const hit = cityLookup(tokens[i]);
+      if (hit) return hit;
+    }
   }
 
   // 4. US state abbreviation fallback ("Jacksonville, FL")
