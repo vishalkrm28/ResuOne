@@ -24,6 +24,8 @@ import emailSyncRouter from "./email-sync.js";
 import workspacesRouter from "./workspaces.js";
 import marketingRouter from "./marketing.js";
 import publicRouter from "./public.js";
+import jobsDiscoverRouter from "./jobs-discover.js";
+import jobsSourcesRouter from "./jobs-sources.js";
 
 const router: IRouter = Router();
 
@@ -52,5 +54,7 @@ router.use(calendarRouter);
 router.use(emailSyncRouter);
 router.use(workspacesRouter);
 router.use(marketingRouter);
+router.use(jobsDiscoverRouter);
+router.use(jobsSourcesRouter);
 
 export default router;

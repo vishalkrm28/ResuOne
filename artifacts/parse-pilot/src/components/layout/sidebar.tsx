@@ -20,6 +20,7 @@ import {
   Bell,
   Link2,
   Building2,
+  Globe,
 } from "lucide-react";
 import { LogoBrand } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/new", label: "New Application", icon: FilePlus2 },
   { href: "/bulk/history", label: "Bulk Mode", icon: Users },
   { href: "/jobs/recommendations", label: "Find Jobs", icon: Sparkles },
+  { href: "/jobs/discover", label: "Global Jobs", icon: Globe },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/billing", label: "Billing & Plan", icon: CreditCard },
   { href: "/workspaces", label: "Workspaces", icon: Building2 },

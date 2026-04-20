@@ -1,71 +1,135 @@
-import { integer, jsonb, numeric, pgTable, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, numeric, pgTable, text, timestamp, unique, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { usersTable } from "./auth";
+import { candidateProfilesTable } from "./jobs-core";
 
-// ─── Candidate Profiles ───────────────────────────────────────────────────────
-// Stores the normalized AI-extracted profile for a job-seeker.
-// Built once from a parsed CV and reused for multiple recommendation runs.
+// Re-export from jobs-core so nothing breaks
+export * from "./jobs-core";
 
-export const candidateProfilesTable = pgTable("candidate_profiles", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: text("user_id").notNull(),
-  sourceApplicationId: varchar("source_application_id"),
-  parsedCv: jsonb("parsed_cv").notNull(),
-  normalizedProfile: jsonb("normalized_profile").notNull(),
-  preferences: jsonb("preferences").notNull().default(sql`'{}'::jsonb`),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// ─── Global Discovered Jobs ───────────────────────────────────────────────────
+// Canonical store for all globally discovered jobs across all sources.
+// source + external_id provides the natural dedup key per provider.
+// canonical_key provides cross-source dedup.
 
-// ─── External Jobs Cache ──────────────────────────────────────────────────────
-// Caches jobs fetched from external providers (Adzuna, The Muse).
-// Refreshed when fetched_at is older than 12 hours.
-
-export const externalJobsCacheTable = pgTable(
-  "external_jobs_cache",
+export const discoveredJobsTable = pgTable(
+  "jobs",
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
     source: text("source").notNull(),
-    externalJobId: text("external_job_id").notNull(),
+    sourceType: text("source_type").notNull(),
+    externalId: text("external_id"),
+    canonicalKey: text("canonical_key").notNull(),
     title: text("title").notNull(),
     company: text("company"),
     location: text("location"),
+    country: text("country"),
+    remote: boolean("remote").default(false),
     employmentType: text("employment_type"),
-    remoteType: text("remote_type"),
+    seniority: text("seniority"),
     salaryMin: numeric("salary_min"),
     salaryMax: numeric("salary_max"),
     currency: text("currency"),
     description: text("description"),
     applyUrl: text("apply_url"),
-    sourcePayload: jsonb("source_payload").default(sql`'{}'::jsonb`),
+    companyCareersUrl: text("company_careers_url"),
+    postedAt: timestamp("posted_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    discoveredAt: timestamp("discovered_at", { withTimezone: true }).notNull().defaultNow(),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    skills: jsonb("skills").default(sql`'[]'::jsonb`),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    rawPayload: jsonb("raw_payload").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique().on(t.source, t.externalJobId)],
+  (t) => [
+    uniqueIndex("jobs_canonical_key_idx").on(t.canonicalKey),
+    index("jobs_country_idx").on(t.country),
+    index("jobs_remote_idx").on(t.remote),
+    index("jobs_source_idx").on(t.source),
+    index("jobs_source_type_idx").on(t.sourceType),
+    index("jobs_created_at_idx").on(t.createdAt),
+  ],
 );
 
-// ─── Job Recommendations ──────────────────────────────────────────────────────
-// Stores AI-ranked job recommendations per candidate profile run.
+// ─── Job Source Registry ──────────────────────────────────────────────────────
+// Tracks all configured job sources and their metadata.
 
-export const jobRecommendationsTable = pgTable("job_recommendations", {
+export const jobSourceRegistryTable = pgTable("job_source_registry", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: text("user_id").notNull(),
-  candidateProfileId: varchar("candidate_profile_id").references(
-    () => candidateProfilesTable.id,
-    { onDelete: "cascade" },
-  ),
-  externalJobCacheId: varchar("external_job_cache_id").references(
-    () => externalJobsCacheTable.id,
-    { onDelete: "cascade" },
-  ),
-  matchScore: integer("match_score").notNull(),
-  fitReasons: jsonb("fit_reasons").default(sql`'[]'::jsonb`),
-  missingRequirements: jsonb("missing_requirements").default(sql`'[]'::jsonb`),
-  recommendationSummary: text("recommendation_summary"),
+  source: text("source").notNull(),
+  sourceType: text("source_type").notNull(),
+  displayName: text("display_name").notNull(),
+  baseUrl: text("base_url"),
+  countryScope: text("country_scope"),
+  isActive: boolean("is_active").default(true),
+  config: jsonb("config").default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── Job Search Cache ─────────────────────────────────────────────────────────
+// Caches search results by query + country + filters to avoid redundant API calls.
+
+export const jobSearchCacheTable = pgTable(
+  "job_search_cache",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    query: text("query").notNull(),
+    country: text("country"),
+    remoteOnly: boolean("remote_only").default(false),
+    filters: jsonb("filters").default(sql`'{}'::jsonb`),
+    cacheKey: text("cache_key").notNull(),
+    resultJobIds: jsonb("result_job_ids").default(sql`'[]'::jsonb`),
+    resultCount: integer("result_count").default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex("job_search_cache_key_idx").on(t.cacheKey)],
+);
+
+// ─── Job Match Results ────────────────────────────────────────────────────────
+// Stores AI-ranked match results from the global discovery engine.
+
+export const jobMatchResultsTable = pgTable(
+  "job_match_results",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: text("user_id").notNull(),
+    candidateProfileId: varchar("candidate_profile_id").references(
+      () => candidateProfilesTable.id,
+      { onDelete: "set null" },
+    ),
+    jobId: varchar("job_id").references(() => discoveredJobsTable.id, {
+      onDelete: "cascade",
+    }),
+    matchScore: integer("match_score").notNull(),
+    fitReasons: jsonb("fit_reasons").default(sql`'[]'::jsonb`),
+    missingRequirements: jsonb("missing_requirements").default(sql`'[]'::jsonb`),
+    recommendationSummary: text("recommendation_summary"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("job_match_results_user_idx").on(t.userId)],
+);
+
+// ─── Job Discovery Runs ───────────────────────────────────────────────────────
+// Audit log of every discovery run for observability.
+
+export const jobDiscoveryRunsTable = pgTable("job_discovery_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id"),
+  query: text("query").notNull(),
+  country: text("country"),
+  remoteOnly: boolean("remote_only").default(false),
+  sourceBreakdown: jsonb("source_breakdown").default(sql`'{}'::jsonb`),
+  discoveredCount: integer("discovered_count").default(0),
+  dedupedCount: integer("deduped_count").default(0),
+  cached: boolean("cached").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export type CandidateProfile = typeof candidateProfilesTable.$inferSelect;
-export type InsertCandidateProfile = typeof candidateProfilesTable.$inferInsert;
-export type ExternalJobCache = typeof externalJobsCacheTable.$inferSelect;
-export type InsertExternalJobCache = typeof externalJobsCacheTable.$inferInsert;
-export type JobRecommendation = typeof jobRecommendationsTable.$inferSelect;
-export type InsertJobRecommendation = typeof jobRecommendationsTable.$inferInsert;
+export type DiscoveredJob = typeof discoveredJobsTable.$inferSelect;
+export type InsertDiscoveredJob = typeof discoveredJobsTable.$inferInsert;
+export type JobSearchCache = typeof jobSearchCacheTable.$inferSelect;
+export type JobMatchResult = typeof jobMatchResultsTable.$inferSelect;
+export type JobDiscoveryRun = typeof jobDiscoveryRunsTable.$inferSelect;

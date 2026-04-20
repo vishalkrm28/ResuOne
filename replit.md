@@ -1,8 +1,8 @@
-# ParsePilot AI
+# ParsePilot AI (ResuOne)
 
 ## Overview
 
-ParsePilot AI is a production-ready SaaS web app that helps users tailor their CVs to job descriptions using AI. Users upload their CV (PDF/DOCX), paste a job description, and get back an ATS-optimized CV, keyword analysis, missing info questions, and an optional cover letter — all without ever inventing fake experience.
+ResuOne (resuone.com) is a production-ready SaaS web app that helps users tailor their CVs to job descriptions using AI. Features include ATS-optimized CV generation, keyword analysis, cover letters, Stripe billing (Free/Pro $14.99, unlock $6.99, Recruiter Solo $29.99/Team $79), and the Global Job Discovery Engine (M40). Users upload their CV (PDF/DOCX), paste a job description, and get back an ATS-optimized CV, keyword analysis, missing info questions, and an optional cover letter — all without ever inventing fake experience.
 
 ## Stack
 
