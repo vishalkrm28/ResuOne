@@ -159,9 +159,12 @@ const CITY_INDEX = new Map<string, string>(
 // Supplemental overrides: aliases or high-value phrases not in the GeoNames dataset,
 // or where the dataset's max-population winner is wrong for job-listing context.
 const CITY_OVERRIDES: Record<string, string> = {
-  // ── Remote signals ──────────────────────────────────────────────────────────
-  remote: "remote", anywhere: "remote", worldwide: "remote",
-  global: "remote", "work from home": "remote", wfh: "remote",
+  // ── Truly global remote signals (location explicitly says "no country restriction")
+  // Note: "remote", "wfh", "work from home" are NOT here — those are work styles,
+  // not geographic scope. A US remote job is still US-only.
+  anywhere: "remote", worldwide: "remote",
+  "globally remote": "remote", "remote worldwide": "remote",
+  "remote global": "remote", "open to all locations": "remote",
 
   // ── Anglicised spellings missing from or wrong in GeoNames ──────────────────
   // Belgium

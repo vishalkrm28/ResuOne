@@ -29,14 +29,18 @@ function filterByTitleQuery(jobs: UnifiedJob[], query: string): UnifiedJob[] {
 
 /**
  * Filter jobs by country code — strict mode.
- * Only keeps jobs that match the requested country OR are remote.
- * Jobs with unknown/unrecognised country are excluded when a filter is active,
- * because that "unknown" set is dominated by far-away results leaking through.
+ *
+ * A job passes if:
+ *   - Its inferred country matches the requested country, OR
+ *   - Its country is "remote" — meaning the location explicitly says "Anywhere",
+ *     "Worldwide", etc. (truly global). A job being remote (work-from-home) is
+ *     NOT sufficient; "Remote, US" is still a US job and must not appear in a
+ *     Belgium search.
  */
 function filterByCountry(jobs: UnifiedJob[], country: string): UnifiedJob[] {
   if (!country) return jobs;
   return jobs.filter(
-    (job) => job.country === country || job.remote === true || job.country === "remote",
+    (job) => job.country === country || job.country === "remote",
   );
 }
 
