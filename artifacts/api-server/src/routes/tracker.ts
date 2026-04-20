@@ -42,7 +42,7 @@ function parsedOrFail(schema: { safeParse: (v: unknown) => { success: boolean; d
 // ─── POST /api/tracker/saved-jobs ─────────────────────────────────────────────
 
 router.post("/tracker/saved-jobs", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(SaveJobBody, req.body, res);
@@ -93,7 +93,7 @@ router.post("/tracker/saved-jobs", authMiddleware, async (req, res) => {
 // ─── GET /api/tracker/saved-jobs ──────────────────────────────────────────────
 
 router.get("/tracker/saved-jobs", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const jobs = await db
@@ -108,7 +108,7 @@ router.get("/tracker/saved-jobs", authMiddleware, async (req, res) => {
 // ─── DELETE /api/tracker/saved-jobs/:id ───────────────────────────────────────
 
 router.delete("/tracker/saved-jobs/:id", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   await db.delete(savedJobsTable).where(
@@ -120,7 +120,7 @@ router.delete("/tracker/saved-jobs/:id", authMiddleware, async (req, res) => {
 // ─── POST /api/tracker/apps ───────────────────────────────────────────────────
 
 router.post("/tracker/apps", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(CreateTrackedAppBody, req.body, res) as import("../lib/tracker/tracker-schemas.js").CreateTrackedAppBody | null;
@@ -169,7 +169,7 @@ router.post("/tracker/apps", authMiddleware, async (req, res) => {
 // ─── GET /api/tracker/apps ────────────────────────────────────────────────────
 
 router.get("/tracker/apps", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const status = (req.query.status as string) || "active";
@@ -186,7 +186,7 @@ router.get("/tracker/apps", authMiddleware, async (req, res) => {
 // ─── GET /api/tracker/apps/:id ────────────────────────────────────────────────
 
 router.get("/tracker/apps/:id", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const [app] = await db
@@ -231,7 +231,7 @@ router.get("/tracker/apps/:id", authMiddleware, async (req, res) => {
 // ─── PATCH /api/tracker/apps/:id/stage ───────────────────────────────────────
 
 router.patch("/tracker/apps/:id/stage", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(UpdateStageBody, req.body, res) as { stage: import("../lib/tracker/tracker-schemas.js").ApplicationStage } | null;
@@ -268,7 +268,7 @@ router.patch("/tracker/apps/:id/stage", authMiddleware, async (req, res) => {
 // ─── PATCH /api/tracker/apps/:id/notes ───────────────────────────────────────
 
 router.patch("/tracker/apps/:id/notes", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(UpdateNotesBody, req.body, res);
@@ -290,7 +290,7 @@ router.patch("/tracker/apps/:id/notes", authMiddleware, async (req, res) => {
 // ─── PATCH /api/tracker/apps/:id/assets ──────────────────────────────────────
 
 router.patch("/tracker/apps/:id/assets", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(LinkAssetsBody, req.body, res);
@@ -330,7 +330,7 @@ router.patch("/tracker/apps/:id/assets", authMiddleware, async (req, res) => {
 // ─── PATCH /api/tracker/apps/:id/status ──────────────────────────────────────
 
 router.patch("/tracker/apps/:id/status", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { status } = req.body;
@@ -354,7 +354,7 @@ router.patch("/tracker/apps/:id/status", authMiddleware, async (req, res) => {
 // ─── POST /api/tracker/apps/:id/timeline ─────────────────────────────────────
 
 router.post("/tracker/apps/:id/timeline", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(AddTimelineEventBody, req.body, res);
@@ -383,7 +383,7 @@ router.post("/tracker/apps/:id/timeline", authMiddleware, async (req, res) => {
 // ─── POST /api/tracker/apps/:id/reminders ────────────────────────────────────
 
 router.post("/tracker/apps/:id/reminders", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(CreateReminderBody, req.body, res);
@@ -410,7 +410,7 @@ router.post("/tracker/apps/:id/reminders", authMiddleware, async (req, res) => {
 // ─── GET /api/tracker/apps/:id/reminders ─────────────────────────────────────
 
 router.get("/tracker/apps/:id/reminders", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const app = await assertAppOwnership(req.params.id, userId).catch((e) => {
@@ -431,7 +431,7 @@ router.get("/tracker/apps/:id/reminders", authMiddleware, async (req, res) => {
 // ─── PATCH /api/tracker/reminders/:id/complete ───────────────────────────────
 
 router.patch("/tracker/reminders/:id/complete", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   await db.update(applicationRemindersTable)
@@ -444,7 +444,7 @@ router.patch("/tracker/reminders/:id/complete", authMiddleware, async (req, res)
 // ─── GET /api/tracker/reminders (upcoming across all apps) ───────────────────
 
 router.get("/tracker/reminders", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const reminders = await db

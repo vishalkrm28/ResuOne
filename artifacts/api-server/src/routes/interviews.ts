@@ -40,7 +40,7 @@ function stageIndex(s: string): number {
 // ─── POST /api/interviews/create ──────────────────────────────────────────────
 
 router.post("/interviews/create", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(CreateInterviewBody, req.body, res);
@@ -95,7 +95,7 @@ router.post("/interviews/create", authMiddleware, async (req, res) => {
 // ─── GET /api/interviews/list ─────────────────────────────────────────────────
 
 router.get("/interviews/list", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const applicationId = req.query.applicationId as string | undefined;
@@ -131,7 +131,7 @@ router.get("/interviews/list", authMiddleware, async (req, res) => {
 // ─── PATCH /api/interviews/:id ────────────────────────────────────────────────
 
 router.patch("/interviews/:id", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const { id } = req.params;
 

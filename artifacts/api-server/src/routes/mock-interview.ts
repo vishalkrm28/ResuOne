@@ -78,7 +78,7 @@ async function resolveApplicationContext(app: typeof trackedApplicationsTable.$i
 // ─── POST /api/mock-interview/create-session ─────────────────────────────────
 
 router.post("/mock-interview/create-session", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(CreateMockSessionBody, req.body, res);
@@ -182,7 +182,7 @@ router.post("/mock-interview/create-session", authMiddleware, async (req, res) =
 // ─── GET /api/mock-interview/list-sessions ────────────────────────────────────
 
 router.get("/mock-interview/list-sessions", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const applicationId = req.query.applicationId as string | undefined;
@@ -215,7 +215,7 @@ router.get("/mock-interview/list-sessions", authMiddleware, async (req, res) => 
 // ─── GET /api/mock-interview/:id ──────────────────────────────────────────────
 
 router.get("/mock-interview/:id", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const { id } = req.params;
 
@@ -243,7 +243,7 @@ router.get("/mock-interview/:id", authMiddleware, async (req, res) => {
 // ─── POST /api/mock-interview/save-answer ─────────────────────────────────────
 
 router.post("/mock-interview/save-answer", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(SaveMockAnswerBody, req.body, res);
@@ -286,7 +286,7 @@ router.post("/mock-interview/save-answer", authMiddleware, async (req, res) => {
 // ─── POST /api/mock-interview/evaluate-answer ─────────────────────────────────
 
 router.post("/mock-interview/evaluate-answer", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(EvaluateMockAnswerBody, req.body, res);
@@ -391,7 +391,7 @@ router.post("/mock-interview/evaluate-answer", authMiddleware, async (req, res) 
 // ─── POST /api/mock-interview/complete-session ────────────────────────────────
 
 router.post("/mock-interview/complete-session", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(CompleteSessionBody, req.body, res);

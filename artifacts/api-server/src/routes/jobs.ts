@@ -67,7 +67,7 @@ async function checkIsPro(userId: string): Promise<boolean> {
 // searches have been done for that CV today (Pro users).
 
 router.get("/jobs/credits", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const applicationId = (req.query.applicationId as string | undefined) ?? null;
@@ -91,7 +91,7 @@ router.get("/jobs/credits", authMiddleware, async (req, res) => {
 // Returns the user's saved recommendations, grouped by candidate_profile_id.
 
 router.get("/jobs/recommendations", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const rows = await db
@@ -144,7 +144,7 @@ router.get("/jobs/recommendations", authMiddleware, async (req, res) => {
 //   Non-Pro     → deducts 1 from global job_rec_credits pool (from unlock purchases)
 
 router.post("/jobs/recommend", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const {

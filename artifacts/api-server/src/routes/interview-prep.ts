@@ -29,7 +29,7 @@ const router: IRouter = Router();
 // ─── POST /api/interview-prep/generate ───────────────────────────────────────
 
 router.post("/interview-prep/generate", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const parsed = GenerateInterviewPrepBody.safeParse(req.body);
@@ -225,7 +225,7 @@ router.post("/interview-prep/generate", authMiddleware, async (req, res) => {
 // ─── GET /api/interview-prep/list ────────────────────────────────────────────
 
 router.get("/interview-prep/list", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const preps = await db.select().from(interviewPrepsTable)
@@ -248,7 +248,7 @@ router.get("/interview-prep/list", authMiddleware, async (req, res) => {
 // ─── GET /api/interview-prep/:id ─────────────────────────────────────────────
 
 router.get("/interview-prep/:id", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const [prep] = await db.select().from(interviewPrepsTable)
@@ -272,7 +272,7 @@ router.get("/interview-prep/:id", authMiddleware, async (req, res) => {
 // ─── PATCH /api/interview-prep/answers/:id ───────────────────────────────────
 
 router.patch("/interview-prep/answers/:id", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const parsed = SaveAnswerBody.safeParse(req.body);

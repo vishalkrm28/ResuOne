@@ -121,7 +121,7 @@ async function resolveParsedCv(
 // Tailors a CV for a specific job. Costs 1 AI credit.
 
 router.post("/application/tailor-cv", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const {
@@ -237,7 +237,7 @@ router.post("/application/tailor-cv", authMiddleware, async (req, res) => {
 // Generates a cover letter from tailored CV + job info.
 
 router.post("/application/cover-letter", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const {
@@ -343,7 +343,7 @@ router.post("/application/cover-letter", authMiddleware, async (req, res) => {
 // ─── GET /api/application/tailored-cvs ───────────────────────────────────────
 
 router.get("/application/tailored-cvs", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const rows = await db
@@ -358,7 +358,7 @@ router.get("/application/tailored-cvs", authMiddleware, async (req, res) => {
 // ─── GET /api/application/tailored-cvs/:id ───────────────────────────────────
 
 router.get("/application/tailored-cvs/:id", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const [row] = await db
@@ -375,7 +375,7 @@ router.get("/application/tailored-cvs/:id", authMiddleware, async (req, res) => 
 // ─── PATCH /api/application/tailored-cvs/:id/rename ──────────────────────────
 
 router.patch("/application/tailored-cvs/:id/rename", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { versionName } = req.body as { versionName?: string };
@@ -395,7 +395,7 @@ router.patch("/application/tailored-cvs/:id/rename", authMiddleware, async (req,
 // ─── POST /api/application/tailored-cvs/:id/duplicate ────────────────────────
 
 router.post("/application/tailored-cvs/:id/duplicate", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const [original] = await db
@@ -441,7 +441,7 @@ router.post("/application/tailored-cvs/:id/duplicate", authMiddleware, async (re
 // ─── GET /api/application/cover-letters ──────────────────────────────────────
 
 router.get("/application/cover-letters", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const rows = await db
@@ -456,7 +456,7 @@ router.get("/application/cover-letters", authMiddleware, async (req, res) => {
 // ─── POST /api/application/export ────────────────────────────────────────────
 
 router.post("/application/export", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { tailoredCvId, coverLetterId } = req.body as {
@@ -491,7 +491,7 @@ router.post("/application/export", authMiddleware, async (req, res) => {
 // ─── POST /api/application/ats-improvements ──────────────────────────────────
 
 router.post("/application/ats-improvements", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { sourceApplicationId, jobText } = req.body as {

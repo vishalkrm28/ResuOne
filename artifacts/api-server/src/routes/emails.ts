@@ -38,7 +38,7 @@ function parsedOrFail(
 // ─── POST /api/emails/generate-draft ─────────────────────────────────────────
 
 router.post("/emails/generate-draft", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(GenerateEmailDraftBody, req.body, res);
@@ -134,7 +134,7 @@ router.post("/emails/generate-draft", authMiddleware, async (req, res) => {
 // ─── GET /api/emails/list-drafts ──────────────────────────────────────────────
 
 router.get("/emails/list-drafts", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const applicationId = req.query.applicationId as string | undefined;
@@ -168,7 +168,7 @@ router.get("/emails/list-drafts", authMiddleware, async (req, res) => {
 // ─── PATCH /api/emails/update-draft-status ────────────────────────────────────
 
 router.patch("/emails/update-draft-status", authMiddleware, async (req, res) => {
-  const userId = req.auth?.userId;
+  const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = parsedOrFail(UpdateDraftStatusBody, req.body, res);
