@@ -9,7 +9,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { db, usersTable, plansTable, featureEntitlementsTable } from "@workspace/db";
-import { subscriptionIsActive } from "../billing.js";
+import { subscriptionIsActive, recruiterStatusIsActive } from "../billing.js";
 import { CREDIT_COSTS } from "../credits.js";
 import { logger } from "../logger.js";
 
@@ -38,9 +38,7 @@ async function resolvePlanCodeForUser(userId: string): Promise<string> {
 
   if (!user) return "free";
 
-  const recruiterActive =
-    user.recruiterSubscriptionStatus &&
-    subscriptionIsActive(user.recruiterSubscriptionStatus);
+  const recruiterActive = recruiterStatusIsActive(user.recruiterSubscriptionStatus);
 
   if (recruiterActive) {
     // Team members vs solo — distinguish by whether they have a teamId

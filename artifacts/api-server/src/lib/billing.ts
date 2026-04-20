@@ -24,6 +24,19 @@ export function subscriptionIsActive(status: string | null | undefined): boolean
 }
 
 /**
+ * Returns true if the given recruiter subscription status represents an active
+ * recruiter plan.
+ *
+ * Handles both Stripe-managed statuses ("active", "trialing") and the
+ * admin-granted values ("solo", "team") set by the /_admin/grant-recruiter
+ * endpoint.
+ */
+export function recruiterStatusIsActive(status: string | null | undefined): boolean {
+  if (!status) return false;
+  return status === "active" || status === "trialing" || status === "solo" || status === "team";
+}
+
+/**
  * Looks up a ParsePilot user by their internal user ID (from Replit Auth)
  * and returns whether they have an active Pro subscription.
  *

@@ -6,7 +6,7 @@ import type Stripe from "stripe";
 import { getStripe, ensureStripeCustomer } from "../lib/stripe.js";
 import { logger } from "../lib/logger.js";
 import { getUserCredits, FREE_CREDIT_ALLOWANCE, PRO_CREDIT_ALLOWANCE } from "../lib/credits.js";
-import { subscriptionIsActive, hasUnlockedResult } from "../lib/billing.js";
+import { subscriptionIsActive, recruiterStatusIsActive, hasUnlockedResult } from "../lib/billing.js";
 import { hasBulkAccess } from "../lib/bulk.js";
 import { checkEntitlementForUser, getCreditCostForFeature } from "../lib/billing/entitlements.js";
 
@@ -123,7 +123,7 @@ router.get("/billing/status", async (req, res) => {
     // We do NOT apply a date guard here because a delayed webhook after a
     // successful Stripe renewal would incorrectly strip Pro access.
     const isPro = subscriptionIsActive(dbUser.subscriptionStatus);
-    const isRecruiter = subscriptionIsActive(dbUser.recruiterSubscriptionStatus);
+    const isRecruiter = recruiterStatusIsActive(dbUser.recruiterSubscriptionStatus);
 
     const bulkAccess = await hasBulkAccess(req.user.id);
 
