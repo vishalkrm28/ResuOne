@@ -71,9 +71,13 @@ export default function BillingPage() {
   const [balance, setBalance] = useState<CreditBalance | null>(null);
   const [billingStatus, setBillingStatus] = useState<{
     isPro: boolean;
+    isRecruiter: boolean;
+    planCode: string;
     subscriptionStatus: string | null;
+    subscriptionPriceId: string | null;
     currentPeriodEnd: string | null;
     hasBulkAccess: boolean;
+    hasCustomer: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPlanCode, setCurrentPlanCode] = useState<string>("free");
@@ -89,12 +93,17 @@ export default function BillingPage() {
       setBalance(bal);
       setBillingStatus(status);
 
-      // planCode from /billing/status is the single source of truth —
-      // it uses resolvePlanCodeForUser which correctly handles recruiter
-      // vs pro vs free based on live Stripe subscription status.
-      if (status?.planCode) {
-        setCurrentPlanCode(status.planCode);
-      }
+      // Resolve plan code using multiple signals in priority order:
+      // 1. planCode from /billing/status (most accurate — uses resolvePlanCodeForUser)
+      // 2. isRecruiter flag (recruiter users without a teamId → solo)
+      // 3. isPro flag (active Stripe Pro subscription)
+      // 4. Default to "free"
+      const code =
+        status?.planCode ||
+        (status?.isRecruiter ? "recruiter_solo" : null) ||
+        (status?.isPro ? "pro" : null) ||
+        "free";
+      setCurrentPlanCode(code);
     } catch (err) {
       toast({ variant: "destructive", title: "Failed to load billing info" });
     } finally {
@@ -105,6 +114,18 @@ export default function BillingPage() {
   useEffect(() => { load(); }, [load]);
 
   const currentPlan = plans.find(p => p.code === currentPlanCode);
+
+  const PLAN_CODE_NAMES: Record<string, string> = {
+    free: "Free",
+    pro: "Pro",
+    recruiter_solo: "Recruiter Solo",
+    recruiter_team: "Recruiter Team",
+  };
+
+  const planDisplayName =
+    currentPlan?.name ??
+    PLAN_CODE_NAMES[currentPlanCode] ??
+    (billingStatus?.isRecruiter ? "Recruiter" : billingStatus?.isPro ? "Pro" : "Free");
 
   if (loading) {
     return (
@@ -132,7 +153,7 @@ export default function BillingPage() {
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-1">Current Plan</p>
-              <p className="text-lg font-bold">{currentPlan?.name ?? "Free"}</p>
+              <p className="text-lg font-bold">{planDisplayName}</p>
               {billingStatus?.subscriptionStatus && (
                 <span className="text-[11px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full capitalize">
                   {billingStatus.subscriptionStatus}
