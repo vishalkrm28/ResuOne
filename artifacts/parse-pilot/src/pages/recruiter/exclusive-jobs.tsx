@@ -266,14 +266,29 @@ function PostJobDialog({ open, onClose, onCreated }: { open: boolean; onClose: (
           </div>
 
           <div>
-            <Label>Publish as</Label>
-            <Select value={form.publishAs} onValueChange={(v: "draft" | "active") => set("publishAs", v)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Publish now — make it live</SelectItem>
-                <SelectItem value="draft">Save as draft — publish later</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="mb-2 block">Publish as</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["active", "draft"] as const).map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => set("publishAs", val)}
+                  className={cn(
+                    "flex flex-col items-start gap-0.5 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                    form.publishAs === val
+                      ? "border-purple-500 bg-purple-50 text-purple-900"
+                      : "border-border bg-background text-foreground hover:border-border/80 hover:bg-muted/40",
+                  )}
+                >
+                  <span className="font-medium">
+                    {val === "active" ? "Publish now" : "Save as draft"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {val === "active" ? "Makes the listing live immediately" : "You can publish it later"}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <DialogFooter>

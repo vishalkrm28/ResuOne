@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useBillingStatus } from "@/hooks/use-billing-status";
@@ -162,7 +163,7 @@ function SectionLabel({ label }: { label: string }) {
 // ─── Main sidebar ──────────────────────────────────────────────────────────────
 
 export function Sidebar() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, logout } = useAuth();
   const { status: billingStatus } = useBillingStatus();
   const isRecruiter = billingStatus?.isRecruiter ?? false;
@@ -172,7 +173,10 @@ export function Sidebar() {
     user?.email?.split("@")[0] ||
     "User";
 
-  // Is the user currently anywhere in the exclusive jobs area?
+  // Expandable group state — auto-open when entering the area, but user can collapse manually
+  const [exclusiveOpen, setExclusiveOpen] = useState(() => location.startsWith("/jobs/exclusive"));
+  const [recruiterExclusiveOpen, setRecruiterExclusiveOpen] = useState(() => location.startsWith("/recruiter/exclusive"));
+
   const inExclusive = location.startsWith("/jobs/exclusive");
   const inRecruiterExclusive = location.startsWith("/recruiter/exclusive");
 
@@ -205,31 +209,38 @@ export function Sidebar() {
         ))}
 
         {/* Resuone Jobs — expandable group */}
-        <Link href={exclusiveJobsParent.href}>
-          <div
+        <div
+          role="button"
+          onClick={() => {
+            if (inExclusive) {
+              setExclusiveOpen((o) => !o);
+            } else {
+              navigate(exclusiveJobsParent.href);
+              setExclusiveOpen(true);
+            }
+          }}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors group",
+            inExclusive
+              ? "bg-primary/15 text-primary"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+          )}
+        >
+          <Star
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors group",
-              inExclusive
-                ? "bg-primary/15 text-primary"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              "w-4 h-4 flex-shrink-0",
+              inExclusive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground",
             )}
-          >
-            <Star
-              className={cn(
-                "w-4 h-4 flex-shrink-0",
-                inExclusive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground",
-              )}
-            />
-            <span className="flex-1">{exclusiveJobsParent.label}</span>
-            <ChevronDown
-              className={cn(
-                "w-3.5 h-3.5 transition-transform flex-shrink-0",
-                inExclusive ? "rotate-0 text-primary/60" : "-rotate-90 text-sidebar-foreground/30",
-              )}
-            />
-          </div>
-        </Link>
-        {inExclusive && exclusiveJobsChildren.map(({ href, label, icon: Icon }) => (
+          />
+          <span className="flex-1">{exclusiveJobsParent.label}</span>
+          <ChevronDown
+            className={cn(
+              "w-3.5 h-3.5 transition-transform flex-shrink-0",
+              exclusiveOpen ? "rotate-0 text-primary/60" : "-rotate-90 text-sidebar-foreground/30",
+            )}
+          />
+        </div>
+        {exclusiveOpen && exclusiveJobsChildren.map(({ href, label, icon: Icon }) => (
           <NavItem
             key={href}
             href={href}
@@ -284,31 +295,38 @@ export function Sidebar() {
             })}
 
             {/* Recruiter exclusive jobs — expandable */}
-            <Link href={recruiterExclusiveParent.href}>
-              <div
+            <div
+              role="button"
+              onClick={() => {
+                if (inRecruiterExclusive) {
+                  setRecruiterExclusiveOpen((o) => !o);
+                } else {
+                  navigate(recruiterExclusiveParent.href);
+                  setRecruiterExclusiveOpen(true);
+                }
+              }}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors group",
+                inRecruiterExclusive
+                  ? "bg-primary/15 text-primary"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              )}
+            >
+              <Star
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors group",
-                  inRecruiterExclusive
-                    ? "bg-primary/15 text-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                  "w-4 h-4 flex-shrink-0",
+                  inRecruiterExclusive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground",
                 )}
-              >
-                <Star
-                  className={cn(
-                    "w-4 h-4 flex-shrink-0",
-                    inRecruiterExclusive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground",
-                  )}
-                />
-                <span className="flex-1">{recruiterExclusiveParent.label}</span>
-                <ChevronDown
-                  className={cn(
-                    "w-3.5 h-3.5 transition-transform flex-shrink-0",
-                    inRecruiterExclusive ? "rotate-0 text-primary/60" : "-rotate-90 text-sidebar-foreground/30",
-                  )}
-                />
-              </div>
-            </Link>
-            {inRecruiterExclusive && recruiterExclusiveChildren.map(({ href, label, icon: Icon }) => (
+              />
+              <span className="flex-1">{recruiterExclusiveParent.label}</span>
+              <ChevronDown
+                className={cn(
+                  "w-3.5 h-3.5 transition-transform flex-shrink-0",
+                  recruiterExclusiveOpen ? "rotate-0 text-primary/60" : "-rotate-90 text-sidebar-foreground/30",
+                )}
+              />
+            </div>
+            {recruiterExclusiveOpen && recruiterExclusiveChildren.map(({ href, label, icon: Icon }) => (
               <NavItem
                 key={href}
                 href={href}
