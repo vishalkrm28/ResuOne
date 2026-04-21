@@ -6,7 +6,6 @@ import {
   Star, Info, X, Loader2, ChevronRight, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -224,7 +223,6 @@ export default function BulkPricing() {
   const [error, setError] = useState<string | null>(null);
 
   const [, navigate] = useLocation();
-  const { user, login } = useAuth();
 
   // Load tiers and user's bulk status
   useEffect(() => {
@@ -248,7 +246,6 @@ export default function BulkPricing() {
   }, []);
 
   const goToProCheckout = async () => {
-    if (!user) { login(); return; }
     try {
       const base = window.location.origin;
       const res = await authedFetch("/api/billing/checkout", {
@@ -267,7 +264,6 @@ export default function BulkPricing() {
   };
 
   const startCheckout = async (tier: BulkTier) => {
-    if (!user) { login(); return; }
     setCheckoutLoading(true);
     setError(null);
     try {
@@ -282,6 +278,11 @@ export default function BulkPricing() {
         }),
       });
       const data = await res.json();
+
+      if (res.status === 401) {
+        setError("Please sign in to purchase a bulk pass.");
+        return;
+      }
 
       // Pro override: no Stripe redirect, go straight to session
       if (data.mode === "pro_credits") {
