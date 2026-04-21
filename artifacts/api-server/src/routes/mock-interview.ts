@@ -94,8 +94,6 @@ router.post("/mock-interview/create-session", authMiddleware, async (req, res) =
 
   const affordable = await canSpendCredits(userId, 1);
   if (!affordable) { res.status(402).json({ error: "Insufficient credits" }); return; }
-  const spendResult = await spendCredits(userId, 1, "mock_interview_session");
-  if (!spendResult.success) { res.status(402).json({ error: "Insufficient credits" }); return; }
 
   const { tailoredCvText, parsedCvJson, jobDescription } = await resolveApplicationContext(app);
 
@@ -131,7 +129,7 @@ router.post("/mock-interview/create-session", authMiddleware, async (req, res) =
       model: AI_MODELS.MAIN,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 2500,
+      max_completion_tokens: 2500,
     });
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
@@ -147,6 +145,10 @@ router.post("/mock-interview/create-session", authMiddleware, async (req, res) =
     res.status(500).json({ error: "AI generation failed" });
     return;
   }
+
+  // Spend credit only after AI succeeds — prevents charging on AI failure
+  const spendResult = await spendCredits(userId, 1, "mock_interview_session");
+  if (!spendResult.success) { res.status(402).json({ error: "Insufficient credits" }); return; }
 
   const [session] = await db.insert(mockInterviewSessionsTable).values({
     userId,
@@ -317,8 +319,6 @@ router.post("/mock-interview/evaluate-answer", authMiddleware, async (req, res) 
 
   const affordable = await canSpendCredits(userId, 1);
   if (!affordable) { res.status(402).json({ error: "Insufficient credits" }); return; }
-  const spendResult = await spendCredits(userId, 1, "mock_interview_evaluate");
-  if (!spendResult.success) { res.status(402).json({ error: "Insufficient credits" }); return; }
 
   let appContext: { applicationTitle: string; company: string | null; jobDescription: string | null } = {
     applicationTitle: "Unknown role",
@@ -351,7 +351,7 @@ router.post("/mock-interview/evaluate-answer", authMiddleware, async (req, res) 
       model: AI_MODELS.MAIN,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.5,
-      max_tokens: 1200,
+      max_completion_tokens: 1200,
     });
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
@@ -367,6 +367,10 @@ router.post("/mock-interview/evaluate-answer", authMiddleware, async (req, res) 
     res.status(500).json({ error: "AI evaluation failed" });
     return;
   }
+
+  // Spend credit only after AI succeeds — prevents charging on AI failure
+  const spendResult = await spendCredits(userId, 1, "mock_interview_evaluate");
+  if (!spendResult.success) { res.status(402).json({ error: "Insufficient credits" }); return; }
 
   const [existing] = await db
     .select({ id: mockInterviewAnswersTable.id })

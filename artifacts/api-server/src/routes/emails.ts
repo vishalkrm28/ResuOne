@@ -101,7 +101,7 @@ router.post("/emails/generate-draft", authMiddleware, async (req, res) => {
       model: AI_MODELS.FAST,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.6,
-      max_tokens: 900,
+      max_completion_tokens: 900,
     });
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
