@@ -251,16 +251,16 @@ export default function ExclusiveJobs() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("browse");
   const [search, setSearch] = useState("");
-  const [filterRemote, setFilterRemote] = useState("");
-  const [filterEmploymentType, setFilterEmploymentType] = useState("");
-  const [filterSeniority, setFilterSeniority] = useState("");
+  const [filterRemote, setFilterRemote] = useState("all");
+  const [filterEmploymentType, setFilterEmploymentType] = useState("all");
+  const [filterSeniority, setFilterSeniority] = useState("all");
 
   // Build query string for filters
   const params = new URLSearchParams();
   if (search) params.set("query", search);
   if (filterRemote === "true") params.set("remote", "true");
-  if (filterEmploymentType) params.set("employmentType", filterEmploymentType);
-  if (filterSeniority) params.set("seniority", filterSeniority);
+  if (filterEmploymentType && filterEmploymentType !== "all") params.set("employmentType", filterEmploymentType);
+  if (filterSeniority && filterSeniority !== "all") params.set("seniority", filterSeniority);
   const queryString = params.toString();
 
   const { data, isLoading, error } = useQuery<{ jobs: InternalJob[]; plan: string }>({
@@ -344,7 +344,7 @@ export default function ExclusiveJobs() {
                   <SelectValue placeholder="Work type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any</SelectItem>
+                  <SelectItem value="all">Any</SelectItem>
                   <SelectItem value="true">Remote</SelectItem>
                 </SelectContent>
               </Select>
@@ -353,7 +353,7 @@ export default function ExclusiveJobs() {
                   <SelectValue placeholder="Job type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any</SelectItem>
+                  <SelectItem value="all">Any</SelectItem>
                   <SelectItem value="full_time">Full-time</SelectItem>
                   <SelectItem value="part_time">Part-time</SelectItem>
                   <SelectItem value="contract">Contract</SelectItem>
@@ -366,7 +366,7 @@ export default function ExclusiveJobs() {
                   <SelectValue placeholder="Level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any</SelectItem>
+                  <SelectItem value="all">Any</SelectItem>
                   <SelectItem value="junior">Junior</SelectItem>
                   <SelectItem value="mid">Mid-level</SelectItem>
                   <SelectItem value="senior">Senior</SelectItem>
