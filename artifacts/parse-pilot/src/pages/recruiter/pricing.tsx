@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { LogoBrand } from "@/components/brand/logo";
 import { useMutation } from "@tanstack/react-query";
@@ -38,10 +38,25 @@ const TEAM_FEATURES = [
   "White-label invite emails",
 ];
 
+interface RecruiterDetail {
+  active: boolean;
+  plan?: string;
+  periodEnd?: string | null;
+  cancelAtPeriodEnd?: boolean;
+}
+
 export default function RecruiterPricing() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<"solo" | "team" | null>(null);
+  const [recruiterDetail, setRecruiterDetail] = useState<RecruiterDetail | null>(null);
+
+  useEffect(() => {
+    authedFetch("/api/billing/recruiter-detail")
+      .then((r) => r.json())
+      .then((data: RecruiterDetail) => setRecruiterDetail(data))
+      .catch(() => {});
+  }, []);
 
   const checkoutMutation = useMutation({
     mutationFn: (plan: "solo" | "team") => {
@@ -63,6 +78,7 @@ export default function RecruiterPricing() {
         title: "Plan cancelled",
         description: data.message ?? "Your recruiter plan will cancel at the end of the billing period.",
       });
+      setRecruiterDetail((prev) => prev ? { ...prev, cancelAtPeriodEnd: true } : prev);
     } catch (err: any) {
       toast({ title: "Cancellation failed", description: err.message, variant: "destructive" });
     } finally {
@@ -103,6 +119,23 @@ export default function RecruiterPricing() {
           </p>
         </div>
 
+        {/* Active plan banner */}
+        {recruiterDetail?.active && (
+          <div className="mb-10 rounded-2xl border border-primary/30 bg-primary/5 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-foreground">
+                {recruiterDetail.plan === "team" ? "Team Recruiter" : "Solo Recruiter"} — Active
+              </p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {recruiterDetail.cancelAtPeriodEnd
+                  ? `Cancels ${recruiterDetail.periodEnd ? new Date(recruiterDetail.periodEnd).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "at end of period"} — access continues until then`
+                  : `Renews ${recruiterDetail.periodEnd ? new Date(recruiterDetail.periodEnd).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—"}`}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Pricing cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Solo */}
@@ -128,14 +161,20 @@ export default function RecruiterPricing() {
               ))}
             </ul>
 
-            <button onClick={() => handleStart("solo")}
-              disabled={checkoutMutation.isPending}
-              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 transition-all text-sm disabled:opacity-50">
-              {checkoutMutation.isPending && selectedPlan === "solo"
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <ArrowRight className="w-4 h-4" />}
-              Start Solo Plan
-            </button>
+            {recruiterDetail?.active && recruiterDetail.plan === "solo" ? (
+              <div className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm cursor-default">
+                <CheckCircle2 className="w-4 h-4" /> Current Plan
+              </div>
+            ) : (
+              <button onClick={() => handleStart("solo")}
+                disabled={checkoutMutation.isPending || !!recruiterDetail?.active}
+                className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 transition-all text-sm disabled:opacity-50">
+                {checkoutMutation.isPending && selectedPlan === "solo"
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <ArrowRight className="w-4 h-4" />}
+                Start Solo Plan
+              </button>
+            )}
           </div>
 
           {/* Team */}
@@ -164,14 +203,20 @@ export default function RecruiterPricing() {
               ))}
             </ul>
 
-            <button onClick={() => handleStart("team")}
-              disabled={checkoutMutation.isPending}
-              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 transition-all text-sm disabled:opacity-50">
-              {checkoutMutation.isPending && selectedPlan === "team"
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <ArrowRight className="w-4 h-4" />}
-              Start Team Plan
-            </button>
+            {recruiterDetail?.active && recruiterDetail.plan === "team" ? (
+              <div className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm cursor-default">
+                <CheckCircle2 className="w-4 h-4" /> Current Plan
+              </div>
+            ) : (
+              <button onClick={() => handleStart("team")}
+                disabled={checkoutMutation.isPending || !!recruiterDetail?.active}
+                className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 transition-all text-sm disabled:opacity-50">
+                {checkoutMutation.isPending && selectedPlan === "team"
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <ArrowRight className="w-4 h-4" />}
+                Start Team Plan
+              </button>
+            )}
           </div>
         </div>
 

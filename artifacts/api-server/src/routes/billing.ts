@@ -369,6 +369,44 @@ router.post("/billing/cancel-subscription", async (req, res) => {
   }
 });
 
+// ─── GET /billing/recruiter-detail ───────────────────────────────────────────
+// Returns the authenticated user's recruiter subscription details (plan name,
+// period end, cancel_at_period_end). Fetches live from Stripe so the data is
+// always fresh.
+
+router.get("/billing/recruiter-detail", async (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" }); return;
+  }
+
+  try {
+    const [dbUser] = await db
+      .select({
+        recruiterSubscriptionId: usersTable.recruiterSubscriptionId,
+        recruiterSubscriptionStatus: usersTable.recruiterSubscriptionStatus,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user.id))
+      .limit(1);
+
+    if (!dbUser?.recruiterSubscriptionId || !dbUser.recruiterSubscriptionStatus) {
+      res.json({ active: false });
+      return;
+    }
+
+    const sub = await getStripe().subscriptions.retrieve(dbUser.recruiterSubscriptionId);
+    res.json({
+      active: true,
+      plan: dbUser.recruiterSubscriptionStatus as string, // "solo" | "team"
+      periodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+      cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+    });
+  } catch (err) {
+    logger.error(stripeErrContext(err), "Failed to fetch recruiter subscription detail");
+    res.status(500).json({ error: "Could not load recruiter plan details.", code: "FETCH_ERROR" });
+  }
+});
+
 // ─── POST /billing/cancel-recruiter ──────────────────────────────────────────
 // Cancels the recruiter plan at period end. The user keeps access until the
 // period they've already paid for expires; the webhook clears the status
