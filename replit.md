@@ -52,6 +52,18 @@ The ParsePilot AI project is structured as a monorepo using pnpm workspaces. It 
 *   `lib/db`: Drizzle ORM schema and connection.
 *   `lib/integrations-openai-ai-server`: Replit AI Integration client.
 
+## User Mode Separation
+
+Users choose their mode at first sign-in via `/onboarding` (job seeker vs recruiter). The `user_mode` column (`job_seeker | recruiter | null`) on the `users` table drives the experience:
+
+- **OnboardingGate** in `App.tsx` redirects users with `null` mode to `/onboarding` before they can access any app page.
+- `POST /user/mode` endpoint sets the mode; billing status response includes `userMode`.
+- **Sidebar branches** on `isRecruiterMode` (recruiter-mode users see only recruiter nav; job-seeker-mode users see the full job-seeker nav with no recruiter links).
+- Route guards: `RECRUITER_ONLY_PATHS` redirect job-seeker users; `JOB_SEEKER_ONLY_PATHS` redirect recruiter users.
+- Active recruiters always resolve to recruiter mode regardless of stored `user_mode`.
+
+Key files: `artifacts/parse-pilot/src/pages/onboarding/index.tsx`, `artifacts/parse-pilot/src/App.tsx`, `artifacts/parse-pilot/src/components/layout/sidebar.tsx`, `artifacts/api-server/src/routes/billing.ts`, `lib/db/src/schema/auth.ts`.
+
 ## Internal Job Marketplace (M41)
 
 Seven tables live in `lib/db/src/schema/internal-jobs.ts` and are fully pushed to the live database:
