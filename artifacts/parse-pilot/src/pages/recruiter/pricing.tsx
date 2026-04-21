@@ -3,9 +3,21 @@ import { Link, useLocation } from "wouter";
 import { LogoBrand } from "@/components/brand/logo";
 import { useMutation } from "@tanstack/react-query";
 import { startRecruiterCheckout } from "@/lib/recruiter-api";
-import { CheckCircle2, Users, Zap, Shield, ArrowRight, Loader2, CreditCard } from "lucide-react";
+import { CheckCircle2, Users, Zap, Shield, ArrowRight, Loader2, CreditCard, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
+import { authedFetch } from "@/lib/authed-fetch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const SOLO_FEATURES = [
   "Unlimited candidate pipeline",
@@ -39,6 +51,24 @@ export default function RecruiterPricing() {
     onSuccess: ({ url }) => { window.location.href = url; },
     onError: (err: any) => toast({ title: "Checkout failed", description: err.message, variant: "destructive" }),
   });
+
+  const [cancelling, setCancelling] = useState(false);
+  async function handleCancelRecruiter() {
+    setCancelling(true);
+    try {
+      const res = await authedFetch("/api/billing/cancel-recruiter", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not cancel");
+      toast({
+        title: "Plan cancelled",
+        description: data.message ?? "Your recruiter plan will cancel at the end of the billing period.",
+      });
+    } catch (err: any) {
+      toast({ title: "Cancellation failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   const handleStart = (plan: "solo" | "team") => {
     setSelectedPlan(plan);
@@ -153,17 +183,44 @@ export default function RecruiterPricing() {
         </div>
 
         {/* Manage existing subscription */}
-        <div className="mt-10 border border-border/40 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <CreditCard className="w-4 h-4 text-muted-foreground" />
-              <span className="font-semibold text-foreground text-sm">Already subscribed?</span>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Update your payment method, view invoices, or cancel your recruiter plan via the Stripe portal.
-            </p>
+        <div className="mt-10 border border-border/40 rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <CreditCard className="w-4 h-4 text-muted-foreground" />
+            <span className="font-semibold text-foreground text-sm">Already subscribed?</span>
           </div>
-          <ManageBillingButton label="Manage Subscription" className="shrink-0 sm:w-auto w-full" />
+          <p className="text-muted-foreground text-sm mb-4">
+            Update your payment method or view invoices via Stripe, or cancel your recruiter plan below.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <ManageBillingButton label="Update Payment / Invoices" className="sm:w-auto w-full" />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-destructive/40 text-destructive text-sm font-medium hover:bg-destructive/5 transition-colors w-full sm:w-auto">
+                  <XCircle className="w-4 h-4" />
+                  Cancel Recruiter Plan
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel recruiter plan?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Your plan will be cancelled at the end of your current billing period. You'll keep full recruiter access until then — no charges after that.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep my plan</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleCancelRecruiter}
+                    disabled={cancelling}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {cancelling ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Yes, cancel plan
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
 
         {/* White-label callout */}
