@@ -500,11 +500,28 @@ export default function GlobalJobDiscover() {
 
         <form onSubmit={handleSubmit}>
           <Card className="mb-6">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
               <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="w-4 h-4 text-muted-foreground" />
                 Choose a CV &amp; Set Preferences
               </CardTitle>
+              <Button
+                type="submit"
+                disabled={loading || applications.length === 0}
+                className="shrink-0"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Searching…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Find My Jobs
+                  </>
+                )}
+              </Button>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* CV selector */}
@@ -592,23 +609,6 @@ export default function GlobalJobDiscover() {
             </CardContent>
           </Card>
 
-          <Button
-            type="submit"
-            disabled={loading || applications.length === 0}
-            className="w-full sm:w-auto"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Searching & analysing…
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Find My Jobs
-              </>
-            )}
-          </Button>
         </form>
 
         {/* Error */}
