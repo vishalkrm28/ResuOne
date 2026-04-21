@@ -1,0 +1,928 @@
+You are building MILESTONE 41 for Resuone.
+
+PROJECT CONTEXT
+Resuone already has or is implementing:
+- global job discovery
+- CV parsing
+- CV vs JD analysis
+- tailored CV generation
+- cover letter generation
+- application tracker
+- notifications
+- billing + plans
+- recruiter workspaces
+- candidate profiles
+- interview prep
+- internal and external job matching
+
+NEW PRODUCT GOAL
+Build a FULL INTERNAL HIRING MARKETPLACE inside Resuone where:
+1. recruiters can post jobs directly on Resuone
+2. Pro users (and above) can see Pro-only posted jobs
+3. users receive notifications for relevant posted jobs
+4. users can analyze their fit before applying
+5. users can apply manually or with assisted/automated flow
+6. users can track application progress
+7. recruiters can manage applicants through a hiring pipeline
+8. recruiters can message candidates directly inside Resuone
+9. recruiters can invite candidates to interviews
+10. candidates can receive, review, and respond to interview invites
+11. internal jobs are integrated into the broader discovery and matching engine
+
+This milestone should make Resuone feel like a real two-sided hiring platform.
+
+--------------------------------------------------
+1) DATABASE TABLES
+
+Create and use these tables:
+
+internal_jobs
+- id uuid primary key default gen_random_uuid()
+- workspace_id uuid references workspaces(id) on delete set null
+- created_by_user_id uuid not null
+- title text not null
+- company text not null
+- location text
+- country text
+- remote boolean default false
+- employment_type text
+- seniority text
+- description text not null
+- requirements jsonb default '[]'::jsonb
+- preferred_skills jsonb default '[]'::jsonb
+- salary_min numeric
+- salary_max numeric
+- currency text
+- status text default 'draft'
+- visibility text default 'pro_only'
+- expires_at timestamptz
+- published_at timestamptz
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+internal_job_candidate_analyses
+- id uuid primary key default gen_random_uuid()
+- internal_job_id uuid references internal_jobs(id) on delete cascade
+- user_id uuid not null
+- candidate_profile_id uuid references candidate_profiles(id) on delete set null
+- source_candidate_document_id uuid references candidate_documents(id) on delete set null
+- match_score integer not null
+- fit_reasons jsonb default '[]'::jsonb
+- missing_requirements jsonb default '[]'::jsonb
+- strengths jsonb default '[]'::jsonb
+- concerns jsonb default '[]'::jsonb
+- recommendation_summary text
+- tailored_cv_suggestion jsonb default '{}'::jsonb
+- cover_letter_suggestion text
+- created_at timestamptz default now()
+
+internal_job_applications
+- id uuid primary key default gen_random_uuid()
+- internal_job_id uuid references internal_jobs(id) on delete cascade
+- user_id uuid not null
+- candidate_profile_id uuid references candidate_profiles(id) on delete set null
+- source_candidate_document_id uuid references candidate_documents(id) on delete set null
+- tailored_cv_id uuid references tailored_cvs(id) on delete set null
+- cover_letter_id uuid references cover_letters(id) on delete set null
+- status text default 'applied'
+- stage text default 'submitted'
+- recruiter_notes text
+- candidate_notes text
+- auto_apply_mode boolean default false
+- applied_at timestamptz default now()
+- updated_at timestamptz default now()
+
+internal_job_application_events
+- id uuid primary key default gen_random_uuid()
+- internal_job_application_id uuid references internal_job_applications(id) on delete cascade
+- actor_type text not null
+- actor_user_id uuid
+- event_type text not null
+- title text not null
+- description text
+- metadata jsonb default '{}'::jsonb
+- created_at timestamptz default now()
+
+internal_job_notifications
+- id uuid primary key default gen_random_uuid()
+- internal_job_id uuid references internal_jobs(id) on delete cascade
+- user_id uuid not null
+- notification_item_id uuid references notification_items(id) on delete set null
+- notified boolean default false
+- created_at timestamptz default now()
+
+internal_job_messages
+- id uuid primary key default gen_random_uuid()
+- internal_job_application_id uuid references internal_job_applications(id) on delete cascade
+- internal_job_id uuid references internal_jobs(id) on delete cascade
+- sender_user_id uuid not null
+- sender_type text not null
+- recipient_user_id uuid not null
+- recipient_type text not null
+- message_type text default 'message'
+- subject text
+- body_text text not null
+- is_read boolean default false
+- created_at timestamptz default now()
+
+internal_job_interview_invites
+- id uuid primary key default gen_random_uuid()
+- internal_job_application_id uuid references internal_job_applications(id) on delete cascade
+- internal_job_id uuid references internal_jobs(id) on delete cascade
+- recruiter_user_id uuid not null
+- candidate_user_id uuid not null
+- invite_title text not null
+- interview_type text default 'general'
+- scheduled_at timestamptz not null
+- timezone text
+- location text
+- meeting_url text
+- notes text
+- status text default 'pending'
+- candidate_response_note text
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Add indexes:
+- internal_jobs(workspace_id)
+- internal_jobs(status)
+- internal_jobs(visibility)
+- internal_jobs(country)
+- internal_jobs(remote)
+- internal_job_applications(internal_job_id)
+- internal_job_applications(user_id)
+- internal_job_applications(status)
+- internal_job_applications(stage)
+- internal_job_candidate_analyses(user_id)
+- internal_job_candidate_analyses(internal_job_id)
+- internal_job_messages(internal_job_application_id)
+- internal_job_messages(recipient_user_id)
+- internal_job_messages(is_read)
+- internal_job_interview_invites(internal_job_application_id)
+- internal_job_interview_invites(candidate_user_id)
+- internal_job_interview_invites(status)
+
+--------------------------------------------------
+2) ENUMS / VALUE MODELS
+
+internal_jobs.status:
+- draft
+- active
+- paused
+- closed
+
+internal_jobs.visibility:
+- public
+- pro_only
+
+internal_job_applications.status:
+- applied
+- shortlisted
+- rejected
+- interview
+- offer
+- hired
+- withdrawn
+
+internal_job_applications.stage:
+- submitted
+- under_review
+- shortlisted
+- interview
+- final_review
+- offer
+- rejected
+- hired
+- withdrawn
+
+internal_job_application_events.actor_type:
+- recruiter
+- candidate
+- system
+
+internal_job_application_events.event_type:
+- application_created
+- analysis_generated
+- status_changed
+- stage_changed
+- recruiter_note_added
+- candidate_note_added
+- shortlisted
+- rejected
+- interview_requested
+- interview_response_received
+- offer_made
+- message_sent
+- withdrawn
+
+internal_job_messages.sender_type:
+- recruiter
+- candidate
+- system
+
+internal_job_messages.recipient_type:
+- recruiter
+- candidate
+
+internal_job_messages.message_type:
+- message
+- interview_invite
+- interview_followup
+- shortlist_notice
+- rejection_notice
+- offer_notice
+
+internal_job_interview_invites.interview_type:
+- recruiter_screen
+- hiring_manager
+- technical
+- case_study
+- final_round
+- general
+
+internal_job_interview_invites.status:
+- pending
+- accepted
+- declined
+- reschedule_requested
+- cancelled
+- completed
+
+Create Zod enums for all of these.
+
+--------------------------------------------------
+3) FILES AND FOLDERS
+
+Create:
+
+lib/internal-jobs/internal-job-schemas.ts
+lib/internal-jobs/internal-job-prompts.ts
+lib/internal-jobs/internal-job-helpers.ts
+lib/internal-jobs/internal-job-permissions.ts
+lib/internal-jobs/internal-job-notifications.ts
+lib/internal-jobs/internal-job-matching.ts
+lib/internal-jobs/internal-job-events.ts
+lib/internal-jobs/internal-job-automation.ts
+lib/internal-jobs/internal-job-messaging.ts
+lib/internal-jobs/internal-job-interviews.ts
+
+app/api/internal-jobs/create/route.ts
+app/api/internal-jobs/update/route.ts
+app/api/internal-jobs/list/route.ts
+app/api/internal-jobs/[id]/route.ts
+app/api/internal-jobs/publish/route.ts
+app/api/internal-jobs/close/route.ts
+
+app/api/internal-jobs/analyze-before-apply/route.ts
+app/api/internal-jobs/apply/route.ts
+app/api/internal-jobs/list-my-applications/route.ts
+app/api/internal-jobs/application/[id]/route.ts
+app/api/internal-jobs/application/update-candidate-note/route.ts
+app/api/internal-jobs/application/withdraw/route.ts
+
+app/api/internal-jobs/recruiter/list-posted-jobs/route.ts
+app/api/internal-jobs/recruiter/list-applicants/route.ts
+app/api/internal-jobs/recruiter/update-application-stage/route.ts
+app/api/internal-jobs/recruiter/update-application-status/route.ts
+app/api/internal-jobs/recruiter/add-note/route.ts
+
+app/api/internal-jobs/messages/send/route.ts
+app/api/internal-jobs/messages/list/route.ts
+app/api/internal-jobs/messages/mark-read/route.ts
+
+app/api/internal-jobs/interviews/create-invite/route.ts
+app/api/internal-jobs/interviews/list-for-candidate/route.ts
+app/api/internal-jobs/interviews/list-for-recruiter/route.ts
+app/api/internal-jobs/interviews/respond/route.ts
+app/api/internal-jobs/interviews/update-status/route.ts
+
+app/internal-jobs/page.tsx
+app/internal-jobs/[id]/page.tsx
+app/internal-jobs/my-applications/page.tsx
+app/internal-jobs/application/[id]/page.tsx
+app/internal-jobs/messages/page.tsx
+app/internal-jobs/interviews/page.tsx
+
+app/recruiter/internal-jobs/create/page.tsx
+app/recruiter/internal-jobs/page.tsx
+app/recruiter/internal-jobs/[id]/page.tsx
+app/recruiter/internal-jobs/[id]/applicants/page.tsx
+app/recruiter/internal-jobs/application/[id]/page.tsx
+app/recruiter/internal-jobs/messages/page.tsx
+app/recruiter/internal-jobs/interviews/page.tsx
+
+--------------------------------------------------
+4) JOB POSTING FLOW
+
+Create:
+app/api/internal-jobs/create/route.ts
+
+Input:
+{
+  "workspaceId": "...",
+  "createdByUserId": "...",
+  "title": "Operations Manager",
+  "company": "Example AB",
+  "location": "Stockholm",
+  "country": "SE",
+  "remote": false,
+  "employmentType": "full_time",
+  "seniority": "mid_senior",
+  "description": "...",
+  "requirements": ["...", "..."],
+  "preferredSkills": ["...", "..."],
+  "salaryMin": 3500,
+  "salaryMax": 5000,
+  "currency": "EUR",
+  "visibility": "pro_only",
+  "expiresAt": "2026-06-01T00:00:00.000Z"
+}
+
+Rules:
+- only recruiter-entitled users / recruiter workspace members can create
+- default status = draft
+- must support save draft
+- publish happens via separate route
+- validate recruiter workspace permissions
+- store structured requirement arrays if provided
+
+Create publish route:
+app/api/internal-jobs/publish/route.ts
+
+Behavior:
+- validate ownership/permission
+- set status = active
+- set published_at = now()
+- trigger eligible-user notification pipeline
+- create event/log if useful
+
+--------------------------------------------------
+5) INTERNAL JOB VISIBILITY RULES
+
+Create:
+app/api/internal-jobs/list/route.ts
+
+Rules:
+- free users see only internal jobs where visibility = public and status = active
+- Pro users and above see:
+  - public jobs
+  - pro_only jobs
+- recruiter users see:
+  - their own posted jobs
+  - visible active jobs as per plan
+- only active jobs should appear in browsing for ordinary candidates
+- paused/closed/draft jobs should not appear to ordinary candidates
+
+Filters:
+- query
+- country
+- remote
+- employment type
+- seniority
+
+--------------------------------------------------
+6) PRE-APPLY ANALYSIS
+
+Create:
+app/api/internal-jobs/analyze-before-apply/route.ts
+lib/internal-jobs/internal-job-matching.ts
+lib/internal-jobs/internal-job-prompts.ts
+
+Input:
+{
+  "userId": "...",
+  "internalJobId": "...",
+  "candidateProfileId": "...",
+  "sourceCandidateDocumentId": "..."
+}
+
+Goal:
+Before applying, user can see:
+- match score
+- strengths
+- gaps
+- why they fit
+- what is missing
+- recommendation summary
+- tailored CV suggestion
+- optional cover letter suggestion
+- apply recommendation:
+  - apply now
+  - tailor first
+  - skip
+
+Expected output:
+{
+  "matchScore": 82,
+  "fitReasons": [],
+  "missingRequirements": [],
+  "strengths": [],
+  "concerns": [],
+  "recommendationSummary": "",
+  "tailoredCvSuggestion": {},
+  "coverLetterSuggestion": "",
+  "applyRecommendation": "tailor_first"
+}
+
+Rules:
+- use existing candidate profile / parsed CV
+- use internal job structured fields + description
+- store analysis in internal_job_candidate_analyses
+- if recent analysis exists for same user+job, reuse or refresh depending on design
+- realistic, not flattering
+- do not invent experience
+
+--------------------------------------------------
+7) APPLY FLOW
+
+Create:
+app/api/internal-jobs/apply/route.ts
+
+Input:
+{
+  "jobId": "...",
+  "userId": "...",
+  "candidateProfileId": "...",
+  "sourceCandidateDocumentId": "...",
+  "tailoredCvId": "...",
+  "coverLetterId": "...",
+  "candidateNotes": "...",
+  "autoApplyMode": false
+}
+
+Behavior:
+- validate user can view/apply to this job
+- create application
+- default status = applied
+- default stage = submitted
+- create event:
+  - application_created
+- prevent duplicate active applications for same user + job unless intentionally allowed
+- return application id, stage/status, next suggested action
+
+--------------------------------------------------
+8) ASSISTED / AUTOMATED APPLY MODE
+
+Create:
+lib/internal-jobs/internal-job-automation.ts
+
+Support:
+
+A) Manual apply
+- user reviews analysis
+- user chooses CV / tailored CV / cover letter
+- applies
+
+B) Assisted apply
+- system guides:
+  - use current CV
+  - tailor CV first
+  - generate cover letter first
+  - apply now
+
+C) Automated internal apply mode
+- user selects autoApplyMode = true
+- system can:
+  1. run pre-apply analysis
+  2. if score above threshold, recommend or trigger:
+     - tailored CV generation
+     - cover letter generation
+     - application creation
+- do NOT send anything outside Resuone automatically
+- this is automated internal application preparation + submission only
+
+Rules:
+- if score too low, do not auto-apply blindly
+- if assets missing, generate/recommend them first
+- save event log for automation steps
+
+--------------------------------------------------
+9) CANDIDATE APPLICATION TRACKING
+
+Create:
+app/api/internal-jobs/list-my-applications/route.ts
+app/api/internal-jobs/application/[id]/route.ts
+app/api/internal-jobs/application/update-candidate-note/route.ts
+app/api/internal-jobs/application/withdraw/route.ts
+
+Candidate can:
+- see all internal job applications
+- open application detail
+- see timeline/events
+- see current status and stage
+- add notes
+- withdraw application
+
+Application detail shows:
+- job info
+- applied date
+- current status
+- current stage
+- analysis snapshot
+- linked tailored CV / cover letter
+- candidate notes
+- timeline
+
+--------------------------------------------------
+10) RECRUITER APPLICANT MANAGEMENT
+
+Create:
+app/api/internal-jobs/recruiter/list-posted-jobs/route.ts
+app/api/internal-jobs/recruiter/list-applicants/route.ts
+app/api/internal-jobs/recruiter/update-application-stage/route.ts
+app/api/internal-jobs/recruiter/update-application-status/route.ts
+app/api/internal-jobs/recruiter/add-note/route.ts
+
+Recruiter can:
+- see posted jobs
+- see applicant count per job
+- inspect each application
+- see candidate fit analysis
+- see linked tailored CV and cover letter
+- move application through pipeline
+- add recruiter notes
+- shortlist / reject / move to interview / offer / hire
+
+Every major recruiter action must create event rows.
+
+--------------------------------------------------
+11) RECRUITER ↔ CANDIDATE MESSAGING
+
+Create:
+lib/internal-jobs/internal-job-messaging.ts
+app/api/internal-jobs/messages/send/route.ts
+app/api/internal-jobs/messages/list/route.ts
+app/api/internal-jobs/messages/mark-read/route.ts
+
+Messaging goals:
+- recruiter can message candidate within context of one application
+- candidate can reply
+- thread is tied to internal_job_application_id
+- messages are stored in internal_job_messages
+
+Send input:
+{
+  "internalJobApplicationId": "...",
+  "senderUserId": "...",
+  "recipientUserId": "...",
+  "senderType": "recruiter",
+  "recipientType": "candidate",
+  "messageType": "message",
+  "subject": "Next steps",
+  "bodyText": "..."
+}
+
+Rules:
+- only recruiter tied to that job can contact applicants
+- only candidate owner of the application can respond
+- mark messages unread for recipient
+- create notification_items for new inbound messages
+- create application event:
+  - message_sent
+
+Use this also for templated notices later:
+- shortlist_notice
+- rejection_notice
+- offer_notice
+
+--------------------------------------------------
+12) INTERVIEW INVITES
+
+Create:
+lib/internal-jobs/internal-job-interviews.ts
+app/api/internal-jobs/interviews/create-invite/route.ts
+app/api/internal-jobs/interviews/list-for-candidate/route.ts
+app/api/internal-jobs/interviews/list-for-recruiter/route.ts
+app/api/internal-jobs/interviews/respond/route.ts
+app/api/internal-jobs/interviews/update-status/route.ts
+
+Recruiter create invite input:
+{
+  "internalJobApplicationId": "...",
+  "recruiterUserId": "...",
+  "inviteTitle": "First Interview",
+  "interviewType": "hiring_manager",
+  "scheduledAt": "2026-06-10T12:00:00.000Z",
+  "timezone": "Europe/Stockholm",
+  "location": "Google Meet",
+  "meetingUrl": "https://...",
+  "notes": "Please be ready to discuss operations ownership."
+}
+
+Behavior:
+- validate recruiter owns/manages that application/job
+- create interview invite
+- update application stage/status appropriately
+- create application event:
+  - interview_requested
+- create notification for candidate
+- optionally create message entry with messageType = interview_invite
+
+Candidate response input:
+{
+  "interviewInviteId": "...",
+  "candidateUserId": "...",
+  "status": "accepted",
+  "candidateResponseNote": "Confirmed, thank you."
+}
+
+Allowed candidate response actions:
+- accepted
+- declined
+- reschedule_requested
+
+Behavior:
+- update invite status
+- create event:
+  - interview_response_received
+- notify recruiter
+- if accepted, keep stage = interview
+- if declined/reschedule_requested, keep tracking state transparent
+
+Recruiter update-status route supports:
+- completed
+- cancelled
+
+--------------------------------------------------
+13) NOTIFICATION PIPELINE
+
+Create:
+lib/internal-jobs/internal-job-notifications.ts
+
+When internal job is published:
+1. find eligible users:
+   - Pro plan or above for pro_only jobs
+   - everyone eligible for public jobs
+2. filter relevance:
+   - country match OR remote
+   - title similarity
+   - skill overlap with candidate profile
+3. create notification_items
+4. create internal_job_notifications rows
+
+Also create notifications for:
+- new message
+- application shortlisted
+- application moved to interview
+- interview invite received
+- interview response received
+- application rejected
+- offer made
+
+Only notify above minimum relevance threshold for new job alerts.
+
+--------------------------------------------------
+14) MATCHING FILTER FOR NOTIFICATIONS
+
+Use lightweight prefilter:
+- title overlap with candidate target roles
+- skill overlap
+- location/country match
+- remote compatibility
+
+Do NOT spam every Pro user with every job.
+
+--------------------------------------------------
+15) INTERNAL JOBS IN DISCOVERY ENGINE
+
+Important:
+Internal jobs must also appear in:
+- internal jobs browsing page
+- broader /jobs/discover flow
+- matching/ranking engine
+
+Add source = internal
+Give internal jobs a premium "Resuone Exclusive" badge.
+
+--------------------------------------------------
+16) UI — CANDIDATE SIDE
+
+Create:
+app/internal-jobs/page.tsx
+app/internal-jobs/[id]/page.tsx
+app/internal-jobs/my-applications/page.tsx
+app/internal-jobs/application/[id]/page.tsx
+app/internal-jobs/messages/page.tsx
+app/internal-jobs/interviews/page.tsx
+
+Internal jobs list page:
+- query/search
+- country filter
+- remote filter
+- badges:
+  - Resuone Exclusive
+  - Pro
+  - Remote
+
+Job detail page:
+- full description
+- requirements
+- salary
+- fit analysis section
+- buttons:
+  - Analyze before applying
+  - Apply now
+  - Generate tailored CV
+  - Generate cover letter
+  - Apply with assistance
+
+My applications page:
+- job
+- company
+- applied date
+- status
+- stage
+- last updated
+
+Application detail page:
+- status/stage header
+- linked docs
+- notes
+- event timeline
+- message panel
+- interview invite section
+- withdraw action
+
+Messages page:
+- inbox-style view for internal job conversations
+
+Interviews page:
+- upcoming internal job interviews
+- response status
+- open application
+
+--------------------------------------------------
+17) UI — RECRUITER SIDE
+
+Create:
+app/recruiter/internal-jobs/create/page.tsx
+app/recruiter/internal-jobs/page.tsx
+app/recruiter/internal-jobs/[id]/page.tsx
+app/recruiter/internal-jobs/[id]/applicants/page.tsx
+app/recruiter/internal-jobs/application/[id]/page.tsx
+app/recruiter/internal-jobs/messages/page.tsx
+app/recruiter/internal-jobs/interviews/page.tsx
+
+Recruiter jobs page:
+- draft/active/paused/closed tabs
+- title
+- status
+- visibility
+- applicants count
+- actions:
+  - edit
+  - publish
+  - pause
+  - close
+
+Applicants page:
+- applicant list
+- fit score
+- applied date
+- status/stage
+- shortlist / reject / open
+
+Application detail:
+- candidate summary
+- candidate analysis
+- linked tailored CV / cover letter
+- recruiter notes
+- timeline
+- messaging panel
+- interview invite controls
+- status/stage controls
+
+Recruiter messages page:
+- all candidate conversations grouped by application/job
+
+Recruiter interviews page:
+- all outgoing invites
+- accepted / pending / declined / reschedule_requested / completed
+
+--------------------------------------------------
+18) PERMISSIONS + ENTITLEMENTS
+
+Create:
+lib/internal-jobs/internal-job-permissions.ts
+
+Rules:
+- only recruiter-entitled users can create/post internal jobs
+- only candidate-entitled users can see pro_only jobs
+- only eligible candidates can apply
+- only job owners / workspace-authorized recruiters can manage applicants
+- only valid participants can message within an application thread
+- only recruiters tied to application can create interview invites
+- only invited candidate can respond to interview invite
+
+Integrate with:
+- billing plan checks
+- workspace permission checks
+- Pro feature gating
+
+--------------------------------------------------
+19) CREDIT / BILLING MODEL
+
+Recommended:
+- viewing job list = no credits
+- pre-apply analysis = consumes credits
+- generate tailored CV = consumes credits
+- generate cover letter = consumes credits
+- apply = no credits
+- recruiter posting = included in recruiter plan
+- messaging + interview tracking = included in recruiter plan
+- no credits for ordinary stage tracking
+
+--------------------------------------------------
+20) HELPER FUNCTIONS
+
+Create in:
+lib/internal-jobs/internal-job-helpers.ts
+- buildInternalJobSearchFilters()
+- canUserSeeInternalJob()
+- canUserApplyToInternalJob()
+- buildInternalJobSummary()
+- buildApplicationTitle()
+- shouldPreventDuplicateApplication()
+
+Create in:
+lib/internal-jobs/internal-job-events.ts
+- createInternalJobApplicationEvent()
+- buildStageChangeEvent()
+- buildStatusChangeEvent()
+- buildMessageSentEvent()
+- buildInterviewRequestedEvent()
+- buildInterviewResponseEvent()
+
+Create in:
+lib/internal-jobs/internal-job-matching.ts
+- locallyScoreInternalJobForUser()
+- analyzeInternalJobForCandidate()
+- decideApplyRecommendation()
+
+Create in:
+lib/internal-jobs/internal-job-messaging.ts
+- canUserAccessMessageThread()
+- createApplicationMessage()
+- listMessagesForApplication()
+
+Create in:
+lib/internal-jobs/internal-job-interviews.ts
+- canRecruiterCreateInvite()
+- canCandidateRespondInvite()
+- createInterviewInvite()
+- respondToInterviewInvite()
+
+--------------------------------------------------
+21) QUALITY REQUIREMENTS
+
+- keep routes thin
+- keep matching logic modular
+- keep notification logic modular
+- keep event creation centralized
+- reuse existing candidate profile and document tables
+- reuse existing tailored CV / cover letter systems
+- reuse existing notification_items infrastructure
+- reuse existing application-tracker concepts where sensible
+- add loading states and empty states in UI
+- show clear errors and permission messages
+
+--------------------------------------------------
+22) SUCCESS CRITERIA
+
+This milestone is complete when:
+- recruiter can create draft internal jobs
+- recruiter can publish jobs
+- eligible Pro users can see pro_only jobs
+- relevant users receive notifications
+- candidate can analyze fit before applying
+- candidate can apply manually
+- candidate can use assisted/automated internal apply flow
+- candidate can track application progress
+- recruiter can track applicants and move them through stages
+- recruiter and candidate can message each other inside application context
+- recruiter can send interview invites
+- candidate can respond to interview invites
+- timeline/events are recorded
+- internal jobs appear in discovery/matching flow
+- everything persists in Supabase
+
+--------------------------------------------------
+23) FUTURE-READY NOTES
+
+Keep architecture ready for:
+- featured internal jobs
+- recruiter-to-candidate templates
+- interview rescheduling workflows
+- offer letters / offer acceptance
+- in-platform video interview integration
+- employer branding pages
+- premium boosted placement
+- recruiter analytics on job performance
+
+NOW DO THE FOLLOWING
+- Generate all required code files
+- Show code file by file
+- Do not skip important implementation pieces
+- Keep naming consistent with Resuone
+- Keep architecture aligned with previous milestones
+- Do not only explain — actually output the implementation
