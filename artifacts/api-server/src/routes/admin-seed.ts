@@ -4,6 +4,7 @@ import {
   applicationsTable, contactMessagesTable,
   savedJobsTable, trackedApplicationsTable, interviewPrepsTable,
   featureUsageEventsTable, workspacesTable,
+  applicationEmailDraftsTable, candidatesTable, recruiterJobsTable,
 } from "@workspace/db";
 import { eq, sql, ilike, or, desc, count, gte } from "drizzle-orm";
 import Stripe from "stripe";
@@ -51,6 +52,7 @@ router.get("/_admin/stats", async (req, res) => {
     const [savedJobCount] = await db.select({ count: count() }).from(savedJobsTable);
     const [trackedAppCount] = await db.select({ count: count() }).from(trackedApplicationsTable);
     const [interviewPrepCount] = await db.select({ count: count() }).from(interviewPrepsTable);
+    const [emailDraftCount] = await db.select({ count: count() }).from(applicationEmailDraftsTable);
 
     const proResult = await db.execute(sql`SELECT COUNT(*) as count FROM users WHERE subscription_status = 'active'`);
     const recruiterSoloResult = await db.execute(sql`SELECT COUNT(*) as count FROM users WHERE recruiter_subscription_status = 'solo'`);
@@ -96,6 +98,7 @@ router.get("/_admin/stats", async (req, res) => {
       totalSavedJobs: Number(savedJobCount?.count ?? 0),
       totalTrackedApps: Number(trackedAppCount?.count ?? 0),
       totalInterviewPreps: Number(interviewPrepCount?.count ?? 0),
+      totalEmailDrafts: Number(emailDraftCount?.count ?? 0),
       trackerStageBreakdown: stageBreakdown,
       creditBreakdown30d: creditBreakdown,
     });
@@ -605,6 +608,76 @@ router.post("/_admin/snapshot-metrics", async (req, res) => {
   try {
     const result = await snapshotTodayMetrics();
     res.json({ success: true, snapshot: result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /_admin/user/:userId/email-drafts
+router.get("/_admin/user/:userId/email-drafts", async (req, res) => {
+  if (!authAdmin(req, res)) return;
+  const { userId } = req.params;
+  try {
+    const drafts = await db
+      .select({
+        id: applicationEmailDraftsTable.id,
+        draftType: applicationEmailDraftsTable.draftType,
+        subject: applicationEmailDraftsTable.subject,
+        tone: applicationEmailDraftsTable.tone,
+        status: applicationEmailDraftsTable.status,
+        applicationId: applicationEmailDraftsTable.applicationId,
+        createdAt: applicationEmailDraftsTable.createdAt,
+      })
+      .from(applicationEmailDraftsTable)
+      .where(eq(applicationEmailDraftsTable.userId, userId))
+      .orderBy(desc(applicationEmailDraftsTable.createdAt))
+      .limit(50);
+    res.json({ drafts, total: drafts.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /_admin/user/:userId/credit-history
+router.get("/_admin/user/:userId/credit-history", async (req, res) => {
+  if (!authAdmin(req, res)) return;
+  const { userId } = req.params;
+  try {
+    const events = await db
+      .select({
+        id: usageEventsTable.id,
+        type: usageEventsTable.type,
+        creditsDelta: usageEventsTable.creditsDelta,
+        metadata: usageEventsTable.metadata,
+        createdAt: usageEventsTable.createdAt,
+      })
+      .from(usageEventsTable)
+      .where(eq(usageEventsTable.userId, userId))
+      .orderBy(desc(usageEventsTable.createdAt))
+      .limit(50);
+    res.json({ events });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /_admin/user/:userId/recruiter-stats
+router.get("/_admin/user/:userId/recruiter-stats", async (req, res) => {
+  if (!authAdmin(req, res)) return;
+  const { userId } = req.params;
+  try {
+    const [jobCount] = await db
+      .select({ count: count() })
+      .from(recruiterJobsTable)
+      .where(eq(recruiterJobsTable.recruiterUserId, userId));
+    const [candidateCount] = await db
+      .select({ count: count() })
+      .from(candidatesTable)
+      .where(eq(candidatesTable.recruiterId, userId));
+    res.json({
+      recruiterJobs: Number(jobCount?.count ?? 0),
+      candidates: Number(candidateCount?.count ?? 0),
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

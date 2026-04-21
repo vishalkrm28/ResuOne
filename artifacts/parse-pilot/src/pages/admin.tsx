@@ -4,6 +4,7 @@ import {
   CheckCircle, XCircle, Loader2, Trash2, ChevronRight,
   ChevronDown, Users, BarChart3, AlertTriangle, X, FileText, Star,
   Mail, DollarSign, Briefcase, Bookmark, LayoutGrid, Sparkles, Building2, Zap,
+  Clock, ArrowUpDown, Wrench,
 } from "lucide-react";
 
 const STORAGE_KEY = "pp_admin_token";
@@ -35,6 +36,17 @@ interface UserRow {
 interface UserDetail {
   user: any; balance: any; bulkPasses: any[];
 }
+interface EmailDraft {
+  id: string; draftType: string; subject: string; tone: string;
+  status: string; applicationId: string | null; createdAt: string;
+}
+interface CreditEvent {
+  id: string; type: string; creditsDelta: number;
+  metadata: any; createdAt: string;
+}
+interface RecruiterStats {
+  recruiterJobs: number; candidates: number;
+}
 interface Application {
   id: string; jobTitle: string; company: string;
   keywordMatchScore: number | null; status: string | null; createdAt: string;
@@ -45,6 +57,7 @@ interface Stats {
   proUsers: number; recruiterSoloUsers: number; recruiterTeamUsers: number;
   mrr: number;
   totalSavedJobs: number; totalTrackedApps: number; totalInterviewPreps: number;
+  totalEmailDrafts: number;
   trackerStageBreakdown: Record<string, number>;
   creditBreakdown30d: { type: string; events: number; creditsSpent: number }[];
 }
@@ -307,7 +320,7 @@ function StatsTab({ call }: { call: any }) {
     { label: "Saved Jobs", value: stats?.totalSavedJobs ?? 0, color: "text-amber-400", fmt: "int", icon: <Bookmark className="w-3.5 h-3.5" /> },
     { label: "Tracked Applications", value: stats?.totalTrackedApps ?? 0, color: "text-indigo-400", fmt: "int", icon: <LayoutGrid className="w-3.5 h-3.5" /> },
     { label: "Interview Preps", value: stats?.totalInterviewPreps ?? 0, color: "text-violet-400", fmt: "int", icon: <Sparkles className="w-3.5 h-3.5" /> },
-    { label: "Contact messages", value: stats?.totalMessages ?? 0, color: "text-zinc-400", fmt: "int", icon: <Mail className="w-3.5 h-3.5" /> },
+    { label: "Email Drafts", value: stats?.totalEmailDrafts ?? 0, color: "text-blue-400", fmt: "int", icon: <Mail className="w-3.5 h-3.5" /> },
   ];
 
   const fmt = (v: number, f: string) => f === "usd" ? `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : v.toLocaleString();
@@ -611,6 +624,108 @@ function UsersTab({
           ))}
         </div>
       )}
+
+      <UserMigrationTool call={call} addToast={addToast} />
+    </div>
+  );
+}
+
+function UserMigrationTool({ call, addToast }: { call: any; addToast: (m: string, t: "success" | "error") => void }) {
+  const [open, setOpen] = useState(false);
+  const [oldId, setOldId] = useState("");
+  const [newId, setNewId] = useState("");
+  const [realEmail, setRealEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  async function run() {
+    if (!oldId.trim() || !newId.trim()) {
+      addToast("Both user IDs are required", "error");
+      return;
+    }
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await call("/_admin/fix-user-migration", {
+        method: "POST",
+        body: JSON.stringify({
+          old_id: oldId.trim(),
+          new_id: newId.trim(),
+          ...(realEmail.trim() ? { real_email: realEmail.trim() } : {}),
+        }),
+      });
+      setResult(data.report);
+      addToast("Migration completed successfully", "success");
+    } catch (e: any) {
+      addToast(e.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="border border-zinc-800 rounded-xl overflow-hidden mt-6">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors"
+      >
+        <Wrench className="w-4 h-4 text-zinc-500" />
+        <span className="text-sm font-medium text-zinc-400">User Migration Tool</span>
+        <span className="text-xs text-zinc-600 ml-1">— reassign data from old to new user ID</span>
+        <div className="ml-auto">
+          {open ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-zinc-800 bg-zinc-900/50 p-4 space-y-4">
+          <p className="text-xs text-zinc-500">
+            Transfers all data (CV analyses, bulk passes, credits, tracker, email drafts) from an old Clerk user ID to a new one.
+            Useful when a user&apos;s Clerk ID changes or accounts are merged. Cannot be undone.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-500">Old user ID</label>
+              <input
+                value={oldId} onChange={e => setOldId(e.target.value)}
+                placeholder="user_old_..."
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-500">New user ID</label>
+              <input
+                value={newId} onChange={e => setNewId(e.target.value)}
+                placeholder="user_new_..."
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-500">Restore email (optional)</label>
+              <input
+                value={realEmail} onChange={e => setRealEmail(e.target.value)}
+                placeholder="user@example.com"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          </div>
+          <button
+            onClick={run}
+            disabled={loading || !oldId.trim() || !newId.trim()}
+            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpDown className="w-3.5 h-3.5" />}
+            Run migration
+          </button>
+          {result && (
+            <div className="bg-zinc-800 rounded-lg p-3">
+              <p className="text-xs text-green-400 font-semibold mb-1">Migration report:</p>
+              <pre className="text-xs text-zinc-400 whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+                {JSON.stringify(result, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -629,6 +744,9 @@ function UserRow({
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [apps, setApps] = useState<Application[]>([]);
   const [trackerData, setTrackerData] = useState<TrackerData | null>(null);
+  const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
+  const [creditHistory, setCreditHistory] = useState<CreditEvent[]>([]);
+  const [recruiterStats, setRecruiterStats] = useState<RecruiterStats | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [credits, setCredits] = useState("10");
@@ -641,8 +759,18 @@ function UserRow({
       call(`/_admin/check-user/${user.id}`),
       call(`/_admin/user/${user.id}/applications`),
       call(`/_admin/user/${user.id}/tracker`),
+      call(`/_admin/user/${user.id}/email-drafts`).catch(() => ({ drafts: [] })),
+      call(`/_admin/user/${user.id}/credit-history`).catch(() => ({ events: [] })),
+      call(`/_admin/user/${user.id}/recruiter-stats`).catch(() => ({ recruiterJobs: 0, candidates: 0 })),
     ])
-      .then(([d, a, t]: any) => { setDetail(d); setApps(a.applications); setTrackerData(t); })
+      .then(([d, a, t, ed, ch, rs]: any) => {
+        setDetail(d);
+        setApps(a.applications);
+        setTrackerData(t);
+        setEmailDrafts(ed.drafts ?? []);
+        setCreditHistory(ch.events ?? []);
+        setRecruiterStats(rs);
+      })
       .catch((e: any) => addToast(e.message, "error"))
       .finally(() => setLoadingDetail(false));
   }, [expanded, user.id]);
@@ -659,14 +787,20 @@ function UserRow({
   }
 
   async function refreshDetail() {
-    const [d, a, t]: any = await Promise.all([
+    const [d, a, t, ed, ch, rs]: any = await Promise.all([
       call(`/_admin/check-user/${user.id}`),
       call(`/_admin/user/${user.id}/applications`),
       call(`/_admin/user/${user.id}/tracker`),
+      call(`/_admin/user/${user.id}/email-drafts`).catch(() => ({ drafts: [] })),
+      call(`/_admin/user/${user.id}/credit-history`).catch(() => ({ events: [] })),
+      call(`/_admin/user/${user.id}/recruiter-stats`).catch(() => ({ recruiterJobs: 0, candidates: 0 })),
     ]);
     setDetail(d);
     setApps(a.applications);
     setTrackerData(t);
+    setEmailDrafts(ed.drafts ?? []);
+    setCreditHistory(ch.events ?? []);
+    setRecruiterStats(rs);
   }
 
   async function grantCredits() {
@@ -814,13 +948,22 @@ function UserRow({
               {/* User info */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <InfoBox label="Credits" value={detail?.balance?.availableCredits?.toString() ?? "0"} highlight={!detail?.balance?.availableCredits ? "red" : "green"} />
+                <InfoBox label="Job Rec Credits" value={detail?.balance?.jobRecCredits?.toString() ?? "0"} />
+                <InfoBox label="Lifetime Used" value={detail?.balance?.lifetimeCreditsUsed?.toString() ?? "0"} />
                 <InfoBox label="Subscription" value={detail?.user?.subscriptionStatus ?? "none"} highlight={detail?.user?.subscriptionStatus === "active" ? "green" : undefined} />
                 <InfoBox label="Recruiter" value={recruiterPlan ?? "none"} highlight={recruiterPlan ? "green" : undefined} />
                 <InfoBox label="CV analyses" value={apps.length.toString()} />
                 <InfoBox label="Bulk passes" value={detail?.bulkPasses?.length?.toString() ?? "0"} />
+                <InfoBox label="Email drafts" value={emailDrafts.length.toString()} />
                 <InfoBox label="Saved Jobs" value={trackerData?.counts.savedJobs?.toString() ?? "0"} />
                 <InfoBox label="Tracked Apps" value={trackerData?.counts.trackedApps?.toString() ?? "0"} />
                 <InfoBox label="Interview Preps" value={trackerData?.counts.interviewPreps?.toString() ?? "0"} />
+                {recruiterStats && recruiterPlan && (
+                  <>
+                    <InfoBox label="Recruiter Jobs" value={recruiterStats.recruiterJobs.toString()} highlight={recruiterStats.recruiterJobs > 0 ? "green" : undefined} />
+                    <InfoBox label="Candidates" value={recruiterStats.candidates.toString()} highlight={recruiterStats.candidates > 0 ? "green" : undefined} />
+                  </>
+                )}
               </div>
 
               {/* Credit allocation panel */}
@@ -1031,6 +1174,50 @@ function UserRow({
                           <p className="text-sm text-zinc-300 truncate">{prep.prepSummary ?? "Interview prep generated"}</p>
                           <p className="text-xs text-zinc-500">{new Date(prep.createdAt).toLocaleDateString()}</p>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Email drafts */}
+              {emailDrafts.length > 0 && (
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <Mail className="w-3 h-3" /> Email drafts ({emailDrafts.length})
+                  </p>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {emailDrafts.map(draft => (
+                      <div key={draft.id} className="flex items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+                        <Mail className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-zinc-300 truncate">{draft.subject}</p>
+                          <p className="text-xs text-zinc-500">
+                            {draft.draftType.replace(/_/g, " ")} · {draft.tone} · {draft.status} · {new Date(draft.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Credit event history */}
+              {creditHistory.length > 0 && (
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" /> Credit history (last 50 events)
+                  </p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                    {creditHistory.map(ev => (
+                      <div key={ev.id} className="flex items-center justify-between bg-zinc-800 rounded-lg px-3 py-2 gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-zinc-300 truncate">{ev.type.replace(/_/g, " ")}</p>
+                          <p className="text-xs text-zinc-600">{new Date(ev.createdAt).toLocaleString()}</p>
+                        </div>
+                        <span className={`text-xs font-mono font-semibold flex-shrink-0 ${ev.creditsDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {ev.creditsDelta >= 0 ? "+" : ""}{ev.creditsDelta}
+                        </span>
                       </div>
                     ))}
                   </div>
