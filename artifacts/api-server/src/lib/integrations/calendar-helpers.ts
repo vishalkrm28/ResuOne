@@ -1,5 +1,7 @@
-// ─── Calendar Integration Helpers (sync-ready abstraction layer) ──────────────
-// Full OAuth not implemented in M37 — architecture is provider-ready.
+// ─── Calendar Integration Helpers ────────────────────────────────────────────
+// Uses @replit/connectors-sdk to proxy authenticated requests to Google Calendar.
+
+import { ReplitConnectors } from "@replit/connectors-sdk";
 
 export type CalendarProvider = "google" | "outlook" | "internal";
 
@@ -54,23 +56,36 @@ export function normalizeCalendarStatus(
 // ─── providerSupportsCalendarSync ─────────────────────────────────────────────
 
 export function providerSupportsCalendarSync(provider: string): boolean {
-  return provider === "google" || provider === "outlook";
+  return provider === "google";
 }
 
-// ─── getCalendarConnectionStatus (stub — no real OAuth in M37) ───────────────
+// ─── createGoogleCalendarEvent ────────────────────────────────────────────────
+// Uses the Replit connectors SDK — OAuth tokens are managed automatically.
 
-export async function getCalendarConnectionStatus(
-  _userId: string,
-  _provider: CalendarProvider,
-): Promise<{ connected: boolean; providerEmail: string | null }> {
-  return { connected: false, providerEmail: null };
-}
+export async function createGoogleCalendarEvent(
+  payload: Record<string, unknown>,
+): Promise<{ externalEventId: string | null; synced: boolean; error?: string }> {
+  try {
+    const connectors = new ReplitConnectors();
+    const response = await connectors.proxy(
+      "google-calendar",
+      "/calendars/primary/events",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
 
-// ─── createCalendarEvent (stub — returns sync-ready response) ─────────────────
+    if (!response.ok) {
+      const text = await response.text();
+      return { externalEventId: null, synced: false, error: text };
+    }
 
-export async function createCalendarEvent(
-  _provider: CalendarProvider,
-  _payload: CalendarEventPayload,
-): Promise<{ externalEventId: string | null; synced: boolean }> {
-  return { externalEventId: null, synced: false };
+    const data = await response.json() as { id?: string };
+    return { externalEventId: data.id ?? null, synced: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { externalEventId: null, synced: false, error: message };
+  }
 }

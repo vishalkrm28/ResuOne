@@ -83,21 +83,12 @@ function IntegrationCard({
         ))}
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          disabled
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium cursor-not-allowed opacity-60"
-        >
-          <Link2 className="w-4 h-4" />
-          {status === "connected" ? "Manage" : "Connect"}
-        </button>
-        {status !== "connected" && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Info className="w-3.5 h-3.5" />
-            OAuth integration coming in a future update
-          </div>
-        )}
-      </div>
+      {!comingSoon && status !== "connected" && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Info className="w-3.5 h-3.5" />
+          Contact support to connect your account.
+        </div>
+      )}
     </div>
   );
 }
@@ -143,13 +134,6 @@ export default function IntegrationsPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Connect your calendar and email to sync interviews and outbound emails automatically.
           </p>
-          <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
-            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>
-              <strong>Sync-ready architecture:</strong> Resuone stores all sync records locally.
-              When OAuth connections are added, your interview events and email drafts will sync automatically.
-            </span>
-          </div>
         </div>
 
         {/* Calendar integrations */}
