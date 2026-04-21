@@ -21,7 +21,7 @@ import {
   extractIdentityFromParsedCv,
   checkAndRecordIdentity,
 } from "../lib/identity.js";
-import { getClientIp, countFreeAnalysesByIp } from "../lib/ip.js";
+import { getClientIp } from "../lib/ip.js";
 
 const router: IRouter = Router();
 
@@ -458,24 +458,6 @@ router.post("/applications/:id/analyze", async (req, res) => {
         }
       }
 
-      // ── IP abuse check — free-tier only ───────────────────────────────────
-      // If this user is not Pro, check how many free analyses have already
-      // been performed from the same IP across ALL accounts.  Blocks users
-      // who register throwaway emails to bypass the 3-credit free limit.
-      if (!effectiveBulkSession) {
-        const isPro = await isUserPro(ownerUserId);
-        if (!isPro && clientIp !== "unknown") {
-          const ipCount = await countFreeAnalysesByIp(clientIp);
-          const IP_FREE_LIMIT = 3; // analyses per IP across all accounts
-          if (ipCount >= IP_FREE_LIMIT) {
-            res.status(429).json({
-              error: "Too many free analyses from this network. Please upgrade to Pro to continue.",
-              code: "IP_LIMIT_EXCEEDED",
-            });
-            return;
-          }
-        }
-      }
 
       // Penalty cost: +1 credit when a different person's CV is detected.
       // We charge this after the base cost check — if the user has exactly 1
