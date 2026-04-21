@@ -26,6 +26,7 @@ import marketingRouter from "./marketing.js";
 import publicRouter from "./public.js";
 import jobsDiscoverRouter from "./jobs-discover.js";
 import jobsSourcesRouter from "./jobs-sources.js";
+import internalJobsRouter from "./internal-jobs.js";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(workspacesRouter);
 router.use(marketingRouter);
 router.use(jobsDiscoverRouter);
 router.use(jobsSourcesRouter);
+router.use(internalJobsRouter);
 
 export default router;

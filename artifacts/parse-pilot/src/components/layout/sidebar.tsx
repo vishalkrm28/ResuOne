@@ -21,6 +21,7 @@ import {
   Link2,
   Building2,
   Globe,
+  Star,
 } from "lucide-react";
 import { LogoBrand } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/bulk/history", label: "Bulk Mode", icon: Users },
   { href: "/jobs/recommendations", label: "Find Jobs", icon: Sparkles },
   { href: "/jobs/discover", label: "Global Jobs", icon: Globe },
+  { href: "/jobs/exclusive", label: "Resuone Jobs", icon: Star },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/billing", label: "Billing & Plan", icon: CreditCard },
   { href: "/workspaces", label: "Workspaces", icon: Building2 },
@@ -54,6 +56,7 @@ const trackerItems = [
 const recruiterItems = [
   { href: "/recruiter/dashboard", label: "Candidates", icon: BriefcaseBusiness },
   { href: "/recruiter/pipeline", label: "Pipeline", icon: LayoutGrid },
+  { href: "/recruiter/exclusive-jobs", label: "Post Exclusive Jobs", icon: Star },
   { href: "/recruiter/pricing", label: "Recruiter Plans", icon: CreditCard },
 ];
 

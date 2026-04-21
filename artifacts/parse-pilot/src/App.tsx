@@ -36,6 +36,8 @@ import RecruiterJobDetail from "@/pages/recruiter/job-detail";
 import RecruiterJobRanking from "@/pages/recruiter/job-ranking";
 import JobRecommendations from "@/pages/jobs/recommendations";
 import GlobalJobDiscover from "@/pages/jobs/discover";
+import ExclusiveJobs from "@/pages/jobs/exclusive";
+import RecruiterExclusiveJobs from "@/pages/recruiter/exclusive-jobs";
 import TailoredCvsPage from "@/pages/application/tailored-cvs";
 import TailoredCvDetailPage from "@/pages/application/tailored-cv-detail";
 import CoverLettersPage from "@/pages/application/cover-letters";
@@ -127,6 +129,8 @@ function AppRouter() {
       <Route path="/settings" component={Settings} />
       <Route path="/jobs/recommendations" component={JobRecommendations} />
       <Route path="/jobs/discover" component={GlobalJobDiscover} />
+      <Route path="/jobs/exclusive" component={ExclusiveJobs} />
+      <Route path="/recruiter/exclusive-jobs" component={RecruiterExclusiveJobs} />
       <Route path="/application/tailored-cvs/:id" component={TailoredCvDetailPage} />
       <Route path="/application/tailored-cvs" component={TailoredCvsPage} />
       <Route path="/application/cover-letters" component={CoverLettersPage} />
