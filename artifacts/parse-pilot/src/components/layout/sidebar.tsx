@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Video,
   ChevronDown,
+  Lock,
 } from "lucide-react";
 import { LogoBrand } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
@@ -33,14 +34,14 @@ import { cn } from "@/lib/utils";
 // ─── Nav data ─────────────────────────────────────────────────────────────────
 
 const coreItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/new", label: "New Application", icon: FilePlus2 },
-  { href: "/bulk/history", label: "Bulk Mode", icon: Users },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, proOnly: false },
+  { href: "/new", label: "New Application", icon: FilePlus2, proOnly: false },
+  { href: "/bulk/history", label: "Bulk Mode", icon: Users, proOnly: true },
 ];
 
 const jobsItems = [
-  { href: "/jobs/recommendations", label: "Find Jobs", icon: Sparkles },
-  { href: "/jobs/discover", label: "Global Jobs", icon: Globe },
+  { href: "/jobs/recommendations", label: "Find Jobs", icon: Sparkles, proOnly: true },
+  { href: "/jobs/discover", label: "Global Jobs", icon: Globe, proOnly: true },
 ];
 
 // Exclusive jobs shown as an expandable group
@@ -51,24 +52,24 @@ const exclusiveJobsChildren = [
 ];
 
 const applicationItems = [
-  { href: "/application/tailored-cvs", label: "Tailored CVs", icon: FileText },
-  { href: "/application/cover-letters", label: "Cover Letters", icon: MailOpen },
+  { href: "/application/tailored-cvs", label: "Tailored CVs", icon: FileText, proOnly: true },
+  { href: "/application/cover-letters", label: "Cover Letters", icon: MailOpen, proOnly: true },
 ];
 
 const trackerItems = [
-  { href: "/tracker", label: "Pipeline", icon: LayoutGrid },
-  { href: "/tracker/saved", label: "Saved Jobs", icon: Bookmark },
-  { href: "/tracker/interview-preps", label: "Interview Preps", icon: Sparkles },
-  { href: "/emails", label: "Email Drafts", icon: Mail },
-  { href: "/mock-interview", label: "Mock Interviews", icon: Mic },
+  { href: "/tracker", label: "Pipeline", icon: LayoutGrid, proOnly: true },
+  { href: "/tracker/saved", label: "Saved Jobs", icon: Bookmark, proOnly: true },
+  { href: "/tracker/interview-preps", label: "Interview Preps", icon: Sparkles, proOnly: true },
+  { href: "/emails", label: "Email Drafts", icon: Mail, proOnly: true },
+  { href: "/mock-interview", label: "Mock Interviews", icon: Mic, proOnly: true },
 ];
 
 const accountItems = [
-  { href: "/notifications", label: "Notifications", icon: Bell },
-  { href: "/billing", label: "Billing & Plan", icon: CreditCard },
-  { href: "/workspaces", label: "Workspaces", icon: Building2 },
-  { href: "/integrations", label: "Integrations", icon: Link2 },
-  { href: "/settings", label: "Settings", icon: Settings2 },
+  { href: "/notifications", label: "Notifications", icon: Bell, proOnly: false },
+  { href: "/billing", label: "Billing & Plan", icon: CreditCard, proOnly: false },
+  { href: "/workspaces", label: "Workspaces", icon: Building2, proOnly: true },
+  { href: "/integrations", label: "Integrations", icon: Link2, proOnly: true },
+  { href: "/settings", label: "Settings", icon: Settings2, proOnly: false },
 ];
 
 // Exclusive recruiter items shown as sub-items of "Exclusive Jobs"
@@ -116,13 +117,34 @@ function NavItem({
   icon: Icon,
   isActive,
   indent = false,
+  locked = false,
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
   isActive: boolean;
   indent?: boolean;
+  locked?: boolean;
 }) {
+  if (locked) {
+    return (
+      <Link href="/billing">
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-lg text-sm font-medium cursor-pointer transition-colors group",
+            indent ? "px-3 py-1.5 ml-4" : "px-3 py-2.5",
+            "text-sidebar-foreground/35 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground/50",
+          )}
+          title="Pro feature — upgrade to unlock"
+        >
+          <Icon className={cn("flex-shrink-0 text-sidebar-foreground/25", indent ? "w-3.5 h-3.5" : "w-4 h-4")} />
+          <span className="flex-1">{label}</span>
+          <Lock className="w-3 h-3 text-sidebar-foreground/30 flex-shrink-0" />
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link href={href}>
       <div
@@ -250,68 +272,80 @@ export function Sidebar() {
           <>
             {/* Core */}
             <SectionLabel label="Menu" />
-            {coreItems.map(({ href, label, icon: Icon }) => {
+            {coreItems.map(({ href, label, icon: Icon, proOnly }) => {
               const isActive =
                 location === href ||
                 (href === "/" && location === "/dashboard") ||
                 (href === "/bulk/history" && location.startsWith("/bulk"));
-              return <NavItem key={href} href={href} label={label} icon={Icon} isActive={isActive} />;
+              return <NavItem key={href} href={href} label={label} icon={Icon} isActive={isActive} locked={!isPro && proOnly} />;
             })}
 
             {/* Jobs */}
             <SectionLabel label="Jobs" />
-            {jobsItems.map(({ href, label, icon: Icon }) => (
-              <NavItem key={href} href={href} label={label} icon={Icon} isActive={location.startsWith(href)} />
+            {jobsItems.map(({ href, label, icon: Icon, proOnly }) => (
+              <NavItem key={href} href={href} label={label} icon={Icon} isActive={location.startsWith(href)} locked={!isPro && proOnly} />
             ))}
 
-            {/* Resuone Jobs — expandable group */}
-            <div
-              role="button"
-              onClick={() => {
-                if (inExclusive) {
-                  setExclusiveOpen((o) => !o);
-                } else {
-                  navigate(exclusiveJobsParent.href);
-                  setExclusiveOpen(true);
-                }
-              }}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors group",
-                inExclusive
-                  ? "bg-primary/15 text-primary"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-              )}
-            >
-              <Star className={cn("w-4 h-4 flex-shrink-0", inExclusive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground")} />
-              <span className="flex-1">{exclusiveJobsParent.label}</span>
-              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform flex-shrink-0", exclusiveOpen ? "rotate-0 text-primary/60" : "-rotate-90 text-sidebar-foreground/30")} />
-            </div>
-            {exclusiveOpen && exclusiveJobsChildren.map(({ href, label, icon: Icon }) => (
-              <NavItem key={href} href={href} label={label} icon={Icon} isActive={location === href} indent />
-            ))}
+            {/* Resuone Jobs — expandable group (locked for non-pro) */}
+            {isPro ? (
+              <>
+                <div
+                  role="button"
+                  onClick={() => {
+                    if (inExclusive) {
+                      setExclusiveOpen((o) => !o);
+                    } else {
+                      navigate(exclusiveJobsParent.href);
+                      setExclusiveOpen(true);
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors group",
+                    inExclusive
+                      ? "bg-primary/15 text-primary"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                  )}
+                >
+                  <Star className={cn("w-4 h-4 flex-shrink-0", inExclusive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground")} />
+                  <span className="flex-1">{exclusiveJobsParent.label}</span>
+                  <ChevronDown className={cn("w-3.5 h-3.5 transition-transform flex-shrink-0", exclusiveOpen ? "rotate-0 text-primary/60" : "-rotate-90 text-sidebar-foreground/30")} />
+                </div>
+                {exclusiveOpen && exclusiveJobsChildren.map(({ href, label, icon: Icon }) => (
+                  <NavItem key={href} href={href} label={label} icon={Icon} isActive={location === href} indent />
+                ))}
+              </>
+            ) : (
+              <Link href="/billing">
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer text-sidebar-foreground/35 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground/50" title="Pro feature — upgrade to unlock">
+                  <Star className="w-4 h-4 flex-shrink-0 text-sidebar-foreground/25" />
+                  <span className="flex-1">{exclusiveJobsParent.label}</span>
+                  <Lock className="w-3 h-3 text-sidebar-foreground/30 flex-shrink-0" />
+                </div>
+              </Link>
+            )}
 
             {/* Applications */}
             <SectionLabel label="Applications" />
-            {applicationItems.map(({ href, label, icon: Icon }) => (
-              <NavItem key={href} href={href} label={label} icon={Icon} isActive={location.startsWith(href)} />
+            {applicationItems.map(({ href, label, icon: Icon, proOnly }) => (
+              <NavItem key={href} href={href} label={label} icon={Icon} isActive={location.startsWith(href)} locked={!isPro && proOnly} />
             ))}
 
             {/* Job Tracker */}
             <SectionLabel label="Job Tracker" />
-            {trackerItems.map(({ href, label, icon: Icon }) => {
+            {trackerItems.map(({ href, label, icon: Icon, proOnly }) => {
               const isActive =
                 href === "/tracker"
                   ? location === "/tracker" || (location.startsWith("/tracker/") && !location.startsWith("/tracker/saved") && !location.startsWith("/tracker/interview"))
                   : href === "/tracker/interview-preps"
                     ? location.startsWith("/tracker/interview-preps") || location.startsWith("/tracker/interview-prep/")
                     : location.startsWith(href);
-              return <NavItem key={href} href={href} label={label} icon={Icon} isActive={isActive} />;
+              return <NavItem key={href} href={href} label={label} icon={Icon} isActive={isActive} locked={!isPro && proOnly} />;
             })}
 
             {/* Account */}
             <SectionLabel label="Account" />
-            {accountItems.map(({ href, label, icon: Icon }) => (
-              <NavItem key={href} href={href} label={label} icon={Icon} isActive={location === href} />
+            {accountItems.map(({ href, label, icon: Icon, proOnly }) => (
+              <NavItem key={href} href={href} label={label} icon={Icon} isActive={location === href} locked={!isPro && proOnly} />
             ))}
 
             {/* Recruiter section — only for users with both plans */}
