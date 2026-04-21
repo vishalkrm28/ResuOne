@@ -7,6 +7,7 @@ import { CheckCircle2, Users, Zap, Shield, ArrowRight, Loader2, CreditCard, XCir
 import { useToast } from "@/hooks/use-toast";
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 import { authedFetch } from "@/lib/authed-fetch";
+import { useBillingStatus } from "@/hooks/use-billing-status";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,13 +51,21 @@ export default function RecruiterPricing() {
   const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<"solo" | "team" | null>(null);
   const [recruiterDetail, setRecruiterDetail] = useState<RecruiterDetail | null>(null);
+  const { status: billingStatus } = useBillingStatus();
+
+  // isRecruiter from the already-cached billing status hook (avoids token timing race)
+  const isActiveRecruiter = billingStatus?.isRecruiter ?? false;
 
   useEffect(() => {
+    if (!isActiveRecruiter) return;
     authedFetch("/api/billing/recruiter-detail")
-      .then((r) => r.json())
-      .then((data: RecruiterDetail) => setRecruiterDetail(data))
+      .then(async (r) => {
+        if (!r.ok) return;
+        const data: RecruiterDetail = await r.json();
+        setRecruiterDetail(data);
+      })
       .catch(() => {});
-  }, []);
+  }, [isActiveRecruiter]);
 
   const checkoutMutation = useMutation({
     mutationFn: (plan: "solo" | "team") => {
@@ -120,17 +129,19 @@ export default function RecruiterPricing() {
         </div>
 
         {/* Active plan banner */}
-        {recruiterDetail?.active && (
-          <div className="mb-10 rounded-2xl border border-primary/30 bg-primary/5 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-            <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />
+        {isActiveRecruiter && (
+          <div className="mb-10 rounded-2xl border border-green-200 bg-green-50 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-foreground">
-                {recruiterDetail.plan === "team" ? "Team Recruiter" : "Solo Recruiter"} — Active
+              <p className="font-semibold text-green-900">
+                {recruiterDetail?.plan === "team" ? "Team Recruiter" : "Solo Recruiter"} — Active
               </p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {recruiterDetail.cancelAtPeriodEnd
-                  ? `Cancels ${recruiterDetail.periodEnd ? new Date(recruiterDetail.periodEnd).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "at end of period"} — access continues until then`
-                  : `Renews ${recruiterDetail.periodEnd ? new Date(recruiterDetail.periodEnd).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—"}`}
+              <p className="text-sm text-green-700 mt-0.5">
+                {recruiterDetail
+                  ? recruiterDetail.cancelAtPeriodEnd
+                    ? `Cancels ${recruiterDetail.periodEnd ? new Date(recruiterDetail.periodEnd).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "at end of period"} — access continues until then`
+                    : `Renews ${recruiterDetail.periodEnd ? new Date(recruiterDetail.periodEnd).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—"}`
+                  : "Loading plan details…"}
               </p>
             </div>
           </div>
@@ -161,13 +172,13 @@ export default function RecruiterPricing() {
               ))}
             </ul>
 
-            {recruiterDetail?.active && recruiterDetail.plan === "solo" ? (
-              <div className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm cursor-default">
+            {isActiveRecruiter && recruiterDetail?.plan !== "team" ? (
+              <div className="w-full flex items-center justify-center gap-2 bg-green-100 text-green-700 font-semibold py-3 rounded-xl text-sm cursor-default border border-green-200">
                 <CheckCircle2 className="w-4 h-4" /> Current Plan
               </div>
             ) : (
               <button onClick={() => handleStart("solo")}
-                disabled={checkoutMutation.isPending || !!recruiterDetail?.active}
+                disabled={checkoutMutation.isPending || isActiveRecruiter}
                 className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 transition-all text-sm disabled:opacity-50">
                 {checkoutMutation.isPending && selectedPlan === "solo"
                   ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -203,13 +214,13 @@ export default function RecruiterPricing() {
               ))}
             </ul>
 
-            {recruiterDetail?.active && recruiterDetail.plan === "team" ? (
-              <div className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary font-semibold py-3 rounded-xl text-sm cursor-default">
+            {isActiveRecruiter && recruiterDetail?.plan === "team" ? (
+              <div className="w-full flex items-center justify-center gap-2 bg-green-100 text-green-700 font-semibold py-3 rounded-xl text-sm cursor-default border border-green-200">
                 <CheckCircle2 className="w-4 h-4" /> Current Plan
               </div>
             ) : (
               <button onClick={() => handleStart("team")}
-                disabled={checkoutMutation.isPending || !!recruiterDetail?.active}
+                disabled={checkoutMutation.isPending || isActiveRecruiter}
                 className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 transition-all text-sm disabled:opacity-50">
                 {checkoutMutation.isPending && selectedPlan === "team"
                   ? <Loader2 className="w-4 h-4 animate-spin" />
