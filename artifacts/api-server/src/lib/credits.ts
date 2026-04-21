@@ -9,6 +9,10 @@ export const PRO_CREDIT_ALLOWANCE = 100;
 export const RECRUITER_SOLO_CREDIT_ALLOWANCE = 100;
 export const RECRUITER_TEAM_CREDIT_ALLOWANCE = 400;
 
+// Job search credits granted to Pro users each billing period (no carry-over).
+// Separate from the one-time grant on unlock purchases (JOB_REC_CREDITS_PER_PURCHASE).
+export const PRO_JOB_REC_ALLOWANCE = 30;
+
 export const CREDIT_COSTS = {
   cv_optimization: 1,
   cover_letter: 1,
@@ -277,6 +281,62 @@ export async function resetRecruiterCreditsIfNeeded(
   });
 
   logger.info({ userId, plan, allowance, periodStart, periodEnd }, "Recruiter tokens reset for new billing period");
+}
+
+// ─── resetJobRecCreditsIfNeeded ───────────────────────────────────────────────
+// Resets a Pro user's job search credits to PRO_JOB_REC_ALLOWANCE (30) at the
+// start of each new billing period. Uses the same billingPeriodStart guard as
+// resetProCreditsIfNeeded — safe to call multiple times per period (idempotent).
+// No carry-over: sets to exactly 30, regardless of what's left.
+
+export async function resetJobRecCreditsIfNeeded(
+  userId: string,
+  periodStart: Date,
+  periodEnd: Date,
+): Promise<void> {
+  const [balance] = await db
+    .select({ billingPeriodStart: usageBalancesTable.billingPeriodStart, jobRecCredits: usageBalancesTable.jobRecCredits })
+    .from(usageBalancesTable)
+    .where(eq(usageBalancesTable.userId, userId))
+    .limit(1);
+
+  if (balance?.billingPeriodStart?.getTime() === periodStart.getTime()) {
+    logger.debug({ userId, periodStart }, "Job rec credits already reset for this billing period — skipping");
+    return;
+  }
+
+  const now = new Date();
+
+  await db
+    .insert(usageBalancesTable)
+    .values({
+      userId,
+      jobRecCredits: PRO_JOB_REC_ALLOWANCE,
+      billingPeriodStart: periodStart,
+      billingPeriodEnd: periodEnd,
+      lastResetAt: now,
+    })
+    .onConflictDoUpdate({
+      target: usageBalancesTable.userId,
+      set: {
+        jobRecCredits: PRO_JOB_REC_ALLOWANCE,
+        updatedAt: now,
+      },
+    });
+
+  await db.insert(usageEventsTable).values({
+    userId,
+    type: "job_rec_credits_granted",
+    creditsDelta: PRO_JOB_REC_ALLOWANCE,
+    metadata: {
+      reason: "monthly_pro_reset",
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      previous: balance?.jobRecCredits ?? 0,
+    },
+  });
+
+  logger.info({ userId, periodStart, credits: PRO_JOB_REC_ALLOWANCE }, "Pro job rec credits reset for new billing period");
 }
 
 // ─── Job Recommendation Credits ───────────────────────────────────────────────
