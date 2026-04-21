@@ -149,6 +149,11 @@ export default function BillingPage() {
               {currentPlan && (
                 <p className="text-[11px] text-muted-foreground">{currentPlan.includedCredits} included / billing cycle</p>
               )}
+              {billingStatus?.isPro && balance !== null && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Job search: <span className="font-semibold text-foreground">{balance.jobRecCredits}</span> left
+                </p>
+              )}
             </CardContent>
           </Card>
           <Card>

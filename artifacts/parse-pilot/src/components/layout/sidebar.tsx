@@ -178,8 +178,10 @@ export function Sidebar() {
           {trackerItems.map(({ href, label, icon: Icon }) => {
             const isActive =
               href === "/tracker"
-                ? location === "/tracker" || location.startsWith("/tracker/") && !location.startsWith("/tracker/saved") && !location.startsWith("/tracker/interview")
-                : location.startsWith(href);
+                ? location === "/tracker" || (location.startsWith("/tracker/") && !location.startsWith("/tracker/saved") && !location.startsWith("/tracker/interview"))
+                : href === "/tracker/interview-preps"
+                  ? location.startsWith("/tracker/interview-preps") || location.startsWith("/tracker/interview-prep/")
+                  : location.startsWith(href);
             return (
               <Link key={href} href={href}>
                 <div

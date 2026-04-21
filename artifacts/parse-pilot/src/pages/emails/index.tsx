@@ -20,6 +20,14 @@ const STATUS_STYLES: Record<DraftStatus, string> = {
   draft: "bg-blue-50 text-blue-700 border-blue-200",
   copied: "bg-green-50 text-green-700 border-green-200",
   archived: "bg-gray-100 text-gray-500 border-gray-200",
+  gmail_draft: "bg-red-50 text-red-600 border-red-200",
+};
+
+const STATUS_LABELS: Record<DraftStatus, string> = {
+  draft: "Draft",
+  copied: "Copied",
+  archived: "Archived",
+  gmail_draft: "In Gmail",
 };
 
 const DRAFT_TYPE_COLORS: Record<string, string> = {
@@ -165,7 +173,7 @@ function DraftList({
                   {DRAFT_TYPE_LABELS[draft.draftType]}
                 </Badge>
                 <Badge variant="outline" className={`text-xs ${STATUS_STYLES[draft.status]}`}>
-                  {draft.status}
+                  {STATUS_LABELS[draft.status]}
                 </Badge>
                 <span className="text-xs text-gray-400 capitalize">{draft.tone}</span>
               </div>

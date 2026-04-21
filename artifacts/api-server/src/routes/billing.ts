@@ -505,6 +505,7 @@ router.get("/billing/credit-balance", async (req, res) => {
 
     res.json({
       balance: balance?.availableCredits ?? 0,
+      jobRecCredits: balance?.jobRecCredits ?? 0,
       lifetimeAllocated: null,
       lifetimeUsed: balance?.lifetimeCreditsUsed ?? 0,
       billingPeriodEnd: balance?.billingPeriodEnd?.toISOString() ?? null,

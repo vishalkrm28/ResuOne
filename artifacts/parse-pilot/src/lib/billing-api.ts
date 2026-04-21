@@ -34,6 +34,7 @@ export interface Plan {
 
 export interface CreditBalance {
   balance: number;
+  jobRecCredits: number;
   lifetimeUsed: number;
   billingPeriodEnd: string | null;
   recentTransactions: {
