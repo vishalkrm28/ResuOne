@@ -27,6 +27,9 @@ import publicRouter from "./public.js";
 import jobsDiscoverRouter from "./jobs-discover.js";
 import jobsSourcesRouter from "./jobs-sources.js";
 import internalJobsRouter from "./internal-jobs.js";
+import internalJobApplicationsRouter from "./internal-job-applications.js";
+import internalJobMessagesRouter from "./internal-job-messages.js";
+import internalJobInterviewsRouter from "./internal-job-interviews.js";
 
 const router: IRouter = Router();
 
@@ -58,5 +61,8 @@ router.use(marketingRouter);
 router.use(jobsDiscoverRouter);
 router.use(jobsSourcesRouter);
 router.use(internalJobsRouter);
+router.use(internalJobApplicationsRouter);
+router.use(internalJobMessagesRouter);
+router.use(internalJobInterviewsRouter);
 
 export default router;

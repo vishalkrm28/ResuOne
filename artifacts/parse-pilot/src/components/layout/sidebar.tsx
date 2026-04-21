@@ -22,6 +22,8 @@ import {
   Building2,
   Globe,
   Star,
+  MessageSquare,
+  Video,
 } from "lucide-react";
 import { LogoBrand } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,8 @@ const navItems = [
   { href: "/jobs/recommendations", label: "Find Jobs", icon: Sparkles },
   { href: "/jobs/discover", label: "Global Jobs", icon: Globe },
   { href: "/jobs/exclusive", label: "Resuone Jobs", icon: Star },
+  { href: "/jobs/exclusive/messages", label: "Exclusive Messages", icon: MessageSquare },
+  { href: "/jobs/exclusive/interviews", label: "My Interviews", icon: Video },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/billing", label: "Billing & Plan", icon: CreditCard },
   { href: "/workspaces", label: "Workspaces", icon: Building2 },
@@ -57,6 +61,8 @@ const recruiterItems = [
   { href: "/recruiter/dashboard", label: "Candidates", icon: BriefcaseBusiness },
   { href: "/recruiter/pipeline", label: "Pipeline", icon: LayoutGrid },
   { href: "/recruiter/exclusive-jobs", label: "Post Exclusive Jobs", icon: Star },
+  { href: "/recruiter/exclusive-messages", label: "Candidate Messages", icon: MessageSquare },
+  { href: "/recruiter/exclusive-interviews", label: "Interview Schedule", icon: Video },
   { href: "/recruiter/pricing", label: "Recruiter Plans", icon: CreditCard },
 ];
 
@@ -220,7 +226,12 @@ export function Sidebar() {
             {recruiterItems.map(({ href, label, icon: Icon }) => {
               const isRecruiterActive =
                 href === "/recruiter/dashboard"
-                  ? location.startsWith("/recruiter") && !location.startsWith("/recruiter/pricing")
+                  ? location.startsWith("/recruiter") &&
+                    !location.startsWith("/recruiter/pricing") &&
+                    !location.startsWith("/recruiter/exclusive") &&
+                    !location.startsWith("/recruiter/pipeline")
+                  : href === "/recruiter/exclusive-jobs"
+                  ? location.startsWith("/recruiter/exclusive-jobs")
                   : location === href;
               return (
                 <Link key={href} href={href}>

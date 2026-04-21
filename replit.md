@@ -40,6 +40,7 @@ The ParsePilot AI project is structured as a monorepo using pnpm workspaces. It 
 **Database:**
 *   PostgreSQL is used with Drizzle ORM.
 *   Schemas include `applications` (for tailored CVs, JDs, analysis results), `user_identity_profiles` (for anti-abuse), `sessions`, `users`, `usage_balances`, `usage_events` (for AI credits), `unlock_purchases` (for one-time unlocks), `marketing_leads`, `waitlist_signups`, `funnel_events`, and `seo_pages`.
+*   **Milestone 41 — Internal Job Marketplace**: 7 new tables in `lib/db/src/schema/internal-jobs.ts`: `internal_jobs`, `internal_job_applications`, `internal_job_candidate_analyses`, `internal_job_application_events`, `internal_job_notifications`, `internal_job_messages`, `internal_job_interview_invites`.
 
 **Monorepo Structure:**
 *   `artifacts/api-server`: Express API server.
