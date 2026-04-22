@@ -128,8 +128,8 @@ function PostJobDialog({
         description: form.description,
         requirements: form.requirements.split("\n").map((r) => r.trim()).filter(Boolean),
         preferredSkills: form.preferredSkills.split("\n").map((r) => r.trim()).filter(Boolean),
-        salaryMin: form.salaryMin ? Number(form.salaryMin) : isEdit ? null : undefined,
-        salaryMax: form.salaryMax ? Number(form.salaryMax) : isEdit ? null : undefined,
+        salaryMin: form.salaryMin ? Number(form.salaryMin) : null,
+        salaryMax: form.salaryMax ? Number(form.salaryMax) : null,
         currency: form.currency,
         visibility: form.visibility,
       };
