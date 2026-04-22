@@ -132,6 +132,10 @@ export default function BulkPricing() {
 
   const [, navigate] = useLocation();
 
+  // If ?topup=1 is present the user explicitly clicked "Buy another pass" —
+  // skip the auto-redirect so they can actually reach the pricing cards.
+  const isTopup = new URLSearchParams(window.location.search).has("topup");
+
   // Load tiers and user's bulk status
   useEffect(() => {
     Promise.all([
@@ -145,10 +149,10 @@ export default function BulkPricing() {
         setStatus(statusData);
         // Recruiter plan holders already have batch analysis included —
         // send them straight to the session page only if they still have
-        // capacity. If their pass is exhausted they need to buy more here.
+        // capacity AND are not explicitly trying to top up.
         const hasCapacity =
           statusData?.activePass && statusData.activePass.remaining > 0;
-        if (statusData?.isRecruiter && hasCapacity) {
+        if (statusData?.isRecruiter && hasCapacity && !isTopup) {
           navigate("/bulk/session");
         }
       })

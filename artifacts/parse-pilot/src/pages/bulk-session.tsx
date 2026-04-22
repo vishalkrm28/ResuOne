@@ -978,7 +978,7 @@ export default function BulkSession() {
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
-                onClick={() => navigate("/bulk")}
+                onClick={() => navigate("/bulk?topup=1")}
                 className="flex items-center gap-1.5 hover:text-foreground transition-colors"
               >
                 Need more slots? Buy another pass

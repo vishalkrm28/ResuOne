@@ -128,7 +128,7 @@ export default function BulkHistory() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 flex-shrink-0">
-              <Link href="/bulk">
+              <Link href="/bulk?topup=1">
                 <button className="inline-flex items-center gap-1.5 text-sm font-semibold border border-border px-3 py-2 rounded-xl hover:border-primary/40 hover:bg-primary/5 transition-colors whitespace-nowrap">
                   <ShoppingCart className="w-3.5 h-3.5" />
                   Buy more slots
@@ -168,7 +168,7 @@ export default function BulkHistory() {
                         Active pass — {remaining} of {cvLimit} slots remaining
                       </span>
                       {isLow && (
-                        <Link href="/bulk">
+                        <Link href="/bulk?topup=1">
                           <button className="text-xs font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2">
                             Top up
                           </button>
