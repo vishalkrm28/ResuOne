@@ -240,7 +240,7 @@ export function Sidebar() {
                 <div
                   role="button"
                   onClick={() => {
-                    if (inRecruiterExclusive) {
+                    if (inRecruiterExclusive && location === recruiterExclusiveParent.href) {
                       setRecruiterExclusiveOpen((o) => !o);
                     } else {
                       navigate(recruiterExclusiveParent.href);
@@ -294,7 +294,7 @@ export function Sidebar() {
                 <div
                   role="button"
                   onClick={() => {
-                    if (inExclusive) {
+                    if (inExclusive && location === exclusiveJobsParent.href) {
                       setExclusiveOpen((o) => !o);
                     } else {
                       navigate(exclusiveJobsParent.href);
@@ -367,7 +367,7 @@ export function Sidebar() {
                 <div
                   role="button"
                   onClick={() => {
-                    if (inRecruiterExclusive) {
+                    if (inRecruiterExclusive && location === recruiterExclusiveParent.href) {
                       setRecruiterExclusiveOpen((o) => !o);
                     } else {
                       navigate(recruiterExclusiveParent.href);
