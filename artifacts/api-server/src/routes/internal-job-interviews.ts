@@ -22,7 +22,10 @@ const CreateInviteSchema = z.object({
   scheduledAt: z.string().datetime(),
   timezone: z.string().optional(),
   location: z.string().optional(),
-  meetingUrl: z.string().url().optional(),
+  meetingUrl: z.string().optional().transform((v) => {
+    if (!v) return undefined;
+    return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+  }),
   notes: z.string().optional(),
 });
 
