@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { authedFetch } from "@/lib/authed-fetch";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Loader2, Plus, Briefcase, MapPin, Building2, Users, Pause, X, Check,
-  Star, Globe, Lock, PencilLine, Send, Eye, ChevronRight,
+  Star, Globe, Lock, PencilLine, Send, Eye, ChevronRight, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,10 +68,42 @@ const EMPTY_FORM = {
   publishAs: "active" as "draft" | "active",
 };
 
-function PostJobDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
+function jobToForm(job: InternalJob): typeof EMPTY_FORM {
+  return {
+    title: job.title,
+    company: job.company,
+    location: job.location ?? "",
+    country: job.country ?? "",
+    remote: job.remote ?? false,
+    employmentType: job.employmentType ?? "",
+    seniority: job.seniority ?? "",
+    description: job.description,
+    requirements: Array.isArray((job as any).requirements) ? (job as any).requirements.join("\n") : "",
+    preferredSkills: Array.isArray((job as any).preferredSkills) ? (job as any).preferredSkills.join("\n") : "",
+    salaryMin: job.salaryMin ?? "",
+    salaryMax: job.salaryMax ?? "",
+    currency: job.currency ?? "USD",
+    visibility: (job.visibility === "public" ? "public" : "pro_only") as "pro_only" | "public",
+    publishAs: "active",
+  };
+}
+
+function PostJobDialog({
+  open, onClose, onCreated, editJob,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+  editJob?: InternalJob;
+}) {
   const { toast } = useToast();
-  const [form, setForm] = useState(EMPTY_FORM);
+  const isEdit = !!editJob;
+  const [form, setForm] = useState(() => editJob ? jobToForm(editJob) : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) setForm(editJob ? jobToForm(editJob) : EMPTY_FORM);
+  }, [open, editJob?.id]);
 
   function set(field: keyof typeof EMPTY_FORM, value: unknown) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -85,47 +117,60 @@ function PostJobDialog({ open, onClose, onCreated }: { open: boolean; onClose: (
     }
     setSaving(true);
     try {
-      // Create as draft first
-      const createRes = await authedFetch(`${BASE}/internal-jobs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: form.title,
-          company: form.company,
-          location: form.location || undefined,
-          country: form.country || undefined,
-          remote: form.remote,
-          employmentType: form.employmentType || undefined,
-          seniority: form.seniority || undefined,
-          description: form.description,
-          requirements: form.requirements.split("\n").map((r) => r.trim()).filter(Boolean),
-          preferredSkills: form.preferredSkills.split("\n").map((r) => r.trim()).filter(Boolean),
-          salaryMin: form.salaryMin ? Number(form.salaryMin) : undefined,
-          salaryMax: form.salaryMax ? Number(form.salaryMax) : undefined,
-          currency: form.currency,
-          visibility: form.visibility,
-        }),
-      });
-      const createData = await createRes.json();
-      if (!createRes.ok) throw new Error(createData.error ?? "Failed to create");
+      const payload = {
+        title: form.title,
+        company: form.company,
+        location: form.location || undefined,
+        country: form.country || undefined,
+        remote: form.remote,
+        employmentType: form.employmentType || undefined,
+        seniority: form.seniority || undefined,
+        description: form.description,
+        requirements: form.requirements.split("\n").map((r) => r.trim()).filter(Boolean),
+        preferredSkills: form.preferredSkills.split("\n").map((r) => r.trim()).filter(Boolean),
+        salaryMin: form.salaryMin ? Number(form.salaryMin) : undefined,
+        salaryMax: form.salaryMax ? Number(form.salaryMax) : undefined,
+        currency: form.currency,
+        visibility: form.visibility,
+      };
 
-      const jobId = createData.job.id;
-
-      // If user chose to publish immediately, call publish endpoint
-      if (form.publishAs === "active") {
-        const publishRes = await authedFetch(`${BASE}/internal-jobs/${jobId}/publish`, {
-          method: "POST",
+      if (isEdit) {
+        const res = await authedFetch(`${BASE}/internal-jobs/${editJob!.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
-        if (!publishRes.ok) {
-          toast({ title: "Saved as draft", description: "Job created but could not be published immediately." });
-        } else {
-          toast({ title: "Job published!", description: `"${form.title}" is now live.` });
-        }
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error ?? "Failed to update");
+        toast({ title: "Job updated!", description: `"${form.title}" has been saved.` });
       } else {
-        toast({ title: "Draft saved", description: `"${form.title}" saved as draft.` });
+        // Create as draft first
+        const createRes = await authedFetch(`${BASE}/internal-jobs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const createData = await createRes.json();
+        if (!createRes.ok) throw new Error(createData.error ?? "Failed to create");
+
+        const jobId = createData.job.id;
+
+        // If user chose to publish immediately, call publish endpoint
+        if (form.publishAs === "active") {
+          const publishRes = await authedFetch(`${BASE}/internal-jobs/${jobId}/publish`, {
+            method: "POST",
+          });
+          if (!publishRes.ok) {
+            toast({ title: "Saved as draft", description: "Job created but could not be published immediately." });
+          } else {
+            toast({ title: "Job published!", description: `"${form.title}" is now live.` });
+          }
+        } else {
+          toast({ title: "Draft saved", description: `"${form.title}" saved as draft.` });
+        }
       }
 
-      setForm(EMPTY_FORM);
+      if (!isEdit) setForm(EMPTY_FORM);
       onCreated();
       onClose();
     } catch (err: any) {
@@ -140,8 +185,8 @@ function PostJobDialog({ open, onClose, onCreated }: { open: boolean; onClose: (
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Star className="w-5 h-5 text-purple-600" />
-            Post a Resuone Exclusive Job
+            {isEdit ? <Pencil className="w-5 h-5 text-purple-600" /> : <Star className="w-5 h-5 text-purple-600" />}
+            {isEdit ? `Edit: ${editJob!.title}` : "Post a Resuone Exclusive Job"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
@@ -265,37 +310,39 @@ function PostJobDialog({ open, onClose, onCreated }: { open: boolean; onClose: (
             />
           </div>
 
-          <div>
-            <Label className="mb-2 block">Publish as</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["active", "draft"] as const).map((val) => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => set("publishAs", val)}
-                  className={cn(
-                    "flex flex-col items-start gap-0.5 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
-                    form.publishAs === val
-                      ? "border-purple-500 bg-purple-50 text-purple-900"
-                      : "border-border bg-background text-foreground hover:border-border/80 hover:bg-muted/40",
-                  )}
-                >
-                  <span className="font-medium">
-                    {val === "active" ? "Publish now" : "Save as draft"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {val === "active" ? "Makes the listing live immediately" : "You can publish it later"}
-                  </span>
-                </button>
-              ))}
+          {!isEdit && (
+            <div>
+              <Label className="mb-2 block">Publish as</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["active", "draft"] as const).map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => set("publishAs", val)}
+                    className={cn(
+                      "flex flex-col items-start gap-0.5 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                      form.publishAs === val
+                        ? "border-purple-500 bg-purple-50 text-purple-900"
+                        : "border-border bg-background text-foreground hover:border-border/80 hover:bg-muted/40",
+                    )}
+                  >
+                    <span className="font-medium">
+                      {val === "active" ? "Publish now" : "Save as draft"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {val === "active" ? "Makes the listing live immediately" : "You can publish it later"}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={saving} className="bg-purple-600 hover:bg-purple-700 text-white">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Star className="w-4 h-4 mr-2" />}
-              {form.publishAs === "draft" ? "Save Draft" : "Publish Job"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : isEdit ? <Pencil className="w-4 h-4 mr-2" /> : <Star className="w-4 h-4 mr-2" />}
+              {isEdit ? "Save Changes" : form.publishAs === "draft" ? "Save Draft" : "Publish Job"}
             </Button>
           </DialogFooter>
         </form>
@@ -313,6 +360,7 @@ export default function RecruiterExclusiveJobs() {
   const qc = useQueryClient();
   const [, navigate] = useLocation();
   const [postOpen, setPostOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<InternalJob | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const { data, isLoading } = useQuery<{ jobs: InternalJob[] }>({
@@ -373,6 +421,12 @@ export default function RecruiterExclusiveJobs() {
       <PostJobDialog
         open={postOpen}
         onClose={() => setPostOpen(false)}
+        onCreated={() => qc.invalidateQueries({ queryKey: ["internal-posted-jobs"] })}
+      />
+      <PostJobDialog
+        open={!!editingJob}
+        editJob={editingJob ?? undefined}
+        onClose={() => setEditingJob(null)}
         onCreated={() => qc.invalidateQueries({ queryKey: ["internal-posted-jobs"] })}
       />
 
@@ -529,6 +583,16 @@ export default function RecruiterExclusiveJobs() {
                         <X className="w-3 h-3 mr-1" /> Close
                       </Button>
                     )}
+
+                    {/* Edit */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 text-purple-700 border-purple-200"
+                      onClick={() => setEditingJob(job)}
+                    >
+                      <Pencil className="w-3 h-3 mr-1" /> Edit
+                    </Button>
 
                     {/* View applicants */}
                     <Button

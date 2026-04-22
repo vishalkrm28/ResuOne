@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Loader2, Star, MapPin, Building2, Globe, Lock, ArrowLeft, Send,
   CheckCircle, Sparkles, FileText, MailOpen, ChevronRight, AlertTriangle,
-  TrendingUp, AlertCircle, Briefcase, DollarSign, Clock,
+  TrendingUp, AlertCircle, Briefcase, Banknote, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -414,7 +414,7 @@ export default function ExclusiveJobDetail() {
                 {job.location && <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{job.location}</span>}
                 {job.seniority && <span className="flex items-center gap-1 capitalize"><Briefcase className="w-4 h-4" />{job.seniority}</span>}
                 {job.employmentType && <span className="capitalize">{job.employmentType.replace("_", " ")}</span>}
-                {salary && <span className="flex items-center gap-1 font-semibold"><DollarSign className="w-4 h-4" />{salary}</span>}
+                {salary && <span className="flex items-center gap-1 font-semibold"><Banknote className="w-4 h-4" />{salary}</span>}
                 <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{data.applicationCount} applied</span>
               </div>
             </div>

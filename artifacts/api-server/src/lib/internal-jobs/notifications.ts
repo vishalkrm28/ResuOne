@@ -37,11 +37,6 @@ function isJobRelevantForUser(
   const wantsRemoteOnly = prefs.remoteOnly === true;
   if (wantsRemoteOnly && !job.remote) return false;
 
-  // Title relevance (lightweight overlap)
-  const targetRole = (np.target_role ?? np.currentTitle ?? "") as string;
-  const overlap = textOverlapScore(job.title, targetRole);
-  if (targetRole && overlap < 0.05) return false; // low signal
-
   return true;
 }
 
