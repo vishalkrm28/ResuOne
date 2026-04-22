@@ -7,7 +7,7 @@ import {
   internalJobsTable,
   notificationItemsTable,
 } from "@workspace/db";
-import { eq, and, desc, or } from "drizzle-orm";
+import { eq, and, desc, or, lt, count } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { createApplicationEvent } from "../lib/internal-jobs/events.js";
 
@@ -339,6 +339,73 @@ router.patch("/internal-job-interviews/:id/status", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Failed to update invite status");
     res.status(500).json({ error: "Failed to update" });
+  }
+});
+
+// ─── GET /internal-job-interviews/bulk-delete/preview ─────────────────────────
+// Returns count of past invites (cancelled/completed) older than a given month.
+
+router.get("/internal-job-interviews/bulk-delete/preview", async (req, res) => {
+  if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
+
+  const year = Number(req.query.year);
+  const month = Number(req.query.month); // 1-12
+  if (!year || !month || month < 1 || month > 12 || year < 2020 || year > 2100) {
+    res.status(400).json({ error: "Invalid year or month" }); return;
+  }
+
+  // Cutoff: start of the month AFTER the selected month (so selected month is included)
+  const cutoff = new Date(year, month, 1); // month is 1-indexed here, JS Date uses 0-indexed
+
+  try {
+    const [row] = await db
+      .select({ cnt: count() })
+      .from(internalJobInterviewInvitesTable)
+      .where(
+        and(
+          eq(internalJobInterviewInvitesTable.recruiterUserId, req.user.id),
+          lt(internalJobInterviewInvitesTable.scheduledAt, cutoff),
+        ),
+      );
+    res.json({ count: Number(row?.cnt ?? 0), cutoff: cutoff.toISOString() });
+  } catch (err) {
+    logger.error({ err }, "Failed to preview bulk delete");
+    res.status(500).json({ error: "Failed to preview" });
+  }
+});
+
+// ─── DELETE /internal-job-interviews/bulk-delete ───────────────────────────────
+// Bulk-deletes past invites (for this recruiter) older than a given month.
+
+router.delete("/internal-job-interviews/bulk-delete", async (req, res) => {
+  if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
+
+  const Body = z.object({
+    year: z.number().int().min(2020).max(2100),
+    month: z.number().int().min(1).max(12),
+  });
+  const parsed = Body.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+
+  const { year, month } = parsed.data;
+  const cutoff = new Date(year, month, 1); // start of next month (month is 1-indexed)
+
+  try {
+    const deleted = await db
+      .delete(internalJobInterviewInvitesTable)
+      .where(
+        and(
+          eq(internalJobInterviewInvitesTable.recruiterUserId, req.user.id),
+          lt(internalJobInterviewInvitesTable.scheduledAt, cutoff),
+        ),
+      )
+      .returning({ id: internalJobInterviewInvitesTable.id });
+
+    logger.info({ userId: req.user.id, cutoff, count: deleted.length }, "Recruiter bulk-deleted interview invites");
+    res.json({ deleted: deleted.length });
+  } catch (err) {
+    logger.error({ err }, "Failed to bulk delete invites");
+    res.status(500).json({ error: "Failed to delete" });
   }
 });
 

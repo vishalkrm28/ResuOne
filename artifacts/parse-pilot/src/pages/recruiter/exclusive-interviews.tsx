@@ -11,9 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Loader2, Video, Building2, Calendar, ChevronRight, CheckCircle, X,
-  Search, ChevronDown, ChevronUp, MapPin, ExternalLink,
+  Search, ChevronDown, ChevronUp, MapPin, ExternalLink, Trash2, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -164,6 +169,16 @@ export default function RecruiterExclusiveInterviews() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showPast, setShowPast] = useState(false);
 
+  // Cleanup state
+  const now = new Date();
+  const [showCleanup, setShowCleanup] = useState(false);
+  const [cleanupYear, setCleanupYear] = useState(String(now.getFullYear()));
+  const [cleanupMonth, setCleanupMonth] = useState(String(now.getMonth() + 1)); // 1-indexed
+  const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+
   const { data, isLoading, refetch } = useQuery<{ invites: Invite[] }>({
     queryKey: ["recruiter-all-invites"],
     queryFn: async () => {
@@ -217,6 +232,53 @@ export default function RecruiterExclusiveInterviews() {
       toast({ variant: "destructive", title: err.message });
     }
   }
+
+  async function previewCleanup() {
+    setIsPreviewing(true);
+    setPreviewCount(null);
+    setAwaitingConfirm(false);
+    try {
+      const res = await authedFetch(
+        `${BASE}/internal-job-interviews/bulk-delete/preview?year=${cleanupYear}&month=${cleanupMonth}`,
+      );
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      setPreviewCount(d.count);
+      setAwaitingConfirm(true);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: err.message });
+    } finally {
+      setIsPreviewing(false);
+    }
+  }
+
+  async function confirmCleanup() {
+    setIsDeleting(true);
+    try {
+      const res = await authedFetch(`${BASE}/internal-job-interviews/bulk-delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year: Number(cleanupYear), month: Number(cleanupMonth) }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      toast({ title: `Deleted ${d.deleted} interview record${d.deleted !== 1 ? "s" : ""}` });
+      setPreviewCount(null);
+      setAwaitingConfirm(false);
+      setShowCleanup(false);
+      refetch();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: err.message });
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  // Available years: 2024 to current year
+  const yearOptions = Array.from(
+    { length: now.getFullYear() - 2023 },
+    (_, i) => String(2024 + i),
+  );
 
   const hasResults = upcoming.length > 0 || past.length > 0;
 
@@ -353,6 +415,122 @@ export default function RecruiterExclusiveInterviews() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Clean up old records ── */}
+        {invites.length > 0 && (
+          <div className="mt-10 border-t pt-6">
+            <button
+              onClick={() => {
+                setShowCleanup((v) => !v);
+                setPreviewCount(null);
+                setAwaitingConfirm(false);
+              }}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clean up old records
+              {showCleanup ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
+            </button>
+
+            {showCleanup && (
+              <div className="mt-4 p-4 rounded-xl border bg-muted/30 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Delete all interview records scheduled <strong>up to and including</strong> the selected month.
+                  This permanently removes them and cannot be undone.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Select
+                    value={cleanupMonth}
+                    onValueChange={(v) => { setCleanupMonth(v); setPreviewCount(null); setAwaitingConfirm(false); }}
+                  >
+                    <SelectTrigger className="w-36 h-9 text-sm">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m, i) => (
+                        <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={cleanupYear}
+                    onValueChange={(v) => { setCleanupYear(v); setPreviewCount(null); setAwaitingConfirm(false); }}
+                  >
+                    <SelectTrigger className="w-28 h-9 text-sm">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearOptions.map((y) => (
+                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {!awaitingConfirm && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={previewCleanup}
+                      disabled={isPreviewing}
+                      className="h-9 text-sm"
+                    >
+                      {isPreviewing
+                        ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Checking…</>
+                        : "Preview deletion"}
+                    </Button>
+                  )}
+                </div>
+
+                {awaitingConfirm && previewCount !== null && (
+                  <div className={cn(
+                    "flex items-start gap-3 rounded-lg p-3 text-sm",
+                    previewCount === 0
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-red-50 border border-red-200 text-red-800",
+                  )}>
+                    <AlertTriangle className={cn("w-4 h-4 mt-0.5 shrink-0", previewCount === 0 ? "text-muted-foreground" : "text-red-500")} />
+                    <div className="flex-1">
+                      {previewCount === 0 ? (
+                        <p>No records found before {MONTHS[Number(cleanupMonth) - 1]} {cleanupYear}.</p>
+                      ) : (
+                        <>
+                          <p className="font-medium">
+                            {previewCount} record{previewCount !== 1 ? "s" : ""} will be permanently deleted
+                            (scheduled before {MONTHS[Number(cleanupMonth) - 1]} {cleanupYear}).
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={confirmCleanup}
+                              disabled={isDeleting}
+                              className="h-8 text-xs"
+                            >
+                              {isDeleting
+                                ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> Deleting…</>
+                                : <><Trash2 className="w-3 h-3 mr-1.5" /> Delete {previewCount} record{previewCount !== 1 ? "s" : ""}</>}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => { setAwaitingConfirm(false); setPreviewCount(null); }}
+                              disabled={isDeleting}
+                              className="h-8 text-xs"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
