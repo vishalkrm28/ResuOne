@@ -84,7 +84,10 @@ type PageView = "session" | "results";
 
 // ─── Recruiter token balance ──────────────────────────────────────────────────
 
-function RecruiterTokenBadge({ tokens }: { tokens: { remaining: number; total: number; plan: "solo" | "team" } }) {
+function RecruiterTokenBadge({ tokens, usingPassSlots }: {
+  tokens: { remaining: number; total: number; plan: "solo" | "team" };
+  usingPassSlots?: boolean;
+}) {
   const pct = Math.round((tokens.remaining / tokens.total) * 100);
   const isLow = tokens.remaining <= Math.ceil(tokens.total * 0.15);
   const planLabel = tokens.plan === "team" ? "Recruiter Team" : "Recruiter Solo";
@@ -114,10 +117,16 @@ function RecruiterTokenBadge({ tokens }: { tokens: { remaining: number; total: n
           {tokens.remaining} token{tokens.remaining !== 1 ? "s" : ""} left — resets at your next billing date
         </p>
       )}
-      {tokens.remaining === 0 && (
+      {tokens.remaining === 0 && !usingPassSlots && (
         <p className="text-xs text-red-600 mt-2 flex items-center gap-1.5">
           <AlertCircle className="w-3.5 h-3.5" />
           All tokens used — balance resets at the start of your next billing period
+        </p>
+      )}
+      {tokens.remaining === 0 && usingPassSlots && (
+        <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1.5">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Monthly quota reached — drawing from your purchased pass slots below
         </p>
       )}
     </div>
@@ -786,10 +795,14 @@ export default function BulkSession() {
           <div className="space-y-5">
             {/* Slot progress / recruiter token balance */}
             {isRecruiter && recruiterTokens ? (
-              <RecruiterTokenBadge tokens={recruiterTokens} />
+              <RecruiterTokenBadge tokens={recruiterTokens} usingPassSlots={usePassSlots} />
             ) : status?.activePass ? (
               <SlotProgress used={used} limit={limit} />
             ) : null}
+            {/* When monthly tokens are exhausted and a bulk pass is active, also show the pass slot bar */}
+            {usePassSlots && status?.activePass && (
+              <SlotProgress used={status.activePass.cvsUsed} limit={status.activePass.cvLimit} />
+            )}
 
             {/* Previous results banner */}
             {completedResults.length > 0 && (
