@@ -328,15 +328,32 @@ router.get("/internal-jobs/:id/applications", async (req, res) => {
     if (!job) { res.status(404).json({ error: "Job not found" }); return; }
     if (job.postedByUserId !== req.user.id) { res.status(403).json({ error: "Not authorized" }); return; }
 
-    // Subquery: latest matchScore per applicant for this job
-    const latestScoreSq = db
+    // Subquery step 1: most recent analysis timestamp per user for this job
+    const latestTimeSq = db
       .select({
         userId: internalJobCandidateAnalysesTable.userId,
-        matchScore: sql<number>`max(${internalJobCandidateAnalysesTable.matchScore})`.as("match_score"),
+        maxCreatedAt: sql<string>`max(${internalJobCandidateAnalysesTable.createdAt})`.as("max_created_at"),
       })
       .from(internalJobCandidateAnalysesTable)
       .where(eq(internalJobCandidateAnalysesTable.internalJobId, req.params.id))
       .groupBy(internalJobCandidateAnalysesTable.userId)
+      .as("latest_times");
+
+    // Subquery step 2: join back to get the matchScore for that exact most-recent row
+    const latestScoreSq = db
+      .select({
+        userId: internalJobCandidateAnalysesTable.userId,
+        matchScore: internalJobCandidateAnalysesTable.matchScore,
+      })
+      .from(internalJobCandidateAnalysesTable)
+      .innerJoin(
+        latestTimeSq,
+        and(
+          eq(latestTimeSq.userId, internalJobCandidateAnalysesTable.userId),
+          sql`${internalJobCandidateAnalysesTable.createdAt} = ${latestTimeSq.maxCreatedAt}`,
+        ),
+      )
+      .where(eq(internalJobCandidateAnalysesTable.internalJobId, req.params.id))
       .as("latest_scores");
 
     const rows = await db
