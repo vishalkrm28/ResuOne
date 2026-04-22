@@ -135,6 +135,7 @@ const RECRUITER_ONLY_PATHS = [
   "/recruiter/exclusive-interviews",
   "/recruiter/jobs",
   "/candidate/",
+  "/bulk",
 ];
 
 // Routes only accessible to job seekers (blocked for recruiter mode)
@@ -149,7 +150,6 @@ const JOB_SEEKER_ONLY_PATHS = [
   "/emails",
   "/mock-interview",
   "/application/",
-  // NOTE: /bulk is intentionally omitted — bulk purchasing is available to all user types
 ];
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {

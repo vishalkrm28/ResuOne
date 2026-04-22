@@ -36,7 +36,6 @@ import { cn } from "@/lib/utils";
 const coreItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, proOnly: false },
   { href: "/new", label: "New Application", icon: FilePlus2, proOnly: false },
-  { href: "/bulk/history", label: "Bulk Mode", icon: Users, proOnly: false },
 ];
 
 const jobsItems = [
@@ -76,6 +75,7 @@ const accountItems = [
 const recruiterCoreItems = [
   { href: "/recruiter/dashboard", label: "Candidates", icon: BriefcaseBusiness },
   { href: "/recruiter/pipeline", label: "Pipeline", icon: LayoutGrid },
+  { href: "/bulk/history", label: "Bulk Analysis", icon: Users },
 ];
 const recruiterExclusiveParent = { href: "/recruiter/exclusive-jobs", label: "Exclusive Jobs", icon: Star };
 const recruiterExclusiveChildren = [
@@ -231,8 +231,11 @@ export function Sidebar() {
                       ? location.startsWith("/recruiter") &&
                         !location.startsWith("/recruiter/pricing") &&
                         !location.startsWith("/recruiter/exclusive") &&
-                        !location.startsWith("/recruiter/pipeline")
-                      : location.startsWith(href);
+                        !location.startsWith("/recruiter/pipeline") &&
+                        !location.startsWith("/bulk")
+                      : href === "/bulk/history"
+                        ? location.startsWith("/bulk")
+                        : location.startsWith(href);
                   return <NavItem key={href} href={href} label={label} icon={Icon} isActive={isActive} />;
                 })}
 
@@ -360,8 +363,11 @@ export function Sidebar() {
                       ? location.startsWith("/recruiter") &&
                         !location.startsWith("/recruiter/pricing") &&
                         !location.startsWith("/recruiter/exclusive") &&
-                        !location.startsWith("/recruiter/pipeline")
-                      : location.startsWith(href);
+                        !location.startsWith("/recruiter/pipeline") &&
+                        !location.startsWith("/bulk")
+                      : href === "/bulk/history"
+                        ? location.startsWith("/bulk")
+                        : location.startsWith(href);
                   return <NavItem key={href} href={href} label={label} icon={Icon} isActive={isActive} />;
                 })}
                 <div
