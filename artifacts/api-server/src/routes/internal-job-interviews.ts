@@ -289,7 +289,14 @@ router.patch("/internal-job-interviews/:id/status", async (req, res) => {
 
   try {
     const [invite] = await db
-      .select({ recruiterUserId: internalJobInterviewInvitesTable.recruiterUserId })
+      .select({
+        id: internalJobInterviewInvitesTable.id,
+        recruiterUserId: internalJobInterviewInvitesTable.recruiterUserId,
+        candidateUserId: internalJobInterviewInvitesTable.candidateUserId,
+        applicationId: internalJobInterviewInvitesTable.applicationId,
+        inviteTitle: internalJobInterviewInvitesTable.inviteTitle,
+        jobId: internalJobInterviewInvitesTable.jobId,
+      })
       .from(internalJobInterviewInvitesTable)
       .where(eq(internalJobInterviewInvitesTable.id, req.params.id))
       .limit(1);
@@ -302,6 +309,31 @@ router.patch("/internal-job-interviews/:id/status", async (req, res) => {
       .set({ status: parsed.data.status, updatedAt: new Date() })
       .where(eq(internalJobInterviewInvitesTable.id, req.params.id))
       .returning();
+
+    const label = parsed.data.status === "completed" ? "completed" : "cancelled";
+
+    // Timeline event visible to both parties
+    await createApplicationEvent({
+      applicationId: invite.applicationId,
+      actorType: "recruiter",
+      actorUserId: req.user.id,
+      eventType: parsed.data.status === "completed" ? "interview_completed" : "interview_cancelled",
+      title: `Interview ${label}: ${invite.inviteTitle}`,
+    }).catch(() => {});
+
+    // Notify the candidate
+    await db.insert(notificationItemsTable).values({
+      userId: invite.candidateUserId,
+      type: "interview_update",
+      title: `Interview ${label}: ${invite.inviteTitle}`,
+      body: parsed.data.status === "completed"
+        ? "The recruiter has marked this interview round as completed."
+        : "The recruiter has cancelled this interview round.",
+      actionLabel: "View",
+      actionUrl: `/jobs/exclusive/application/${invite.applicationId}`,
+      priority: "high",
+      status: "pending",
+    }).catch(() => {});
 
     res.json({ invite: updated });
   } catch (err) {

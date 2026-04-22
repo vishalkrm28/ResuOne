@@ -257,6 +257,22 @@ export default function RecruiterExclusiveApplication() {
     }
   }
 
+  async function markInviteComplete(inviteId: string) {
+    try {
+      const res = await authedFetch(`${BASE}/internal-job-interviews/${inviteId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      refetchInvites();
+      qc.invalidateQueries({ queryKey: ["recruiter-exclusive-application", appId] });
+      toast({ title: "Interview round marked as completed" });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: err.message });
+    }
+  }
+
   async function saveNote() {
     setSavingNote(true);
     try {
@@ -438,9 +454,30 @@ export default function RecruiterExclusiveApplication() {
                   <div className="space-y-2">
                     {invites.map((invite) => (
                       <div key={invite.id} className="p-3 rounded-lg border text-sm">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium">{invite.inviteTitle}</p>
-                          <Badge variant="outline" className="text-xs capitalize">{invite.status.replace("_", " ")}</Badge>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium flex-1">{invite.inviteTitle}</p>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <Badge
+                              variant="outline"
+                              className={cn("text-xs capitalize", {
+                                "border-green-400 text-green-600 bg-green-50": invite.status === "completed",
+                                "border-red-400 text-red-500 bg-red-50": invite.status === "cancelled",
+                                "border-blue-400 text-blue-600 bg-blue-50": invite.status === "accepted",
+                              })}
+                            >
+                              {invite.status.replace("_", " ")}
+                            </Badge>
+                            {!["completed", "cancelled"].includes(invite.status) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-xs text-green-600 border-green-300 hover:bg-green-50 hover:text-green-700"
+                                onClick={() => markInviteComplete(invite.id)}
+                              >
+                                <CheckCircle className="w-3 h-3 mr-1" /> Complete
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {new Date(invite.scheduledAt).toLocaleString("en-GB", {
