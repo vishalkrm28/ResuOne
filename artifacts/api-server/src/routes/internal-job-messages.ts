@@ -17,7 +17,7 @@ const router = Router();
 
 const SendSchema = z.object({
   applicationId: z.string(),
-  recipientUserId: z.string(),
+  recipientUserId: z.string().optional(), // backend derives this from the job/application; not required from client
   messageType: z.enum(["message", "interview_invite", "interview_followup", "shortlist_notice", "rejection_notice", "offer_notice"]).optional().default("message"),
   subject: z.string().max(200).optional(),
   bodyText: z.string().min(1).max(5000),
