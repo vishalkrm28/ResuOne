@@ -6,7 +6,7 @@ import {
   internalJobApplicationsTable,
   internalJobCandidateAnalysesTable,
 } from "@workspace/db";
-import { eq, and, desc, count, ilike, or, sql } from "drizzle-orm";
+import { eq, and, desc, count, ilike, or, sql, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { resolveUserPlan, canSeeProOnlyJobs, canPostJobs } from "../lib/internal-jobs/plan.js";
 import { notifyUsersOfNewJob } from "../lib/internal-jobs/notifications.js";
@@ -163,7 +163,7 @@ router.get("/internal-jobs/posted", async (req, res) => {
     const appCounts = await db
       .select({ jobId: internalJobApplicationsTable.jobId, cnt: count() })
       .from(internalJobApplicationsTable)
-      .where(sql`${internalJobApplicationsTable.jobId} = ANY(${jobIds})`)
+      .where(inArray(internalJobApplicationsTable.jobId, jobIds))
       .groupBy(internalJobApplicationsTable.jobId);
 
     const cntMap = Object.fromEntries(appCounts.map((a) => [a.jobId, Number(a.cnt)]));
@@ -220,7 +220,7 @@ router.get("/internal-jobs", async (req, res) => {
       db
         .select({ jobId: internalJobApplicationsTable.jobId, cnt: count() })
         .from(internalJobApplicationsTable)
-        .where(sql`${internalJobApplicationsTable.jobId} = ANY(${jobIds})`)
+        .where(inArray(internalJobApplicationsTable.jobId, jobIds))
         .groupBy(internalJobApplicationsTable.jobId),
       db
         .select({
@@ -232,7 +232,7 @@ router.get("/internal-jobs", async (req, res) => {
         .from(internalJobApplicationsTable)
         .where(
           and(
-            sql`${internalJobApplicationsTable.jobId} = ANY(${jobIds})`,
+            inArray(internalJobApplicationsTable.jobId, jobIds),
             eq(internalJobApplicationsTable.applicantUserId, req.user.id) as any,
           ),
         ),
@@ -245,7 +245,7 @@ router.get("/internal-jobs", async (req, res) => {
         .from(internalJobCandidateAnalysesTable)
         .where(
           and(
-            sql`${internalJobCandidateAnalysesTable.internalJobId} = ANY(${jobIds})`,
+            inArray(internalJobCandidateAnalysesTable.internalJobId, jobIds),
             eq(internalJobCandidateAnalysesTable.userId, req.user.id) as any,
           ),
         )
