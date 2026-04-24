@@ -101,7 +101,7 @@ export function RelocationInsightCard({
   riskFlags = [], positiveFactors = [],
   aiSummary, currency = "USD", disclaimer, className,
 }: Props) {
-  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(true);
   const surplusColor = estimatedMonthlySurplus !== null && estimatedMonthlySurplus !== undefined
     ? (estimatedMonthlySurplus > 0 ? "text-emerald-600" : "text-red-600")
     : "text-muted-foreground";
@@ -147,27 +147,85 @@ export function RelocationInsightCard({
         </div>
 
         {/* Fit signals */}
-        <div className="flex flex-wrap gap-2">
-          {visaFit && visaFit !== "unknown" && (
-            <Badge variant="outline" className="text-xs">
-              Visa: {visaFit}
-            </Badge>
-          )}
-          {languageFit && languageFit !== "unknown" && (
-            <Badge variant="outline" className="text-xs">
-              Language: {languageFit}
-            </Badge>
-          )}
-          {salaryQualitySignal && salaryQualitySignal !== "unknown" && (
-            <Badge variant="outline" className="text-xs">
-              Salary: {salaryQualitySignal}
-            </Badge>
-          )}
-          {costOfLivingSignal && costOfLivingSignal !== "unknown" && (
-            <Badge variant="outline" className="text-xs">
-              CoL: {costOfLivingSignal}
-            </Badge>
-          )}
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Fit signals</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {/* Visa */}
+            <div className={cn("rounded-md p-2 border",
+              visaFit === "good" ? "bg-emerald-50 border-emerald-200" :
+              visaFit === "risky" ? "bg-amber-50 border-amber-200" :
+              visaFit === "unlikely" ? "bg-red-50 border-red-200" :
+              "bg-slate-50 border-slate-200"
+            )}>
+              <p className="text-muted-foreground">Visa</p>
+              <p className={cn("font-semibold capitalize",
+                visaFit === "good" ? "text-emerald-700" :
+                visaFit === "risky" ? "text-amber-700" :
+                visaFit === "unlikely" ? "text-red-700" :
+                "text-slate-500"
+              )}>
+                {visaFit === "good" ? "Favourable" :
+                 visaFit === "risky" ? "Risky" :
+                 visaFit === "unlikely" ? "Unlikely" :
+                 "Unknown"}
+              </p>
+            </div>
+            {/* Language */}
+            <div className={cn("rounded-md p-2 border",
+              languageFit === "excellent" || languageFit === "good" ? "bg-emerald-50 border-emerald-200" :
+              languageFit === "partial" ? "bg-amber-50 border-amber-200" :
+              languageFit === "poor" ? "bg-red-50 border-red-200" :
+              "bg-slate-50 border-slate-200"
+            )}>
+              <p className="text-muted-foreground">Language</p>
+              <p className={cn("font-semibold capitalize",
+                languageFit === "excellent" || languageFit === "good" ? "text-emerald-700" :
+                languageFit === "partial" ? "text-amber-700" :
+                languageFit === "poor" ? "text-red-700" :
+                "text-slate-500"
+              )}>
+                {languageFit === "excellent" ? "Excellent" :
+                 languageFit === "good" ? "Good" :
+                 languageFit === "partial" ? "Partial" :
+                 languageFit === "poor" ? "Poor fit" :
+                 "Unknown"}
+              </p>
+            </div>
+            {/* Salary signal */}
+            {salaryQualitySignal && (
+              <div className={cn("rounded-md p-2 border",
+                salaryQualitySignal === "above_benchmark" || salaryQualitySignal === "strong" ? "bg-emerald-50 border-emerald-200" :
+                salaryQualitySignal === "below_benchmark" || salaryQualitySignal === "low" ? "bg-red-50 border-red-200" :
+                "bg-slate-50 border-slate-200"
+              )}>
+                <p className="text-muted-foreground">Salary signal</p>
+                <p className={cn("font-semibold capitalize",
+                  salaryQualitySignal === "above_benchmark" || salaryQualitySignal === "strong" ? "text-emerald-700" :
+                  salaryQualitySignal === "below_benchmark" || salaryQualitySignal === "low" ? "text-red-700" :
+                  "text-slate-500"
+                )}>
+                  {salaryQualitySignal.replace(/_/g, " ")}
+                </p>
+              </div>
+            )}
+            {/* Cost of living signal */}
+            {costOfLivingSignal && (
+              <div className={cn("rounded-md p-2 border",
+                costOfLivingSignal === "affordable" || costOfLivingSignal === "low" ? "bg-emerald-50 border-emerald-200" :
+                costOfLivingSignal === "high" || costOfLivingSignal === "very_high" ? "bg-red-50 border-red-200" :
+                "bg-slate-50 border-slate-200"
+              )}>
+                <p className="text-muted-foreground">Cost of living</p>
+                <p className={cn("font-semibold capitalize",
+                  costOfLivingSignal === "affordable" || costOfLivingSignal === "low" ? "text-emerald-700" :
+                  costOfLivingSignal === "high" || costOfLivingSignal === "very_high" ? "text-red-700" :
+                  "text-slate-500"
+                )}>
+                  {costOfLivingSignal.replace(/_/g, " ")}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Positive factors */}

@@ -70,6 +70,10 @@ interface RelocationResult {
   relocationScore: number;
   relocationRecommendation: string;
   estimatedMonthlySurplus: number | null;
+  visaFit?: string;
+  languageFit?: string;
+  riskFlags?: string[];
+  positiveFactors?: string[];
   aiSummary: { summary: string; mainUpside: string; mainRisk: string; candidateAdvice: string };
 }
 
@@ -304,8 +308,8 @@ function JobCard({
 
           {/* ── Inline relocation result ── */}
           {relocationData && relocationExpanded && (
-            <div className="mt-3 p-3 rounded-lg bg-blue-50/60 border border-blue-100 space-y-2 text-xs">
-              <div className="flex items-center gap-2">
+            <div className="mt-3 p-3 rounded-lg bg-blue-50/60 border border-blue-100 space-y-2.5 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
                 <RelocationScoreBadge
                   recommendation={relocationData.relocationRecommendation as RelocationRecommendation}
                   score={relocationData.relocationScore}
@@ -317,9 +321,39 @@ function JobCard({
                   </span>
                 )}
               </div>
+              {/* Visa + Language chips */}
+              {(relocationData.visaFit || relocationData.languageFit) && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {relocationData.visaFit && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium
+                      ${relocationData.visaFit === "good" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
+                        relocationData.visaFit === "risky" ? "bg-amber-50 border-amber-200 text-amber-700" :
+                        relocationData.visaFit === "unlikely" ? "bg-red-50 border-red-200 text-red-700" :
+                        "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                      Visa: {relocationData.visaFit === "good" ? "Favourable" : relocationData.visaFit === "risky" ? "Risky" : relocationData.visaFit === "unlikely" ? "Unlikely" : "Unknown"}
+                    </span>
+                  )}
+                  {relocationData.languageFit && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium
+                      ${relocationData.languageFit === "excellent" || relocationData.languageFit === "good" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
+                        relocationData.languageFit === "partial" ? "bg-amber-50 border-amber-200 text-amber-700" :
+                        relocationData.languageFit === "poor" ? "bg-red-50 border-red-200 text-red-700" :
+                        "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                      Language: {relocationData.languageFit === "excellent" ? "Excellent" : relocationData.languageFit === "good" ? "Good" : relocationData.languageFit === "partial" ? "Partial" : relocationData.languageFit === "poor" ? "Poor fit" : "Unknown"}
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* Upside + Risk */}
+              {relocationData.aiSummary.mainUpside && (
+                <p className="text-emerald-700"><span className="font-medium">Upside:</span> {relocationData.aiSummary.mainUpside}</p>
+              )}
+              {relocationData.aiSummary.mainRisk && (
+                <p className="text-amber-700"><span className="font-medium">Risk:</span> {relocationData.aiSummary.mainRisk}</p>
+              )}
               <p className="text-foreground/75 leading-relaxed">{relocationData.aiSummary.summary}</p>
               {relocationData.aiSummary.candidateAdvice && (
-                <p className="text-muted-foreground italic">{relocationData.aiSummary.candidateAdvice}</p>
+                <p className="text-muted-foreground italic border-t border-blue-200 pt-2">{relocationData.aiSummary.candidateAdvice}</p>
               )}
             </div>
           )}
