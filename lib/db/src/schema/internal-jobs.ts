@@ -90,6 +90,12 @@ export const internalJobsTable = pgTable(
     languageNotes: text("language_notes"),
     languageRequirementSignal: text("language_requirement_signal").default("unknown"),
     languageConfidence: integer("language_confidence").default(0),
+    // Relocation intelligence — computed by relocation pipeline
+    relocationScore: integer("relocation_score"),
+    relocationRecommendation: text("relocation_recommendation").default("unknown"),
+    estimatedMonthlySurplus: text("estimated_monthly_surplus"),
+    salaryQualitySignal: text("salary_quality_signal").default("unknown"),
+    costOfLivingSignal: text("cost_of_living_signal").default("unknown"),
   },
   (t) => [
     index("internal_jobs_posted_by_idx").on(t.postedByUserId),

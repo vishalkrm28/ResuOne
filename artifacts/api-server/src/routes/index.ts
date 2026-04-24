@@ -32,6 +32,7 @@ import internalJobMessagesRouter from "./internal-job-messages.js";
 import internalJobInterviewsRouter from "./internal-job-interviews.js";
 import visaRouter from "./visa.js";
 import languageRouter from "./language.js";
+import relocationRouter from "./relocation.js";
 
 const router: IRouter = Router();
 
@@ -68,5 +69,6 @@ router.use(internalJobMessagesRouter);
 router.use(internalJobInterviewsRouter);
 router.use(visaRouter);
 router.use(languageRouter);
+router.use(relocationRouter);
 
 export default router;

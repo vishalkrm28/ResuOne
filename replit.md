@@ -14,6 +14,33 @@ ResuOne is a production-ready SaaS web application designed to help users tailor
 *   Do not make changes to the file `artifacts/api-server/src/lib/env.ts`.
 *   Do not make changes to the file `artifacts/api-server/src/routes/webhook.ts`.
 
+## Relocation Intelligence (Phase A — complete, deterministic)
+
+**DB tables created:** `city_cost_profiles` (40 cities seeded), `salary_benchmarks`, `job_relocation_scores`, `relocation_analysis_cache`
+**Columns added:** `jobs` + `internal_jobs` each gained `relocation_score`, `relocation_recommendation`, `estimated_monthly_surplus`, `salary_quality_signal`, `cost_of_living_signal`
+
+**Backend lib files** (`api-server/src/lib/relocation/`):
+- `relocation-schemas.ts`: All Zod types — enums (SalaryQualitySignal, CostOfLivingSignal, RelocationRecommendation, Lifestyle), risk flags, positive factors, full result schema + disclaimer constant
+- `relocation-helpers.ts`: normalizeCityName, normalizeCountryName, normalizeJobTitle, clamp, round, toNumber
+- `salary-analysis.ts`: detectSalaryPeriod, annualizeSalary, detectCurrency, estimateMonthlyGrossSalary, compareSalaryToBenchmark, inferSalaryQualitySignal, normalizeSalary
+- `tax-estimate.ts`: per-country rough effective rates for 25+ countries; estimateMonthlyNetSalary + disclaimer
+- `cost-of-living.ts`: getCityCostProfile (DB lookup), estimateMonthlyCost (lifestyle: low/moderate/high), costOfLivingSignal, calculateMonthlySurplus, buildCostProfileResult, compareCurrentVsTargetCity
+- `relocation-score.ts`: calculateRelocationScore (salary 0-25, CoL 0-25, visa 0-20, language 0-20, relocation-support 0-10 = 100 total); risk flags + positive factor collectors
+- `relocation-cache.ts`: SHA-256 cache key, 24hr TTL, upsert, purge stale
+- `relocation-prompts.ts`: deterministic summary stub — Phase B will swap for AI router (OpenAI → Claude → Gemini)
+- `relocation-pipeline.ts`: full 14-step orchestrator — cache check, job fetch, visa/language signals, salary, tax, CoL, scoring, summary, DB persist, cache save
+
+**Route** (`routes/relocation.ts`): `POST /relocation/analyze-job`, `GET/POST /relocation/city-cost-profile`, `GET/POST /relocation/salary-benchmark`, `POST /relocation/filter-jobs`, `POST /relocation/recalculate`
+
+**UI components** (`parse-pilot/src/components/relocation/`):
+- `relocation-score-badge.tsx`: 5-state badge with tooltip (strong_move → not_recommended)
+- `relocation-breakdown.tsx`: per-component score bars with colour coding
+- `relocation-insight-card.tsx`: full card with financials grid, fit signals, risk/positive lists, AI summary panel, score breakdown toggle, disclaimer
+
+**Job cards** (`jobs/exclusive.tsx`): relocation badge renders after language badge when signal ≠ unknown
+**City seed data**: 40 major cities across 20+ countries with realistic monthly cost breakdowns
+**Phase B pending**: AI router (OpenAI/Claude/Gemini), recommendations integration, pre-apply integration, notifications
+
 ## Language Requirement Intelligence (Phase 1 — complete)
 
 - **Keyword detector** (`api-server/src/lib/language/language-keyword-detector.ts`): explicit phrase matching across English-friendly, local_required, local_preferred, multilingual categories; handles English-as-local-language correctly for US/UK/AU/CA/IE/NZ/SG

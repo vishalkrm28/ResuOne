@@ -20,3 +20,4 @@ export * from "./internal-jobs";
 export * from "./conversations";
 export * from "./messages";
 export * from "./visa";
+export * from "./relocation";

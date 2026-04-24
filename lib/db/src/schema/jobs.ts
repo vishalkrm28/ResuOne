@@ -53,6 +53,12 @@ export const discoveredJobsTable = pgTable(
     languagePreferredLanguages: jsonb("language_preferred_languages").default(sql`'[]'::jsonb`),
     languageConfidence: integer("language_confidence").default(0),
     languageEvidenceSummary: text("language_evidence_summary"),
+    // Relocation intelligence — computed by relocation pipeline
+    relocationScore: integer("relocation_score"),
+    relocationRecommendation: text("relocation_recommendation").default("unknown"),
+    estimatedMonthlySurplus: text("estimated_monthly_surplus"),
+    salaryQualitySignal: text("salary_quality_signal").default("unknown"),
+    costOfLivingSignal: text("cost_of_living_signal").default("unknown"),
   },
   (t) => [
     uniqueIndex("jobs_canonical_key_idx").on(t.canonicalKey),
