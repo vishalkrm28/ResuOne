@@ -1,0 +1,937 @@
+You are building MILESTONE 43 for Resuone.
+
+PROJECT CONTEXT
+Resuone already has or is implementing:
+- global job discovery engine
+- SerpApi job discovery
+- ATS job ingestion
+- internal job marketplace
+- recruiter job posting
+- candidate applications
+- recruiter pipeline
+- messaging
+- interview invites
+- CV parsing
+- candidate profiles
+- CV/job matching
+- visa sponsorship intelligence
+- language requirement intelligence
+- notifications
+- billing and Pro plans
+
+NEW PRODUCT GOAL
+Build a robust relocation intelligence layer so job seekers can understand:
+
+“Is this job actually worth moving for?”
+
+This milestone adds:
+1. salary analysis
+2. cost-of-living analysis
+3. relocation score
+4. net affordability estimate
+5. risk and upside explanation
+6. visa + language integration
+7. AI model router
+8. multi-provider AI strategy
+9. structured scoring outputs
+10. relocation-aware job recommendations
+
+IMPORTANT RULE
+Do not provide legal, tax, or immigration guarantees.
+Use estimated language only.
+
+Always display:
+“Relocation, salary, tax, visa, and cost-of-living estimates are approximate. Confirm details with official sources, employers, and qualified professionals before making decisions.”
+
+==================================================
+SECTION 1 — AI MODEL STRATEGY
+==================================================
+
+Use a multi-AI architecture.
+
+Primary principle:
+- deterministic calculations should be done in code
+- AI should explain, classify, and summarize
+- AI should not invent salary, tax, visa, or cost-of-living facts
+- all AI outputs must be validated with Zod
+
+AI providers:
+1. OpenAI
+2. Anthropic Claude
+3. Google Gemini
+
+Use OpenAI for:
+- final relocation reasoning
+- structured relocation score explanation
+- user-facing relocation summary
+- decision recommendations
+
+Use Claude for:
+- nuanced job description interpretation
+- visa/language wording interpretation
+- ambiguity handling
+- long job descriptions
+
+Use Gemini for:
+- cheap bulk preprocessing
+- batch extraction
+- optional long-context job text processing
+
+Important:
+OpenAI, Claude, and Gemini all support structured outputs or structured JSON workflows, so use schema-validated outputs everywhere. OpenAI supports Structured Outputs with JSON Schema, Claude supports structured outputs/tool-use patterns, and Gemini supports structured outputs with JSON Schema. 
+Reference implementation should be provider-agnostic.
+
+==================================================
+SECTION 2 — ENV VARIABLES
+==================================================
+
+Add these Replit secrets:
+
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+
+AI_PRIMARY_PROVIDER=openai
+AI_EXTRACTION_PROVIDER=anthropic
+AI_BATCH_PROVIDER=gemini
+
+OPENAI_RELOCATION_MODEL=gpt-5.1
+ANTHROPIC_EXTRACTION_MODEL=claude-sonnet-4-6
+GEMINI_BATCH_MODEL=gemini-2.5-flash
+
+RELOCATION_USE_AI_SUMMARY=true
+RELOCATION_AI_TIMEOUT_MS=30000
+RELOCATION_CACHE_HOURS=24
+
+If a provider key is missing:
+- do not crash
+- fallback to available provider
+- if no AI provider exists, use deterministic scoring only and mark summary as limited
+
+==================================================
+SECTION 3 — AI ROUTER FILES
+==================================================
+
+Create:
+
+lib/ai-router/ai-provider-schemas.ts
+lib/ai-router/ai-router.ts
+lib/ai-router/openai-provider.ts
+lib/ai-router/anthropic-provider.ts
+lib/ai-router/gemini-provider.ts
+lib/ai-router/structured-output.ts
+lib/ai-router/model-policy.ts
+
+ai-provider-schemas.ts:
+Define:
+- AiProvider = openai | anthropic | gemini
+- AiTaskType:
+  - relocation_summary
+  - job_text_extraction
+  - visa_language_ambiguity
+  - batch_preprocessing
+  - salary_context_summary
+- AiStructuredRequest
+- AiStructuredResponse
+
+model-policy.ts:
+Create:
+getProviderForTask(taskType)
+
+Rules:
+- relocation_summary -> OpenAI preferred
+- job_text_extraction -> Claude preferred
+- visa_language_ambiguity -> Claude preferred
+- batch_preprocessing -> Gemini preferred
+- salary_context_summary -> OpenAI preferred
+
+ai-router.ts:
+Create:
+runStructuredAiTask({
+  taskType,
+  systemPrompt,
+  userPrompt,
+  schemaName,
+  zodSchema,
+  fallbackProviders
+})
+
+Behavior:
+1. choose provider from model policy
+2. call provider
+3. validate JSON with Zod
+4. if invalid, retry once with stricter JSON instruction
+5. if provider fails, fallback to next provider
+6. return:
+{
+  provider,
+  model,
+  data,
+  raw,
+  success,
+  fallbackUsed
+}
+
+structured-output.ts:
+Add helpers:
+- safeJsonParse()
+- validateWithSchema()
+- buildStrictJsonInstruction()
+- buildProviderSchemaPayload()
+
+Provider files:
+- each provider must expose:
+  runStructuredCompletion(request)
+
+Do not expose API keys client-side.
+
+==================================================
+SECTION 4 — DATABASE TABLES
+==================================================
+
+Create:
+
+city_cost_profiles
+- id uuid primary key default gen_random_uuid()
+- city text not null
+- country text not null
+- normalized_city text not null
+- normalized_country text not null
+- currency text
+- rent_low numeric
+- rent_mid numeric
+- rent_high numeric
+- monthly_food numeric
+- monthly_transport numeric
+- monthly_utilities numeric
+- monthly_healthcare numeric
+- monthly_other numeric
+- estimated_monthly_cost numeric
+- data_source text
+- confidence_score integer default 50
+- updated_at timestamptz default now()
+- created_at timestamptz default now()
+
+salary_benchmarks
+- id uuid primary key default gen_random_uuid()
+- job_title text
+- normalized_job_title text
+- country text
+- city text
+- currency text
+- salary_min numeric
+- salary_median numeric
+- salary_max numeric
+- seniority text
+- data_source text
+- confidence_score integer default 50
+- updated_at timestamptz default now()
+- created_at timestamptz default now()
+
+job_relocation_scores
+- id uuid primary key default gen_random_uuid()
+- job_source text not null
+- job_id uuid
+- internal_job_id uuid
+- user_id uuid not null
+- candidate_profile_id uuid
+- salary_score integer default 0
+- cost_of_living_score integer default 0
+- visa_score integer default 0
+- language_score integer default 0
+- relocation_support_score integer default 0
+- relocation_score integer default 0
+- relocation_recommendation text default 'unknown'
+- salary_quality_signal text default 'unknown'
+- cost_of_living_signal text default 'unknown'
+- estimated_monthly_gross_salary numeric
+- estimated_monthly_net_salary numeric
+- estimated_monthly_cost numeric
+- estimated_monthly_surplus numeric
+- estimated_annual_surplus numeric
+- risk_flags jsonb default '[]'::jsonb
+- positive_factors jsonb default '[]'::jsonb
+- ai_summary jsonb default '{}'::jsonb
+- ai_provider text
+- ai_model text
+- confidence_score integer default 0
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+relocation_analysis_cache
+- id uuid primary key default gen_random_uuid()
+- cache_key text not null unique
+- user_id uuid
+- job_id uuid
+- internal_job_id uuid
+- candidate_profile_id uuid
+- result_json jsonb not null
+- expires_at timestamptz not null
+- created_at timestamptz default now()
+
+Add to jobs:
+- relocation_score integer
+- relocation_recommendation text default 'unknown'
+- estimated_monthly_surplus numeric
+- salary_quality_signal text default 'unknown'
+- cost_of_living_signal text default 'unknown'
+
+Add to internal_jobs:
+- relocation_score integer
+- relocation_recommendation text default 'unknown'
+- estimated_monthly_surplus numeric
+- salary_quality_signal text default 'unknown'
+- cost_of_living_signal text default 'unknown'
+
+Indexes:
+- city_cost_profiles(normalized_city, normalized_country)
+- salary_benchmarks(normalized_job_title, country, city)
+- job_relocation_scores(user_id)
+- job_relocation_scores(job_id)
+- job_relocation_scores(internal_job_id)
+- job_relocation_scores(relocation_score)
+- relocation_analysis_cache(cache_key)
+
+==================================================
+SECTION 5 — ENUM VALUES
+==================================================
+
+salary_quality_signal:
+- strong
+- fair
+- weak
+- unknown
+
+cost_of_living_signal:
+- affordable
+- manageable
+- expensive
+- unknown
+
+relocation_recommendation:
+- strong_move
+- possible_move
+- risky_move
+- not_recommended
+- unknown
+
+relocation_risk_flag:
+- salary_missing
+- salary_low
+- high_cost_of_living
+- no_sponsorship_signal
+- sponsorship_unknown
+- local_language_required
+- language_fit_poor
+- no_relocation_support
+- work_authorization_unclear
+- tax_unknown
+- cost_data_low_confidence
+
+relocation_positive_factor:
+- salary_above_benchmark
+- affordable_city
+- visa_friendly
+- english_friendly
+- relocation_support
+- remote_option
+- target_country_match
+- strong_candidate_match
+
+Create Zod enums for all values.
+
+==================================================
+SECTION 6 — FILES TO CREATE
+==================================================
+
+Create:
+
+lib/relocation/relocation-schemas.ts
+lib/relocation/cost-of-living.ts
+lib/relocation/salary-analysis.ts
+lib/relocation/tax-estimate.ts
+lib/relocation/relocation-score.ts
+lib/relocation/relocation-prompts.ts
+lib/relocation/relocation-pipeline.ts
+lib/relocation/relocation-cache.ts
+lib/relocation/relocation-helpers.ts
+
+app/api/relocation/analyze-job/route.ts
+app/api/relocation/city-cost-profile/route.ts
+app/api/relocation/salary-benchmark/route.ts
+app/api/relocation/filter-jobs/route.ts
+app/api/relocation/recalculate/route.ts
+
+components/relocation/relocation-score-badge.tsx
+components/relocation/relocation-insight-card.tsx
+components/relocation/relocation-breakdown.tsx
+
+==================================================
+SECTION 7 — COST OF LIVING ENGINE
+==================================================
+
+Create:
+lib/relocation/cost-of-living.ts
+
+Functions:
+- normalizeCityName(city)
+- normalizeCountryName(country)
+- getCityCostProfile(city, country)
+- estimateMonthlyCost(profile, lifestyle)
+- compareCurrentVsTargetCity(currentCity, currentCountry, targetCity, targetCountry)
+- calculateMonthlySurplus(monthlyNetSalary, estimatedMonthlyCost)
+
+Rules:
+- if cost profile exists, use it
+- if city profile missing, return unknown
+- do not invent exact values
+- confidence_score controls how strongly the result should affect relocation score
+- support lifestyle level:
+  - low
+  - moderate
+  - high
+Default lifestyle = moderate
+
+Cost calculation:
+estimated_monthly_cost =
+rent_mid + monthly_food + monthly_transport + monthly_utilities + monthly_healthcare + monthly_other
+
+If rent_mid missing:
+use estimated_monthly_cost if available
+else unknown
+
+==================================================
+SECTION 8 — SALARY ANALYSIS ENGINE
+==================================================
+
+Create:
+lib/relocation/salary-analysis.ts
+
+Functions:
+- normalizeSalary(job)
+- detectSalaryPeriod(salaryTextOrFields)
+- annualizeSalary(amount, period)
+- estimateMonthlyGrossSalary(job)
+- compareSalaryToBenchmark(jobSalary, benchmark)
+- inferSalaryQualitySignal(jobSalary, benchmark)
+- detectCurrency(job)
+
+Rules:
+- if salary missing, signal = unknown
+- if salary above benchmark median + 15%, signal = strong
+- if within +/- 15% of median, signal = fair
+- if below median - 15%, signal = weak
+- if benchmark missing, use salary only but mark confidence lower
+- never invent salary
+- if salary range exists, use midpoint
+- store min/max where available
+
+==================================================
+SECTION 9 — TAX ESTIMATE ENGINE
+==================================================
+
+Create:
+lib/relocation/tax-estimate.ts
+
+Purpose:
+Provide rough net-income estimate.
+
+Important:
+This is not tax advice.
+
+Functions:
+- estimateMonthlyNetSalary(grossMonthly, country)
+- getDefaultTaxRateEstimate(country)
+- buildTaxDisclaimer(country)
+
+Initial rough default rules:
+- if country unknown: use 30% deduction estimate
+- Sweden: rough 30-35%
+- Germany: rough 35-42%
+- Netherlands: rough 30-40%
+- UK: rough 25-35%
+- Denmark: rough 35-45%
+- France: rough 30-40%
+
+Return:
+{
+  estimatedMonthlyNet,
+  estimatedTaxRate,
+  confidenceScore,
+  disclaimer
+}
+
+Make this explicitly approximate.
+
+==================================================
+SECTION 10 — RELOCATION SCORE ENGINE
+==================================================
+
+Create:
+lib/relocation/relocation-score.ts
+
+Inputs:
+- salary analysis
+- cost of living
+- visa fit
+- language fit
+- relocation support
+- remote status
+- candidate target country
+- candidate preferences
+- candidate job match score if available
+
+Scoring:
+salary_score: 0–25
+cost_of_living_score: 0–25
+visa_score: 0–20
+language_score: 0–20
+relocation_support_score: 0–10
+
+Total relocation_score: 0–100
+
+Salary score:
+- strong = 25
+- fair = 17
+- weak = 8
+- unknown = 5
+
+Cost of living score:
+- monthly surplus > 1500 = 25
+- surplus 750–1500 = 18
+- surplus 250–749 = 10
+- surplus < 250 = 3
+- unknown = 8
+
+Visa score:
+- visaFit good = 20
+- risky = 10
+- unlikely = 0
+- unknown = 6
+
+Language score:
+- languageFit good = 20
+- risky = 10
+- poor = 0
+- unknown = 8
+
+Relocation support score:
+- relocation_support true = 10
+- remote true = 5
+- unknown/false = 0
+
+Mapping:
+80–100 = strong_move
+60–79 = possible_move
+40–59 = risky_move
+0–39 = not_recommended
+insufficient salary/cost data = unknown unless visa/language/job match are very strong
+
+Risk flags:
+- salary_missing
+- salary_low
+- high_cost_of_living
+- no_sponsorship_signal
+- sponsorship_unknown
+- local_language_required
+- language_fit_poor
+- no_relocation_support
+- work_authorization_unclear
+- tax_unknown
+- cost_data_low_confidence
+
+Positive factors:
+- salary_above_benchmark
+- affordable_city
+- visa_friendly
+- english_friendly
+- relocation_support
+- remote_option
+- target_country_match
+- strong_candidate_match
+
+Return:
+{
+  salaryScore,
+  costOfLivingScore,
+  visaScore,
+  languageScore,
+  relocationSupportScore,
+  relocationScore,
+  relocationRecommendation,
+  riskFlags,
+  positiveFactors
+}
+
+==================================================
+SECTION 11 — AI SUMMARY LAYER
+==================================================
+
+Create:
+lib/relocation/relocation-prompts.ts
+
+Use AI only after deterministic scoring.
+
+Primary provider:
+OpenAI through ai-router.
+
+Fallback:
+Claude, then Gemini.
+
+Prompt:
+You are Resuone Relocation Intelligence.
+
+Given structured relocation analysis, produce a concise candidate-facing relocation summary.
+
+Rules:
+- do not invent tax details
+- do not guarantee visa approval
+- do not guarantee salary
+- use estimated language
+- explain the main upside and main risk
+- be direct and practical
+- output valid JSON only
+
+Output schema:
+{
+  "summary": "",
+  "mainUpside": "",
+  "mainRisk": "",
+  "candidateAdvice": "",
+  "confidenceNote": ""
+}
+
+Example advice tone:
+- “This looks like a realistic move if the employer confirms sponsorship.”
+- “The role may be attractive, but the missing salary makes the move hard to judge.”
+- “This is risky because the role appears to require local language skills.”
+
+==================================================
+SECTION 12 — RELOCATION PIPELINE
+==================================================
+
+Create:
+lib/relocation/relocation-pipeline.ts
+
+Function:
+analyzeRelocationForJob({
+  userId,
+  candidateProfileId,
+  jobId,
+  internalJobId,
+  lifestyle = "moderate",
+  forceRefresh = false
+})
+
+Flow:
+1. build cache key
+2. if cached and not forceRefresh, return cached result
+3. fetch job or internal job
+4. fetch candidate preferences
+5. fetch candidate profile
+6. fetch visa signal and visa fit
+7. fetch language signal and language fit
+8. normalize salary
+9. fetch salary benchmark if available
+10. fetch city cost profile
+11. estimate monthly gross salary
+12. estimate monthly net salary
+13. estimate monthly cost
+14. calculate surplus
+15. calculate relocation score
+16. generate AI summary if enabled
+17. save job_relocation_scores
+18. update jobs/internal_jobs summary fields
+19. save cache
+20. return complete result
+
+If salary is missing:
+- still calculate visa/language/non-salary components
+- mark salary_missing risk
+- recommendation should usually be unknown or risky_move
+
+If cost data missing:
+- mark cost_data_low_confidence
+- do not overstate relocation score
+
+==================================================
+SECTION 13 — CACHE
+==================================================
+
+Create:
+lib/relocation/relocation-cache.ts
+
+Functions:
+- buildRelocationCacheKey()
+- getCachedRelocationAnalysis()
+- saveRelocationAnalysisCache()
+- isRelocationCacheFresh()
+
+Cache by:
+- userId
+- candidateProfileId
+- jobId/internalJobId
+- salary fields
+- job location
+- visa signal
+- language signal
+- lifestyle
+
+Default cache = 24 hours.
+
+==================================================
+SECTION 14 — API ROUTES
+==================================================
+
+Create:
+app/api/relocation/analyze-job/route.ts
+
+Input:
+{
+  "userId": "...",
+  "candidateProfileId": "...",
+  "jobId": "...",
+  "internalJobId": "...",
+  "lifestyle": "moderate",
+  "forceRefresh": false
+}
+
+Return:
+{
+  "relocationScore": 78,
+  "recommendation": "possible_move",
+  "estimatedMonthlyGrossSalary": 4500,
+  "estimatedMonthlyNetSalary": 3100,
+  "estimatedMonthlyCost": 2100,
+  "estimatedMonthlySurplus": 1000,
+  "salarySignal": "fair",
+  "costOfLivingSignal": "manageable",
+  "visaFit": "good",
+  "languageFit": "good",
+  "riskFlags": [],
+  "positiveFactors": [],
+  "summary": {
+    "summary": "",
+    "mainUpside": "",
+    "mainRisk": "",
+    "candidateAdvice": "",
+    "confidenceNote": ""
+  }
+}
+
+Create:
+app/api/relocation/city-cost-profile/route.ts
+
+GET/POST:
+- fetch or create/update city cost profile
+
+Create:
+app/api/relocation/salary-benchmark/route.ts
+
+GET/POST:
+- fetch or create/update salary benchmark
+
+Create:
+app/api/relocation/filter-jobs/route.ts
+
+Input:
+{
+  "userId": "...",
+  "candidateProfileId": "...",
+  "jobIds": [],
+  "minimumRelocationScore": 60,
+  "hideRiskyMoves": true,
+  "requireVisaFriendly": true,
+  "requireEnglishFriendly": false,
+  "requirePositiveMonthlySurplus": true
+}
+
+Create:
+app/api/relocation/recalculate/route.ts
+
+Purpose:
+- recalculate relocation scores for a set of jobs or recent jobs
+
+==================================================
+SECTION 15 — UI COMPONENTS
+==================================================
+
+Create:
+components/relocation/relocation-score-badge.tsx
+
+Badges:
+- Strong move
+- Possible move
+- Risky move
+- Not recommended
+- Unknown
+
+Create:
+components/relocation/relocation-insight-card.tsx
+
+Show:
+- relocation score
+- recommendation
+- estimated monthly gross salary
+- estimated monthly net salary
+- estimated monthly cost
+- estimated monthly surplus
+- salary signal
+- cost-of-living signal
+- visa fit
+- language fit
+- positive factors
+- risk flags
+- AI summary
+- disclaimer
+
+Create:
+components/relocation/relocation-breakdown.tsx
+
+Show component scores:
+- salary
+- cost of living
+- visa
+- language
+- relocation support
+
+==================================================
+SECTION 16 — INTEGRATION WITH JOB CARDS
+==================================================
+
+Update job cards to show:
+- visa badge
+- language badge
+- relocation score badge
+- estimated monthly surplus if available
+
+Update job detail page to show:
+- visa insight card
+- language insight card
+- relocation insight card
+
+Add button:
+“Analyze relocation fit”
+
+==================================================
+SECTION 17 — INTEGRATION WITH JOB RECOMMENDATIONS
+==================================================
+
+If user is open to relocation:
+- boost high relocation score jobs
+- penalize risky relocation jobs
+- penalize missing salary unless other signals are very strong
+- boost jobs with relocation support
+- boost English-friendly jobs for relocating users
+- boost visa-friendly jobs for users needing sponsorship
+
+Recommendation card should include:
+- “Why this is a good move”
+- “Main relocation risk”
+- “Estimated monthly surplus”
+
+==================================================
+SECTION 18 — INTEGRATION WITH PRE-APPLY ANALYSIS
+==================================================
+
+Add to pre-apply analysis output:
+{
+  "relocationScore": 0,
+  "relocationRecommendation": "",
+  "estimatedMonthlySurplus": 0,
+  "relocationRiskFlags": [],
+  "relocationPositiveFactors": [],
+  "relocationAdvice": ""
+}
+
+Rules:
+- if visa fit is unlikely, advise caution
+- if required language is missing, advise caution
+- if salary missing, advise confirming salary before applying
+- if relocation score is high, suggest applying/tailoring
+
+==================================================
+SECTION 19 — NOTIFICATIONS INTEGRATION
+==================================================
+
+If user is open to relocation:
+- notify on strong_move and possible_move jobs
+- avoid notifying on not_recommended jobs
+- include visa/language highlights in notification
+
+Examples:
+- “Strong relocation match: English-friendly role in Sweden”
+- “Possible move: salary appears manageable and visa signal is medium”
+- “New job with relocation support matched your profile”
+
+==================================================
+SECTION 20 — ADMIN / DATA MAINTENANCE HELPERS
+==================================================
+
+Create helper functions:
+- listMissingCityCostProfiles()
+- listMissingSalaryBenchmarks()
+- listLowConfidenceRelocationScores()
+- recalculateRecentRelocationScores()
+- backfillRelocationScoresForUser(userId)
+
+No full UI required initially, but helper functions should exist.
+
+==================================================
+SECTION 21 — SECURITY + VALIDATION
+==================================================
+
+- validate all inputs with Zod
+- keep AI API keys server-side
+- do not expose raw provider errors to users
+- do not render unsafe AI output
+- rate-limit relocation analysis route
+- do not provide legal/tax/immigration guarantees
+- every AI output must be schema-validated
+- deterministic calculations must be traceable
+
+==================================================
+SECTION 22 — SUCCESS CRITERIA
+==================================================
+
+Milestone is complete when:
+- model router exists
+- OpenAI/Claude/Gemini provider abstraction exists
+- relocation scoring works with deterministic code
+- AI summary uses model router
+- city cost profiles can be used
+- salary benchmarks can be used
+- net income estimate exists with disclaimer
+- visa fit and language fit are included
+- relocation score is stored
+- relocation badge appears on job cards
+- relocation insight appears on job detail
+- relocation-aware recommendations work
+- pre-apply analysis includes relocation advice
+- notifications prioritize realistic relocation jobs
+- system gracefully works even if one AI provider is missing
+
+==================================================
+SECTION 23 — FUTURE-READY FEATURES
+==================================================
+
+Keep architecture ready for:
+- real tax APIs
+- Numbeo-style cost feeds
+- official salary datasets
+- purchasing power parity comparisons
+- family relocation estimates
+- school/healthcare relocation info
+- relocation package comparison
+- “jobs I can actually move for” dashboard
+- country-by-country visa salary threshold engine
+
+NOW DO THE FOLLOWING:
+- Generate all required code files
+- Show code file by file
+- Do not skip implementation
+- Keep naming consistent with Resuone
+- Keep architecture modular
+- Use TypeScript
+- Keep all AI calls server-side
+- Validate all structured AI output
