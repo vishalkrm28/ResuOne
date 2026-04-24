@@ -77,9 +77,9 @@ export function RelocationScoreBadge({ recommendation, score, className }: Props
             )}
           </Badge>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs text-xs">
+        <TooltipContent side="top" className="max-w-xs text-xs bg-white text-gray-800 border border-gray-200 shadow-lg">
           {tooltip}
-          <p className="mt-1 text-muted-foreground text-[10px]">Estimate only — not financial advice.</p>
+          <p className="mt-1 text-gray-500 text-[10px]">Estimate only — not financial advice.</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RelocationScoreBadge, type RelocationRecommendation } from "@/components/relocation/relocation-score-badge";
+import { RelocationInsightCard } from "@/components/relocation/relocation-insight-card";
 
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -110,6 +111,20 @@ interface RelocationResult {
   relocationScore: number;
   relocationRecommendation: string;
   estimatedMonthlySurplus: number | null;
+  estimatedMonthlyGrossSalary?: number | null;
+  estimatedMonthlyNetSalary?: number | null;
+  estimatedMonthlyCost?: number | null;
+  salaryScore: number;
+  costOfLivingScore: number;
+  visaScore: number;
+  languageScore: number;
+  relocationSupportScore: number;
+  salaryQualitySignal?: string;
+  costOfLivingSignal?: string;
+  visaFit?: string;
+  languageFit?: string;
+  currency?: string;
+  disclaimer?: string;
   aiSummary: { summary: string; mainUpside: string; mainRisk: string; candidateAdvice: string; confidenceNote: string };
   riskFlags: string[];
   positiveFactors: string[];
@@ -154,6 +169,52 @@ function RelocationFitCard({
 
   const surplus = data?.estimatedMonthlySurplus;
 
+  /* ── Expanded: render the full insight card as a standalone component ── */
+  if (data && expanded) {
+    return (
+      <div className="space-y-2">
+        <RelocationInsightCard
+          relocationScore={data.relocationScore}
+          relocationRecommendation={data.relocationRecommendation as RelocationRecommendation}
+          estimatedMonthlyGrossSalary={data.estimatedMonthlyGrossSalary}
+          estimatedMonthlyNetSalary={data.estimatedMonthlyNetSalary}
+          estimatedMonthlyCost={data.estimatedMonthlyCost}
+          estimatedMonthlySurplus={data.estimatedMonthlySurplus}
+          salaryScore={data.salaryScore ?? 0}
+          costOfLivingScore={data.costOfLivingScore ?? 0}
+          visaScore={data.visaScore ?? 0}
+          languageScore={data.languageScore ?? 0}
+          relocationSupportScore={data.relocationSupportScore ?? 0}
+          salaryQualitySignal={data.salaryQualitySignal}
+          costOfLivingSignal={data.costOfLivingSignal}
+          visaFit={data.visaFit}
+          languageFit={data.languageFit}
+          riskFlags={data.riskFlags}
+          positiveFactors={data.positiveFactors}
+          aiSummary={data.aiSummary}
+          currency={data.currency}
+          disclaimer={data.disclaimer}
+        />
+        <div className="flex items-center justify-between px-1">
+          <button
+            onClick={handleCheck}
+            disabled={loading}
+            className="text-xs text-blue-600 hover:underline"
+          >
+            {loading ? "Refreshing…" : "Refresh analysis"}
+          </button>
+          <button
+            onClick={() => setExpanded(false)}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Collapse
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Collapsed / no data ── */
   return (
     <Card className="border-blue-200 bg-blue-50/20">
       <CardHeader className="pb-2">
@@ -164,10 +225,10 @@ function RelocationFitCard({
           </CardTitle>
           {data && (
             <button
-              onClick={() => setExpanded(!expanded)}
+              onClick={() => setExpanded(true)}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              {expanded ? "Hide" : "Show"} details
+              Show details
             </button>
           )}
         </div>
@@ -189,49 +250,18 @@ function RelocationFitCard({
             {loading ? "Analysing relocation fit…" : "Check Relocation Fit"}
           </Button>
         )}
-
         {data && (
-          <>
-            <div className="flex items-center justify-between gap-2">
-              <RelocationScoreBadge
-                recommendation={data.relocationRecommendation as RelocationRecommendation}
-                score={data.relocationScore}
-              />
-              {surplus !== null && (
-                <span className={cn("text-xs font-medium", surplus > 0 ? "text-green-700" : "text-red-600")}>
-                  {surplus > 0 ? "+" : ""}${Math.round(Math.abs(surplus)).toLocaleString()}/mo est.
-                </span>
-              )}
-            </div>
-
-            {expanded && (
-              <div className="space-y-2.5 pt-1 text-xs">
-                <p className="text-foreground/80 leading-relaxed">{data.aiSummary.summary}</p>
-                {data.aiSummary.mainUpside && (
-                  <div className="flex items-start gap-1.5 text-green-700">
-                    <CheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    {data.aiSummary.mainUpside}
-                  </div>
-                )}
-                {data.aiSummary.mainRisk && (
-                  <div className="flex items-start gap-1.5 text-amber-700">
-                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    {data.aiSummary.mainRisk}
-                  </div>
-                )}
-                {data.aiSummary.candidateAdvice && (
-                  <p className="text-muted-foreground italic">{data.aiSummary.candidateAdvice}</p>
-                )}
-                <button
-                  onClick={handleCheck}
-                  disabled={loading}
-                  className="text-xs text-blue-600 hover:underline"
-                >
-                  {loading ? "Refreshing…" : "Refresh"}
-                </button>
-              </div>
+          <div className="flex items-center justify-between gap-2">
+            <RelocationScoreBadge
+              recommendation={data.relocationRecommendation as RelocationRecommendation}
+              score={data.relocationScore}
+            />
+            {surplus !== null && (
+              <span className={cn("text-xs font-medium", surplus > 0 ? "text-green-700" : "text-red-600")}>
+                {surplus > 0 ? "+" : ""}${Math.round(Math.abs(surplus)).toLocaleString()}/mo est.
+              </span>
             )}
-          </>
+          </div>
         )}
       </CardContent>
     </Card>
