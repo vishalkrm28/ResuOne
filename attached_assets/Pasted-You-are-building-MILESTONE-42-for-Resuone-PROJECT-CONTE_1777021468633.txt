@@ -1,0 +1,765 @@
+You are building MILESTONE 42 for Resuone.
+
+PROJECT CONTEXT
+Resuone already has or is implementing:
+- global job discovery engine
+- SerpApi-based job discovery
+- ATS ingestion
+- internal job marketplace
+- recruiter job posting
+- candidate applications
+- recruiter pipeline
+- messaging
+- interview invites
+- CV parsing
+- candidate profiles
+- CV/job matching
+- notifications
+- billing and Pro plans
+
+NEW PRODUCT GOAL
+Build a robust VISA SPONSORSHIP INTELLIGENCE SYSTEM so job seekers can understand which jobs/companies are more likely to support visa sponsorship or relocation.
+
+This must work for:
+- internal Resuone jobs
+- external discovered jobs
+- recruiter-posted jobs
+- candidate job recommendations
+- pre-apply analysis
+- notifications
+
+IMPORTANT RULE
+Never guarantee visa sponsorship.
+
+Always use careful wording:
+- High sponsorship signal
+- Medium sponsorship signal
+- Low sponsorship signal
+- No sponsorship indicated
+- Unknown
+
+Do NOT say:
+- “This company will sponsor you”
+- “Visa guaranteed”
+- “You are eligible”
+
+Use:
+“This is an estimate based on available job/company signals. Confirm with the employer before applying.”
+
+--------------------------------------------------
+1) DATABASE TABLES
+
+Create these tables if they do not already exist.
+
+company_visa_profiles
+- id uuid primary key default gen_random_uuid()
+- company_name text not null
+- normalized_company_name text not null
+- country text
+- known_sponsor boolean default false
+- sponsor_source text
+- official_source_url text
+- visa_types jsonb default '[]'::jsonb
+- sponsorship_history_score integer default 0
+- positive_signal_count integer default 0
+- negative_signal_count integer default 0
+- total_jobs_seen integer default 0
+- total_sponsorship_positive_jobs integer default 0
+- total_sponsorship_negative_jobs integer default 0
+- confidence_score integer default 0
+- evidence_summary text
+- raw_payload jsonb default '{}'::jsonb
+- last_verified_at timestamptz
+- last_updated_at timestamptz default now()
+- created_at timestamptz default now()
+
+job_visa_signals
+- id uuid primary key default gen_random_uuid()
+- job_source text not null
+- job_id uuid
+- internal_job_id uuid
+- company_name text
+- normalized_company_name text
+- country text
+- sponsorship_signal text not null default 'unknown'
+- confidence_score integer default 0
+- positive_signals jsonb default '[]'::jsonb
+- negative_signals jsonb default '[]'::jsonb
+- country_rule_signals jsonb default '[]'::jsonb
+- company_profile_signals jsonb default '[]'::jsonb
+- recruiter_declared_signals jsonb default '[]'::jsonb
+- ai_validation_used boolean default false
+- evidence_summary text
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+candidate_visa_preferences
+- id uuid primary key default gen_random_uuid()
+- user_id uuid not null unique
+- needs_visa_sponsorship boolean default false
+- current_country text
+- target_countries jsonb default '[]'::jsonb
+- has_eu_work_rights boolean default false
+- has_uk_work_rights boolean default false
+- has_us_work_rights boolean default false
+- preferred_relocation boolean default false
+- relocation_notes text
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+relocation_country_rules
+- id uuid primary key default gen_random_uuid()
+- country text not null unique
+- rule_name text not null
+- skilled_worker_route_available boolean default false
+- blue_card_available boolean default false
+- salary_threshold_notes text
+- shortage_occupation_notes text
+- general_notes text
+- official_info_url text
+- metadata jsonb default '{}'::jsonb
+- updated_at timestamptz default now()
+
+Add columns to jobs table:
+- sponsorship_signal text default 'unknown'
+- sponsorship_confidence integer default 0
+- relocation_support boolean default false
+- visa_sponsorship_notes text
+- work_authorization_requirement text
+
+Add columns to internal_jobs table:
+- visa_sponsorship_available boolean default false
+- visa_sponsorship_notes text
+- relocation_support boolean default false
+- work_authorization_requirement text
+- visa_types_supported jsonb default '[]'::jsonb
+- sponsorship_signal text default 'unknown'
+- sponsorship_confidence integer default 0
+
+Add indexes:
+- company_visa_profiles(normalized_company_name)
+- company_visa_profiles(country)
+- job_visa_signals(job_source)
+- job_visa_signals(job_id)
+- job_visa_signals(internal_job_id)
+- job_visa_signals(sponsorship_signal)
+- candidate_visa_preferences(user_id)
+
+--------------------------------------------------
+2) ENUM VALUES
+
+sponsorship_signal:
+- high
+- medium
+- low
+- no
+- unknown
+
+visa_fit:
+- good
+- risky
+- unlikely
+- unknown
+
+signal_source:
+- job_description
+- recruiter_declared
+- company_history
+- official_source
+- country_rule
+- ai_validation
+
+Create Zod enums for all of these.
+
+--------------------------------------------------
+3) FILES TO CREATE
+
+Create:
+
+lib/visa/visa-schemas.ts
+lib/visa/keyword-detector.ts
+lib/visa/company-profile.ts
+lib/visa/country-rules.ts
+lib/visa/scoring.ts
+lib/visa/ai-validation.ts
+lib/visa/pipeline.ts
+lib/visa/visa-fit.ts
+lib/visa/visa-helpers.ts
+
+app/api/visa/analyze-job/route.ts
+app/api/visa/analyze-internal-job/route.ts
+app/api/visa/company-profile/route.ts
+app/api/visa/candidate-preferences/route.ts
+app/api/visa/filter-jobs/route.ts
+
+components/visa/visa-signal-badge.tsx
+components/visa/visa-insight-card.tsx
+components/visa/visa-preferences-form.tsx
+
+--------------------------------------------------
+4) KEYWORD DETECTION ENGINE
+
+Create:
+lib/visa/keyword-detector.ts
+
+Detect positive and negative sponsorship signals from job descriptions.
+
+Positive phrases include:
+- visa sponsorship available
+- sponsorship available
+- work permit support
+- work permit provided
+- relocation support
+- relocation package
+- international candidates welcome
+- global candidates welcome
+- visa support
+- immigration support
+- we sponsor visas
+- skilled worker visa
+- blue card support
+- EU Blue Card
+- permit assistance
+
+Negative phrases include:
+- no visa sponsorship
+- sponsorship not available
+- must have right to work
+- must already have work authorization
+- EU citizens only
+- UK work authorization required
+- local candidates only
+- cannot sponsor
+- we do not sponsor
+- valid work permit required
+- must be authorized to work
+
+Return:
+{
+  "positiveSignals": [],
+  "negativeSignals": [],
+  "relocationSignals": [],
+  "workAuthorizationSignals": []
+}
+
+Rules:
+- case-insensitive matching
+- support partial phrase matching
+- avoid duplicate signals
+- negative signals should be treated as strong evidence
+
+--------------------------------------------------
+5) COMPANY VISA PROFILE ENGINE
+
+Create:
+lib/visa/company-profile.ts
+
+Functions:
+- normalizeCompanyName(companyName)
+- getCompanyVisaProfile(companyName, country)
+- updateCompanyVisaProfileFromJobSignal(companyName, country, jobSignal)
+- calculateCompanySponsorshipHistoryScore(profile)
+
+Logic:
+- track total jobs seen
+- track positive sponsorship jobs
+- track negative sponsorship jobs
+- calculate history score:
+  positive_jobs / total_jobs * 100
+- known official sponsor should increase confidence
+- repeated negative signals should lower confidence
+
+Company profile score guidance:
+- known_sponsor true = strong positive
+- many positive previous jobs = positive
+- many negative jobs = negative
+- little/no data = unknown
+
+--------------------------------------------------
+6) COUNTRY RULE ENGINE
+
+Create:
+lib/visa/country-rules.ts
+
+Purpose:
+Apply country-specific visa-sponsorship logic.
+
+Start with Europe-focused rules.
+
+UK:
+- official sponsor list match = strong positive
+- skilled worker wording = positive
+- “must have right to work in UK” = negative
+
+Germany:
+- EU Blue Card wording = positive
+- skilled tech/engineering role + salary present = medium positive
+- relocation support = positive
+- “must already hold work permit” = negative
+
+Sweden:
+- relocation support = positive
+- tech/engineering/specialist role = medium positive
+- “must have Swedish work permit” = negative
+- sponsorship cannot be assumed without explicit signal
+
+Netherlands:
+- recognized sponsor wording = positive
+- relocation support = positive
+- highly skilled migrant wording = positive
+
+General Europe:
+- relocation support = positive
+- international candidates welcome = positive
+- right-to-work requirement = negative
+- remote jobs get slight positive only if country restriction is not present
+
+Return:
+{
+  "countryScore": 0,
+  "countrySignals": [],
+  "notes": ""
+}
+
+Keep these rules conservative.
+
+--------------------------------------------------
+7) VISA SCORING ENGINE
+
+Create:
+lib/visa/scoring.ts
+
+Input:
+{
+  keywordSignals,
+  companyProfile,
+  countryRuleResult,
+  recruiterInput,
+  jobCountry,
+  jobDescription
+}
+
+Scoring formula:
+
+keywordScore:
+- positive signal: +10 each, max +40
+- relocation signal: +8 each, max +20
+- strong negative signal: immediate "no" unless recruiter explicitly says sponsorship available
+
+companyScore:
+- known official sponsor: +30
+- sponsorship_history_score:
+  - 75+ = +25
+  - 50-74 = +15
+  - 25-49 = +5
+  - below 25 = 0
+
+countryScore:
+- from country rule engine, max +20
+
+recruiterInputScore:
+- recruiter says visa sponsorship available = +30
+- recruiter says relocation support = +15
+- recruiter says no sponsorship = immediate "no"
+
+Final mapping:
+- strong negative signal => no
+- score >= 75 => high
+- score 50-74 => medium
+- score 25-49 => low
+- no evidence => unknown
+
+Return:
+{
+  "sponsorshipSignal": "high|medium|low|no|unknown",
+  "confidenceScore": 0,
+  "positiveSignals": [],
+  "negativeSignals": [],
+  "evidenceSummary": ""
+}
+
+Rules:
+- be conservative
+- no guarantees
+- explain evidence briefly
+- if signal is unknown, say evidence is insufficient
+
+--------------------------------------------------
+8) AI VALIDATION LAYER
+
+Create:
+lib/visa/ai-validation.ts
+
+Use Claude only when:
+- positive and negative signals conflict
+- score is between 45 and 60
+- job description is long and ambiguous
+- recruiter input conflicts with job text
+
+Prompt:
+You are Resuone Visa Sponsorship Intelligence.
+
+Analyze the job description and company context.
+Do not guarantee sponsorship.
+Use only evidence in the input.
+Return JSON only.
+
+Output:
+{
+  "sponsorshipSignal": "high|medium|low|no|unknown",
+  "confidenceScore": 0,
+  "positiveSignals": [],
+  "negativeSignals": [],
+  "evidenceSummary": "",
+  "needsHumanConfirmation": true
+}
+
+Rules:
+- do not hallucinate visa policies
+- cite only provided evidence
+- if unclear, return unknown
+- if job says no sponsorship, return no
+
+--------------------------------------------------
+9) VISA PIPELINE
+
+Create:
+lib/visa/pipeline.ts
+
+Functions:
+- analyzeVisaSignalForExternalJob(job)
+- analyzeVisaSignalForInternalJob(internalJob)
+- saveJobVisaSignal(result)
+- updateJobWithVisaSignal(jobId, result)
+- updateInternalJobWithVisaSignal(internalJobId, result)
+
+Pipeline:
+1. extract keyword signals
+2. get company visa profile
+3. apply country rules
+4. include recruiter-declared signals if internal job
+5. compute score
+6. optionally call AI validation
+7. save result in job_visa_signals
+8. update jobs/internal_jobs fields
+9. update company_visa_profiles
+
+--------------------------------------------------
+10) CANDIDATE VISA PREFERENCES
+
+Create:
+app/api/visa/candidate-preferences/route.ts
+
+GET:
+- return current user visa preferences
+
+POST:
+Input:
+{
+  "userId": "...",
+  "needsVisaSponsorship": true,
+  "currentCountry": "IN",
+  "targetCountries": ["SE", "DE", "NL"],
+  "hasEuWorkRights": false,
+  "hasUkWorkRights": false,
+  "hasUsWorkRights": false,
+  "preferredRelocation": true,
+  "relocationNotes": "Open to Sweden, Germany, Netherlands"
+}
+
+Purpose:
+Allow job matching to know whether visa support matters.
+
+--------------------------------------------------
+11) VISA FIT ENGINE
+
+Create:
+lib/visa/visa-fit.ts
+
+Function:
+calculateCandidateVisaFit({
+  candidatePreferences,
+  jobCountry,
+  sponsorshipSignal,
+  relocationSupport,
+  workAuthorizationRequirement
+})
+
+Return:
+{
+  "visaFit": "good|risky|unlikely|unknown",
+  "reasoning": ""
+}
+
+Rules:
+- if candidate does not need sponsorship => good/unknown depending on work rights
+- if job says no sponsorship and candidate needs sponsorship => unlikely
+- if sponsorship signal high/medium and candidate needs sponsorship => good/risky
+- if unknown and candidate needs sponsorship => risky
+- if relocation support true => improve fit slightly
+- if country is in candidate target countries => improve fit slightly
+
+--------------------------------------------------
+12) API ROUTES
+
+Create:
+app/api/visa/analyze-job/route.ts
+
+Input:
+{
+  "jobId": "...",
+  "forceRefresh": false
+}
+
+Flow:
+- fetch external job from jobs table
+- run visa pipeline
+- save signal
+- return result
+
+Create:
+app/api/visa/analyze-internal-job/route.ts
+
+Input:
+{
+  "internalJobId": "...",
+  "forceRefresh": false
+}
+
+Flow:
+- fetch internal job
+- include recruiter-declared visa fields
+- run visa pipeline
+- save signal
+- return result
+
+Create:
+app/api/visa/company-profile/route.ts
+
+Input:
+{
+  "companyName": "Spotify",
+  "country": "SE"
+}
+
+Return:
+- company visa profile
+- history score
+- evidence summary
+
+Create:
+app/api/visa/filter-jobs/route.ts
+
+Input:
+{
+  "userId": "...",
+  "jobIds": ["..."],
+  "minimumSignal": "medium",
+  "includeUnknown": false,
+  "relocationOnly": false
+}
+
+Return filtered jobs.
+
+--------------------------------------------------
+13) UI COMPONENTS
+
+Create:
+components/visa/visa-signal-badge.tsx
+
+Display:
+- High Sponsorship Signal
+- Medium Sponsorship Signal
+- Low Sponsorship Signal
+- No Sponsorship Indicated
+- Unknown Sponsorship
+
+Create:
+components/visa/visa-insight-card.tsx
+
+Show:
+- sponsorship signal
+- confidence score
+- evidence summary
+- positive signals
+- negative signals
+- relocation support
+- disclaimer
+
+Disclaimer:
+“This is an estimate based on available job and company signals. It is not a guarantee of visa sponsorship. Confirm with the employer before applying.”
+
+Create:
+components/visa/visa-preferences-form.tsx
+
+Allow users to set:
+- needs visa sponsorship
+- current country
+- target countries
+- existing work rights
+- relocation preference
+
+--------------------------------------------------
+14) INTEGRATION WITH JOB DISCOVERY
+
+Update job discovery flow:
+- after jobs are discovered and stored, optionally run visa analysis in background-like route or on-demand
+- show visa badge on job cards when available
+- allow filter:
+  - High/Medium sponsorship signal only
+  - include unknown
+  - relocation support only
+  - hide no sponsorship
+
+Update /jobs/discover UI:
+Each job card should show:
+- visa signal badge
+- relocation support badge
+- work authorization warning if detected
+
+--------------------------------------------------
+15) INTEGRATION WITH INTERNAL JOB MARKETPLACE
+
+Update recruiter job posting form:
+Add fields:
+- Can sponsor visa?
+- Visa types supported
+- Relocation support?
+- Work authorization requirement
+- Sponsorship notes
+
+When recruiter publishes internal job:
+- run visa pipeline
+- recruiter-declared input should carry strong weight
+- show badge on internal job listing
+
+Update internal job detail page:
+- show full visa insight card
+- show recruiter sponsorship notes if provided
+
+--------------------------------------------------
+16) INTEGRATION WITH PRE-APPLY ANALYSIS
+
+Update pre-apply analysis for both external and internal jobs.
+
+Add to analysis output:
+{
+  "visaFit": "good|risky|unlikely|unknown",
+  "visaReasoning": "",
+  "sponsorshipSignal": "high|medium|low|no|unknown",
+  "relocationSupport": true
+}
+
+Rules:
+- if candidate needs visa and job signal is no, warn strongly
+- if candidate needs visa and signal is unknown, advise confirming before applying
+- if signal is high/medium, suggest applying or tailoring first depending on overall match score
+
+--------------------------------------------------
+17) INTEGRATION WITH NOTIFICATIONS
+
+Update job notification logic.
+
+If user has needsVisaSponsorship = true:
+- prioritize notifications for high/medium sponsorship jobs
+- do not notify for no sponsorship jobs unless user disabled this filter
+- notification copy examples:
+  - “New job with strong visa sponsorship signal matched your profile”
+  - “Remote role with relocation support matched your CV”
+
+For users who do not need visa:
+- visa signal should not overly affect notifications
+
+--------------------------------------------------
+18) INTEGRATION WITH JOB RECOMMENDATIONS
+
+Update ranking logic:
+- if candidate needs sponsorship:
+  - boost high/medium sponsorship jobs
+  - reduce no sponsorship jobs
+  - keep unknown jobs but mark risky
+- if candidate target country matches job country:
+  - slight boost
+- if relocation support exists:
+  - boost
+
+Add to recommendation card:
+- sponsorship signal
+- visa fit
+- relocation support
+
+--------------------------------------------------
+19) ADMIN / DATA MAINTENANCE
+
+Create basic admin-friendly helper functions:
+- recalculateCompanyVisaProfiles()
+- recalculateVisaSignalsForRecentJobs()
+- listLowConfidenceVisaSignals()
+- listConflictingVisaSignals()
+
+These do not need full UI initially, but should be implemented in helper files.
+
+--------------------------------------------------
+20) OFFICIAL DATA READY DESIGN
+
+Do not hardcode official lists yet unless already available.
+
+Design company_visa_profiles to support:
+- UK sponsor list import
+- future Netherlands recognized sponsor data
+- future country-specific datasets
+- manual admin verification
+
+Add source fields:
+- sponsor_source
+- official_source_url
+- last_verified_at
+
+--------------------------------------------------
+21) SECURITY + VALIDATION
+
+- validate all input with Zod
+- do not expose raw AI reasoning if unsafe
+- keep API keys server-side
+- do not guarantee immigration outcomes
+- sanitize job descriptions before displaying
+- rate-limit AI validation routes
+- only use Claude when needed
+
+--------------------------------------------------
+22) SUCCESS CRITERIA
+
+Milestone is complete when:
+- jobs can receive visa sponsorship signals
+- internal jobs can declare sponsorship support
+- external jobs can be analyzed from description/company data
+- candidate can set visa preferences
+- candidate can filter jobs by sponsorship signal
+- job cards show visa badges
+- job detail pages show evidence and disclaimer
+- pre-apply analysis includes visa fit
+- notifications prioritize visa-friendly jobs for relevant users
+- company visa profiles update over time
+- system is conservative and does not guarantee sponsorship
+
+--------------------------------------------------
+23) FUTURE-READY FEATURES
+
+Keep architecture ready for:
+- UK sponsor list import
+- Netherlands recognized sponsor import
+- EU Blue Card salary threshold engine
+- country-specific immigration rules
+- relocation cost estimates
+- salary threshold checks
+- “jobs I can realistically move for”
+- employer sponsorship verification
+- user feedback loop after recruiter responses
+
+NOW DO THE FOLLOWING
+- Generate all required code files
+- Show code file by file
+- Do not skip implementation
+- Keep naming consistent with Resuone
+- Keep architecture aligned with previous milestones
+- Do not only explain — actually output the implementation

@@ -1,0 +1,338 @@
+--------------------------------------------------
+24) LANGUAGE REQUIREMENT INTELLIGENCE
+
+GOAL
+Allow candidates to understand whether a job requires local language skills, English-only work, or multilingual ability.
+
+This must work for:
+- external discovered jobs
+- internal recruiter-posted jobs
+- candidate recommendations
+- pre-apply analysis
+- notifications
+- relocation-aware matching
+
+IMPORTANT RULE
+Do not assume language requirements unless there is evidence.
+Show:
+- English-only friendly
+- Local language required
+- Local language preferred
+- Multilingual role
+- Unknown
+
+--------------------------------------------------
+24.1) DATABASE ADDITIONS
+
+Add columns to jobs table:
+- language_requirement_signal text default 'unknown'
+- required_languages jsonb default '[]'::jsonb
+- preferred_languages jsonb default '[]'::jsonb
+- language_confidence integer default 0
+- language_evidence_summary text
+
+Add columns to internal_jobs table:
+- required_languages jsonb default '[]'::jsonb
+- preferred_languages jsonb default '[]'::jsonb
+- language_requirement_signal text default 'unknown'
+- language_confidence integer default 0
+- language_notes text
+
+Create table job_language_signals:
+- id uuid primary key default gen_random_uuid()
+- job_source text not null
+- job_id uuid
+- internal_job_id uuid
+- country text
+- language_requirement_signal text default 'unknown'
+- required_languages jsonb default '[]'::jsonb
+- preferred_languages jsonb default '[]'::jsonb
+- positive_signals jsonb default '[]'::jsonb
+- negative_signals jsonb default '[]'::jsonb
+- confidence_score integer default 0
+- evidence_summary text
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Add columns to candidate_visa_preferences or create candidate_relocation_preferences:
+- known_languages jsonb default '[]'::jsonb
+- preferred_working_languages jsonb default '[]'::jsonb
+
+--------------------------------------------------
+24.2) ENUM VALUES
+
+language_requirement_signal:
+- english_friendly
+- local_required
+- local_preferred
+- multilingual
+- unknown
+
+language_fit:
+- good
+- risky
+- poor
+- unknown
+
+--------------------------------------------------
+24.3) FILES TO CREATE
+
+Create:
+
+lib/language/language-schemas.ts
+lib/language/language-keyword-detector.ts
+lib/language/language-country-rules.ts
+lib/language/language-scoring.ts
+lib/language/language-pipeline.ts
+lib/language/language-fit.ts
+
+app/api/language/analyze-job/route.ts
+app/api/language/analyze-internal-job/route.ts
+app/api/language/filter-jobs/route.ts
+
+components/language/language-signal-badge.tsx
+components/language/language-insight-card.tsx
+
+--------------------------------------------------
+24.4) LANGUAGE KEYWORD DETECTION
+
+Create:
+lib/language/language-keyword-detector.ts
+
+Detect language requirements from job descriptions.
+
+English-friendly signals:
+- English-speaking environment
+- English is our working language
+- no Swedish required
+- no German required
+- international team
+- global team
+- English fluency required
+- business English
+
+Local language required signals:
+- Swedish required
+- fluent Swedish
+- German required
+- Dutch required
+- French required
+- local language required
+- must speak Swedish/German/Dutch/French
+- native-level local language
+
+Local language preferred signals:
+- Swedish preferred
+- German is a plus
+- Dutch is a plus
+- local language is a plus
+- nice to have Swedish
+- beneficial if you speak German
+
+Multilingual signals:
+- multilingual
+- bilingual
+- fluent in English and Swedish
+- English plus German
+- multiple languages required
+
+Return:
+{
+  "requiredLanguages": [],
+  "preferredLanguages": [],
+  "positiveSignals": [],
+  "negativeSignals": [],
+  "languageRequirementSignal": "english_friendly|local_required|local_preferred|multilingual|unknown"
+}
+
+--------------------------------------------------
+24.5) COUNTRY LANGUAGE RULES
+
+Create:
+lib/language/language-country-rules.ts
+
+Use conservative country defaults.
+
+Examples:
+Sweden:
+- if job text says Swedish required => local_required
+- if job text says Swedish preferred => local_preferred
+- if English working language or international team => english_friendly
+- do not assume Swedish required without evidence
+
+Germany:
+- if German required => local_required
+- if German preferred => local_preferred
+- tech roles with English working language => english_friendly
+
+Netherlands:
+- English-friendly more common in tech/international companies
+- Dutch required signals must be respected
+
+France/Spain/Italy:
+- local language requirement is more common, but still do not assume without text evidence
+
+Return:
+{
+  "countryLanguageSignals": [],
+  "countryLanguageScore": 0,
+  "notes": ""
+}
+
+--------------------------------------------------
+24.6) LANGUAGE SCORING
+
+Create:
+lib/language/language-scoring.ts
+
+Rules:
+- explicit local language required => local_required, confidence 85+
+- explicit English working language => english_friendly, confidence 80+
+- local language preferred => local_preferred, confidence 70+
+- multiple required languages => multilingual, confidence 80+
+- no evidence => unknown
+
+Do not over-infer from country alone.
+
+Return:
+{
+  "languageRequirementSignal": "",
+  "requiredLanguages": [],
+  "preferredLanguages": [],
+  "confidenceScore": 0,
+  "evidenceSummary": ""
+}
+
+--------------------------------------------------
+24.7) LANGUAGE PIPELINE
+
+Create:
+lib/language/language-pipeline.ts
+
+Pipeline:
+1. parse job description
+2. detect explicit language keywords
+3. apply country language rules
+4. score result
+5. save to job_language_signals
+6. update jobs/internal_jobs columns
+
+Functions:
+- analyzeLanguageSignalForExternalJob(job)
+- analyzeLanguageSignalForInternalJob(internalJob)
+- saveJobLanguageSignal(result)
+- updateJobWithLanguageSignal(jobId, result)
+- updateInternalJobWithLanguageSignal(internalJobId, result)
+
+--------------------------------------------------
+24.8) LANGUAGE FIT ENGINE
+
+Create:
+lib/language/language-fit.ts
+
+Function:
+calculateCandidateLanguageFit({
+  candidateKnownLanguages,
+  candidatePreferredWorkingLanguages,
+  requiredLanguages,
+  preferredLanguages,
+  languageRequirementSignal
+})
+
+Return:
+{
+  "languageFit": "good|risky|poor|unknown",
+  "reasoning": ""
+}
+
+Rules:
+- if required language is in candidate known languages => good
+- if required language missing => poor
+- if local language preferred but missing => risky
+- if english_friendly and candidate knows English => good
+- if unknown => unknown
+
+--------------------------------------------------
+24.9) RECRUITER JOB POSTING FORM
+
+Add fields:
+- Required languages
+- Preferred languages
+- Working language
+- Language notes
+
+Examples:
+- Required: English
+- Preferred: Swedish
+- Working language: English
+- Notes: Swedish is helpful but not mandatory
+
+Recruiter input should strongly affect language signal.
+
+--------------------------------------------------
+24.10) UI
+
+Job card:
+- Language badge:
+  - English-friendly
+  - Local language required
+  - Local language preferred
+  - Multilingual
+  - Unknown
+
+Job detail:
+- Language Requirement Insight section
+- show:
+  - required languages
+  - preferred languages
+  - evidence summary
+  - confidence
+  - candidate language fit
+
+Candidate settings:
+- add Known languages
+- add Preferred working languages
+
+--------------------------------------------------
+24.11) INTEGRATION WITH MATCHING
+
+Update job recommendation ranking:
+- if candidate lacks required language => strong penalty
+- if local language only preferred => mild penalty
+- if English-friendly and candidate targets relocation => boost
+- if multilingual and candidate has those languages => boost
+
+Add to pre-apply analysis:
+{
+  "languageFit": "good|risky|poor|unknown",
+  "languageReasoning": "",
+  "requiredLanguages": [],
+  "preferredLanguages": [],
+  "languageRequirementSignal": ""
+}
+
+--------------------------------------------------
+24.12) INTEGRATION WITH NOTIFICATIONS
+
+If user is relocating:
+- prioritize jobs with english_friendly signal
+- avoid notifying for jobs where local language is required and user lacks it
+- boost jobs where required language matches user profile
+
+Notification copy:
+- “English-friendly role matched your profile”
+- “Visa-friendly and English-friendly job found”
+- “Role requires Swedish — review before applying”
+
+--------------------------------------------------
+24.13) SUCCESS CRITERIA
+
+This language layer is complete when:
+- jobs get language requirement signals
+- internal jobs can declare required/preferred languages
+- candidates can store known languages
+- job cards show language badges
+- job detail pages show language insights
+- pre-apply analysis includes language fit
+- recommendations penalize jobs requiring languages the user lacks
+- notifications prioritize visa + language realistic jobs
