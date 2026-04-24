@@ -46,7 +46,12 @@ ResuOne is a production-ready SaaS web application designed to help users tailor
 - `ai-router.ts`: `routeRelocationSummary(input, deterministicFallback)` — OpenAI → Claude → deterministic, records `provider`, `model`, `latencyMs`, `fromFallback`
 - `index.ts`: barrel export
 - `relocation-prompts.ts` updated: now calls `routeRelocationSummary`; deterministic builder is passed as safety fallback; logs provider/model/latency on every call
-**Phase C pending**: recommendations boost, pre-apply analysis integration, notifications
+**Phase C — Pre-apply integration + Notifications + Recommendations boost (complete)**:
+- `relocation-notifications.ts`: `notifyRelocationScore()` — inserts `notification_items` row (type `relocation_alert`) for `strong_move` or `possible_move`; deduped by `userId + actionUrl`; non-fatal error handling
+- `relocation-pipeline.ts`: added `externalJobCacheId` as a third job source — maps `externalJobsCacheTable` fields (title, company, location, salary, description, remoteType) to pipeline shape; extracts country from location string; skips step 12 (column update) for `external_cache` source
+- `relocation.ts` route: added `externalJobCacheId` field to request schema; fires `notifyRelocationScore()` non-blocking after fresh analysis; resolves job title+company from DB for notification text
+- `exclusive-detail.tsx`: added `RelocationFitCard` component in right column below AI Fit Analysis — "Check Relocation Fit" button calls `POST /relocation/analyze-job`; shows `RelocationScoreBadge` + monthly surplus + AI summary + collapsible details
+- `recommendations.tsx`: added per-card navigation icon button; inline `relocationExpanded` panel shows `RelocationScoreBadge` + surplus + AI summary after calling `POST /relocation/analyze-job` with `externalJobCacheId`
 
 ## Language Requirement Intelligence (Phase 1 — complete)
 

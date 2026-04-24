@@ -14,9 +14,10 @@ import { Progress } from "@/components/ui/progress";
 import {
   Loader2, Star, MapPin, Building2, Globe, Lock, ArrowLeft, Send,
   CheckCircle, Sparkles, FileText, MailOpen, ChevronRight, AlertTriangle,
-  TrendingUp, AlertCircle, Briefcase, Banknote, Clock,
+  TrendingUp, AlertCircle, Briefcase, Banknote, Clock, Navigation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RelocationScoreBadge, type RelocationRecommendation } from "@/components/relocation/relocation-score-badge";
 
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -101,6 +102,140 @@ function recommendationLabel(rec: string | null) {
     tailor_first: { label: "Tailor CV First", color: "text-amber-700 bg-amber-50 border-amber-200" },
     skip: { label: "Not a Strong Fit", color: "text-red-700 bg-red-50 border-red-200" },
   }[rec] ?? null;
+}
+
+// ─── Relocation Fit Card ──────────────────────────────────────────────────────
+
+interface RelocationResult {
+  relocationScore: number;
+  relocationRecommendation: string;
+  estimatedMonthlySurplus: number | null;
+  aiSummary: { summary: string; mainUpside: string; mainRisk: string; candidateAdvice: string; confidenceNote: string };
+  riskFlags: string[];
+  positiveFactors: string[];
+  fromCache?: boolean;
+}
+
+function RelocationFitCard({
+  jobId,
+}: {
+  jobId: string;
+}) {
+  const { toast } = useToast();
+  const [data, setData] = useState<RelocationResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  async function handleCheck() {
+    setLoading(true);
+    try {
+      const res = await authedFetch(`${BASE}/relocation/analyze-job`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ internalJobId: jobId, lifestyle: "moderate" }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        if (d.code === "NO_CV") {
+          toast({ variant: "destructive", title: "No CV found", description: "Analyse a CV first to get relocation scoring." });
+        } else {
+          throw new Error(d.error ?? "Relocation analysis failed");
+        }
+        return;
+      }
+      setData(d.result);
+      setExpanded(true);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: err.message ?? "Relocation check failed" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const surplus = data?.estimatedMonthlySurplus;
+
+  return (
+    <Card className="border-blue-200 bg-blue-50/20">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Navigation className="w-4 h-4 text-blue-600" />
+            Relocation Fit
+          </CardTitle>
+          {data && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {expanded ? "Hide" : "Show"} details
+            </button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!data && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
+            onClick={handleCheck}
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
+            ) : (
+              <Navigation className="w-3.5 h-3.5 mr-2" />
+            )}
+            {loading ? "Analysing relocation fit…" : "Check Relocation Fit"}
+          </Button>
+        )}
+
+        {data && (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <RelocationScoreBadge
+                recommendation={data.relocationRecommendation as RelocationRecommendation}
+                score={data.relocationScore}
+              />
+              {surplus !== null && (
+                <span className={cn("text-xs font-medium", surplus > 0 ? "text-green-700" : "text-red-600")}>
+                  {surplus > 0 ? "+" : ""}${Math.round(Math.abs(surplus)).toLocaleString()}/mo est.
+                </span>
+              )}
+            </div>
+
+            {expanded && (
+              <div className="space-y-2.5 pt-1 text-xs">
+                <p className="text-foreground/80 leading-relaxed">{data.aiSummary.summary}</p>
+                {data.aiSummary.mainUpside && (
+                  <div className="flex items-start gap-1.5 text-green-700">
+                    <CheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    {data.aiSummary.mainUpside}
+                  </div>
+                )}
+                {data.aiSummary.mainRisk && (
+                  <div className="flex items-start gap-1.5 text-amber-700">
+                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    {data.aiSummary.mainRisk}
+                  </div>
+                )}
+                {data.aiSummary.candidateAdvice && (
+                  <p className="text-muted-foreground italic">{data.aiSummary.candidateAdvice}</p>
+                )}
+                <button
+                  onClick={handleCheck}
+                  disabled={loading}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  {loading ? "Refreshing…" : "Refresh"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 // ─── Apply Modal ──────────────────────────────────────────────────────────────
@@ -541,6 +676,9 @@ export default function ExclusiveJobDetail() {
                 <p className="text-xs mt-1">Click "Analyze My Fit" to see how well you match this role.</p>
               </div>
             )}
+
+            {/* Relocation fit */}
+            <RelocationFitCard jobId={jobId} />
           </div>
         </div>
       </div>

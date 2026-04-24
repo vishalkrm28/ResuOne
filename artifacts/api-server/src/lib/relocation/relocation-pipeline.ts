@@ -2,6 +2,7 @@ import {
   db,
   internalJobsTable,
   discoveredJobsTable,
+  externalJobsCacheTable,
   candidateVisaPreferencesTable,
   jobRelocationScoresTable,
   cityCostProfilesTable,
@@ -34,6 +35,7 @@ export async function analyzeRelocationForJob(opts: {
   candidateProfileId?: string | null;
   jobId?: string | null;
   internalJobId?: string | null;
+  externalJobCacheId?: string | null;
   lifestyle?: Lifestyle;
   forceRefresh?: boolean;
 }): Promise<RelocationAnalysisResult | null> {
@@ -53,6 +55,33 @@ export async function analyzeRelocationForJob(opts: {
       .where(eq(discoveredJobsTable.id, opts.jobId)).limit(1);
     job = rows[0] ?? null;
     jobSource = "discovered";
+  } else if (opts.externalJobCacheId) {
+    const rows = await db.select().from(externalJobsCacheTable)
+      .where(eq(externalJobsCacheTable.id, opts.externalJobCacheId)).limit(1);
+    if (rows[0]) {
+      // Normalise externalJobsCache into the shape expected by the pipeline
+      const raw = rows[0];
+      const country = extractCountryFromLocation(raw.location);
+      job = {
+        id: raw.id,
+        title: raw.title,
+        company: raw.company ?? null,
+        location: raw.location ?? null,
+        country,
+        salaryMin: raw.salaryMin ?? null,
+        salaryMax: raw.salaryMax ?? null,
+        currency: raw.currency ?? null,
+        description: raw.description ?? "",
+        remote: raw.remoteType === "remote" || raw.remoteType === "hybrid" || null,
+        sponsorshipSignal: null,
+        languageRequirementSignal: null,
+        languageRequired: [],
+        languagePreferred: [],
+        relocationSupport: null,
+        workAuthorizationRequirement: null,
+      };
+    }
+    jobSource = "external_cache";
   }
 
   if (!job) {
@@ -63,7 +92,7 @@ export async function analyzeRelocationForJob(opts: {
   // ── 2. Build cache key ───────────────────────────────────────────────────
   const cacheKey = buildRelocationCacheKey({
     userId: opts.userId,
-    jobId: opts.jobId,
+    jobId: opts.externalJobCacheId ?? opts.jobId,
     internalJobId: opts.internalJobId,
     salaryMin: job.salaryMin,
     salaryMax: job.salaryMax,
@@ -187,7 +216,7 @@ export async function analyzeRelocationForJob(opts: {
     .insert(jobRelocationScoresTable)
     .values({
       jobSource,
-      jobId: opts.jobId ?? null,
+      jobId: opts.externalJobCacheId ?? opts.jobId ?? null,
       internalJobId: opts.internalJobId ?? null,
       userId: opts.userId,
       candidateProfileId: opts.candidateProfileId ?? null,
@@ -215,7 +244,7 @@ export async function analyzeRelocationForJob(opts: {
     })
     .onConflictDoNothing();
 
-  // ── 12. Update job summary columns ────────────────────────────────────────
+  // ── 12. Update job summary columns (skipped for external_cache source) ───
   try {
     if (opts.internalJobId) {
       await db.update(internalJobsTable)
@@ -324,4 +353,11 @@ function extractCity(location: string | null | undefined): string | null {
   if (!location) return null;
   const parts = location.split(",").map((p) => p.trim());
   return parts[0] ?? null;
+}
+
+/** Extract country from a location string like "Berlin, Germany" or "London, UK" */
+function extractCountryFromLocation(location: string | null | undefined): string | null {
+  if (!location) return null;
+  const parts = location.split(",").map((p) => p.trim());
+  return parts.length > 1 ? (parts[parts.length - 1] ?? null) : null;
 }

@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db, cityCostProfilesTable, salaryBenchmarksTable, jobRelocationScoresTable } from "@workspace/db";
+import { db, cityCostProfilesTable, salaryBenchmarksTable, jobRelocationScoresTable, internalJobsTable } from "@workspace/db";
 import { eq, and, ilike, desc, gte } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { analyzeRelocationForJob } from "../lib/relocation/relocation-pipeline.js";
+import { notifyRelocationScore } from "../lib/relocation/relocation-notifications.js";
 import { normalizeCityName, normalizeCountryName, normalizeJobTitle } from "../lib/relocation/relocation-helpers.js";
 import { LifestyleSchema } from "../lib/relocation/relocation-schemas.js";
 
@@ -14,6 +15,7 @@ const router = Router();
 const AnalyzeJobSchema = z.object({
   jobId: z.string().optional(),
   internalJobId: z.string().optional(),
+  externalJobCacheId: z.string().optional(),
   candidateProfileId: z.string().optional(),
   lifestyle: LifestyleSchema.optional().default("moderate"),
   forceRefresh: z.boolean().optional().default(false),
@@ -24,19 +26,41 @@ router.post("/relocation/analyze-job", async (req, res) => {
   const parsed = AnalyzeJobSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() }); return; }
 
-  const { jobId, internalJobId, candidateProfileId, lifestyle, forceRefresh } = parsed.data;
-  if (!jobId && !internalJobId) { res.status(400).json({ error: "Either jobId or internalJobId is required" }); return; }
+  const { jobId, internalJobId, externalJobCacheId, candidateProfileId, lifestyle, forceRefresh } = parsed.data;
+  if (!jobId && !internalJobId && !externalJobCacheId) {
+    res.status(400).json({ error: "One of jobId, internalJobId, or externalJobCacheId is required" });
+    return;
+  }
 
   try {
     const result = await analyzeRelocationForJob({
       userId: req.user.id,
       jobId: jobId ?? null,
       internalJobId: internalJobId ?? null,
+      externalJobCacheId: externalJobCacheId ?? null,
       candidateProfileId: candidateProfileId ?? null,
       lifestyle,
       forceRefresh,
     });
     if (!result) { res.status(404).json({ error: "Job not found" }); return; }
+
+    // Fire relocation notification for strong/possible recommendations (non-blocking)
+    if (!result.fromCache) {
+      // Resolve job title + company for the notification
+      const jobTitle = internalJobId
+        ? (await db.select({ title: internalJobsTable.title, company: internalJobsTable.company })
+            .from(internalJobsTable).where(eq(internalJobsTable.id, internalJobId)).limit(1)
+            .then((r) => r[0]))
+        : null;
+
+      notifyRelocationScore(req.user.id, result, {
+        jobTitle: jobTitle?.title ?? "New Job",
+        company: jobTitle?.company ?? "",
+        internalJobId: internalJobId ?? null,
+        jobId: externalJobCacheId ?? jobId ?? null,
+      }).catch((err) => logger.warn({ err }, "Relocation notification failed silently"));
+    }
+
     res.json({ result });
   } catch (err) {
     logger.error({ err }, "Relocation analysis failed");
