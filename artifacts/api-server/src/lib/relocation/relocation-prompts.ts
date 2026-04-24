@@ -1,9 +1,10 @@
 import { logger } from "../logger.js";
+import { routeRelocationSummary } from "../ai-router/index.js";
 import type { RelocationScoreResult, AiRelocationSummary, RelocationAnalysisResult } from "./relocation-schemas.js";
 
-// ─── AI summary (Phase A stub — deterministic fallback) ───────────────────────
-// Phase B will wire this to the AI router (OpenAI → Claude → Gemini).
-// For now, build a deterministic summary from structured scoring data.
+// ─── Public entry point ───────────────────────────────────────────────────────
+// Strategy: OpenAI (gpt-5.2) → Claude (claude-sonnet-4-6) → deterministic
+// The deterministic builder is always passed as the final safety fallback.
 
 export async function generateRelocationSummary(
   scoreResult: RelocationScoreResult,
@@ -20,19 +21,41 @@ export async function generateRelocationSummary(
 ): Promise<{ summary: AiRelocationSummary; provider: string | null; model: string | null }> {
   const { relocationScore, relocationRecommendation, riskFlags, positiveFactors } = scoreResult;
 
-  // Build deterministic summary from structured data
-  const summary = buildDeterministicSummary({
+  const input = {
     relocationScore,
     relocationRecommendation,
-    riskFlags,
-    positiveFactors,
+    riskFlags: riskFlags as string[],
+    positiveFactors: positiveFactors as string[],
     ...extras,
-  });
+  };
 
-  return { summary, provider: null, model: null };
+  try {
+    const result = await routeRelocationSummary(
+      input,
+      () => buildDeterministicSummary({ relocationScore, relocationRecommendation, riskFlags, positiveFactors, ...extras }),
+    );
+
+    logger.info(
+      { provider: result.provider, model: result.model, latencyMs: result.latencyMs, fromFallback: result.fromFallback },
+      "Relocation summary generated",
+    );
+
+    return {
+      summary: result.output as AiRelocationSummary,
+      provider: result.provider === "deterministic" ? null : result.provider,
+      model: result.model,
+    };
+  } catch (err) {
+    logger.error({ err }, "generateRelocationSummary: AI router threw — using deterministic fallback");
+    return {
+      summary: buildDeterministicSummary({ relocationScore, relocationRecommendation, riskFlags, positiveFactors, ...extras }),
+      provider: null,
+      model: null,
+    };
+  }
 }
 
-// ─── Deterministic summary builder ────────────────────────────────────────────
+// ─── Deterministic summary builder (safety fallback) ──────────────────────────
 
 function buildDeterministicSummary(opts: {
   relocationScore: number;
@@ -51,7 +74,6 @@ function buildDeterministicSummary(opts: {
   const location = [opts.city, opts.country].filter(Boolean).join(", ") || "the target location";
   const hasFinancialData = opts.estimatedMonthlyNet !== null && opts.estimatedMonthlyCost !== null;
 
-  // Summary
   let summary = `Relocation score: ${opts.relocationScore}/100 — ${recommendationLabel(opts.relocationRecommendation)}.`;
   if (hasFinancialData) {
     const surplus = opts.estimatedMonthlySurplus;
@@ -62,22 +84,17 @@ function buildDeterministicSummary(opts: {
     summary += ` Salary information is missing or incomplete, making a full financial assessment difficult.`;
   }
 
-  // Main upside
   const mainUpside = buildMainUpside(opts.positiveFactors, opts.estimatedMonthlySurplus, location);
-
-  // Main risk
   const mainRisk = buildMainRisk(opts.riskFlags, location);
-
-  // Candidate advice
   const candidateAdvice = buildCandidateAdvice(opts.relocationRecommendation, opts.riskFlags, location);
-
-  // Confidence note
   const confidenceNote = hasFinancialData
     ? "Estimates based on available salary data and city cost profiles. Actual costs will vary."
     : "Limited financial data available. Estimates are based on visa/language signals only. Confirm salary directly with the employer.";
 
   return { summary, mainUpside, mainRisk, candidateAdvice, confidenceNote };
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function recommendationLabel(rec: string): string {
   const labels: Record<string, string> = {

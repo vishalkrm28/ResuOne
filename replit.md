@@ -39,7 +39,14 @@ ResuOne is a production-ready SaaS web application designed to help users tailor
 
 **Job cards** (`jobs/exclusive.tsx`): relocation badge renders after language badge when signal ≠ unknown
 **City seed data**: 40 major cities across 20+ countries with realistic monthly cost breakdowns
-**Phase B pending**: AI router (OpenAI/Claude/Gemini), recommendations integration, pre-apply integration, notifications
+**Phase B — AI router (complete)**: 5 files in `api-server/src/lib/ai-router/`:
+- `ai-router-schemas.ts`: task type enum, provider names, `RelocationSummaryInput/Output` Zod schemas, `AiRouterResult` wrapper
+- `openai-provider.ts`: `generateRelocationSummaryWithOpenAI` — calls `gpt-5.2` with `json_object` response format; returns `null` on any error
+- `anthropic-provider.ts`: `generateRelocationSummaryWithClaude` — calls `claude-sonnet-4-6`; cleans markdown fence; returns `null` on any error
+- `ai-router.ts`: `routeRelocationSummary(input, deterministicFallback)` — OpenAI → Claude → deterministic, records `provider`, `model`, `latencyMs`, `fromFallback`
+- `index.ts`: barrel export
+- `relocation-prompts.ts` updated: now calls `routeRelocationSummary`; deterministic builder is passed as safety fallback; logs provider/model/latency on every call
+**Phase C pending**: recommendations boost, pre-apply analysis integration, notifications
 
 ## Language Requirement Intelligence (Phase 1 — complete)
 
