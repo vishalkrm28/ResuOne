@@ -1,6 +1,7 @@
 import { validateEnv } from "./lib/env.js";
 import { logger } from "./lib/logger.js";
 import app from "./app.js";
+import { runMigrations } from "./lib/migrate.js";
 
 // ── Environment validation — runs before server starts listening ───────────────
 // Log actionable messages for missing vars; exit with code 1 so the process
@@ -21,6 +22,13 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   logger.fatal({ rawPort }, "Invalid PORT value — must be a positive integer");
   process.exit(1);
+}
+
+// ── Schema migrations — add missing columns before accepting traffic ──────────
+try {
+  await runMigrations();
+} catch (err) {
+  logger.error({ err }, "Startup migrations failed — proceeding anyway");
 }
 
 // ── Start listening ───────────────────────────────────────────────────────────
